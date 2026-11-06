@@ -23,14 +23,14 @@ public class VaultIndexer implements IndexVault {
 
     @Override
     public int run() {
-        List<NotePath> notes = vault.notes();
-        for (NotePath note : notes) {
-            List<EmbeddedChunk> chunks = splitter.split(note, vault.read(note)).stream()
+        List<VaultNote> notes = vault.notes();
+        for (VaultNote note : notes) {
+            List<EmbeddedChunk> chunks = splitter.split(note.path(), note.text()).stream()
                     .map(chunk -> new EmbeddedChunk(chunk, embedding.embed(chunk.embeddingText())))
                     .toList();
-            index.replace(note, chunks, embedding.model());
+            index.replace(note.path(), chunks, embedding.model());
         }
-        index.retainOnly(notes);
+        index.retainOnly(notes.stream().map(VaultNote::path).toList());
         return notes.size();
     }
 }

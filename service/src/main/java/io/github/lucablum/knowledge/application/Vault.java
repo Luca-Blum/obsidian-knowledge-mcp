@@ -1,6 +1,5 @@
 package io.github.lucablum.knowledge.application;
 
-import io.github.lucablum.knowledge.domain.NotePath;
 import java.util.List;
 import org.jmolecules.architecture.hexagonal.SecondaryPort;
 
@@ -9,7 +8,5 @@ import org.jmolecules.architecture.hexagonal.SecondaryPort;
 public interface Vault {
 
     /** Every Note in the Vault, after the ignore rules are applied. */
-    List<NotePath> notes();
-
-    String read(NotePath note);
+    List<VaultNote> notes();
 }
