@@ -11,7 +11,12 @@ public class Splitter {
 
     public List<Chunk> split(NotePath note, String markdown) {
         ChunkAssembler assembler = new ChunkAssembler(note);
-        MarkdownLines.of(markdown).forEach(line -> line.addTo(assembler));
+        for (MarkdownLine line : MarkdownLines.of(markdown)) {
+            switch (line) {
+                case HeadingLine heading -> assembler.startSection(heading);
+                case TextLine text -> assembler.addLine(text.value());
+            }
+        }
         return assembler.finish();
     }
 }
