@@ -6,11 +6,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
 import io.github.lucablum.knowledge.application.IndexVault;
 import io.github.lucablum.knowledge.application.SearchChunks;
+import io.github.lucablum.knowledge.application.SearchRequest;
 import io.github.lucablum.knowledge.domain.SearchHit;
 import io.github.lucablum.knowledge.domain.Topic;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -49,7 +52,7 @@ class SearchTest {
                 """);
         indexVault.run();
 
-        List<SearchHit> hits = search.search("which way do source code dependencies point", 1);
+        List<SearchHit> hits = search.search(SearchRequest.of("which way do source code dependencies point").withK(1));
 
         assertThat(hits).singleElement().satisfies(hit -> {
             assertThat(hit.content()).isEqualTo("Source code dependencies point only inwards.");
@@ -70,7 +73,7 @@ class SearchTest {
         vault.write("Coaching/Deep/_eval/questions.md", "Refactoring kata practice");
         indexVault.run();
 
-        List<SearchHit> hits = search.search("refactoring kata", 10);
+        List<SearchHit> hits = search.search(SearchRequest.of("refactoring kata").withK(10));
 
         assertThat(hits).extracting(SearchHit::notePath).containsExactly("Coaching/Kata.md");
     }
@@ -81,7 +84,7 @@ class SearchTest {
         vault.write(decomposed, "Übungen nach Müller");
         indexVault.run();
 
-        List<SearchHit> hits = search.search("Übungen nach Müller", 1);
+        List<SearchHit> hits = search.search(SearchRequest.of("Übungen nach Müller").withK(1));
 
         assertThat(hits).extracting(SearchHit::notePath).containsExactly("\u00DCbungen/M\u00FCller.md");
     }
@@ -94,7 +97,7 @@ class SearchTest {
         vault.write("Index.md", "Interval training overview");
         indexVault.run();
 
-        List<SearchHit> hits = search.search("interval training", new Topic("Running"), 10);
+        List<SearchHit> hits = search.search(SearchRequest.of("interval training").inTopic(new Topic("Running")).withK(10));
 
         assertThat(hits).extracting(SearchHit::notePath)
                 .containsExactlyInAnyOrder("Running/Intervals.md", "Running/Plans/Marathon.md");
@@ -106,7 +109,7 @@ class SearchTest {
         vault.write("Index.md", "Interval training overview");
         indexVault.run();
 
-        List<SearchHit> hits = search.search("interval training", 10);
+        List<SearchHit> hits = search.search(SearchRequest.of("interval training").withK(10));
 
         assertThat(hits).extracting(SearchHit::notePath)
                 .containsExactlyInAnyOrder("Running/Intervals.md", "Index.md");
@@ -126,7 +129,7 @@ class SearchTest {
                 """);
         indexVault.run();
 
-        List<SearchHit> hits = search.search("tempo run", 2);
+        List<SearchHit> hits = search.search(SearchRequest.of("tempo run").withK(2));
 
         assertThat(hits).extracting(hit -> hit.headingPath().getLast()).containsExactly("Near", "Middle");
         assertThat(hits.get(0).score()).isGreaterThan(hits.get(1).score());
@@ -140,16 +143,36 @@ class SearchTest {
         vault.write("Running/Tempo.md", "Tempo runs");
         indexVault.run();
 
-        List<SearchHit> hits = search.search("interval training", 10);
+        List<SearchHit> hits = search.search(SearchRequest.of("interval training").withK(10));
 
         assertThat(hits).extracting(SearchHit::notePath).containsExactly("Running/Tempo.md");
+    }
+
+    @Test
+    void whenSearch_givenNoK_thenReturnCollectionDefaultNumberOfHits() {
+        int defaultK = collection.search().defaultK();
+        vault.write("Notes.md", IntStream.rangeClosed(1, defaultK + 2)
+                .mapToObj(i -> "## Section " + i + "\ntempo run " + i)
+                .collect(Collectors.joining("\n\n")));
+        indexVault.run();
+
+        List<SearchHit> hits = search.search(SearchRequest.of("tempo run"));
+
+        assertThat(hits).hasSize(defaultK);
+    }
+
+    @Test
+    void whenSearch_givenBlankQuery_thenRejectWithIllegalArgument() {
+        assertThatThrownBy(() -> search.search(SearchRequest.of("  ")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("query must not be blank");
     }
 
     @Test
     void whenSearch_givenKAboveMaximum_thenRejectWithIllegalArgument() {
         int maxK = collection.search().maxK();
 
-        assertThatThrownBy(() -> search.search("interval training", maxK + 1))
+        assertThatThrownBy(() -> search.search(SearchRequest.of("interval training").withK(maxK + 1)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("k must be between 1 and " + maxK);
     }

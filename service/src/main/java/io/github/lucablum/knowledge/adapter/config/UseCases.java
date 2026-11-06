@@ -23,6 +23,7 @@ public class UseCases {
     @Produces
     @ApplicationScoped
     SearchChunks searchChunks(Embedding embedding, Index index, CollectionConfig collection) {
-        return new VectorSearch(embedding, index, collection.search().maxK());
+        CollectionConfig.Search search = collection.search();
+        return new VectorSearch(embedding, index, search.defaultK(), search.maxK());
     }
 }

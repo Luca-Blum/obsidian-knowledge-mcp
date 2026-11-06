@@ -12,8 +12,7 @@ record Statements(
         String insertNote,
         String insertChunk,
         String retainOnly,
-        String nearest,
-        String nearestInTopic) {
+        String nearest) {
 
     private static final Pattern IDENTIFIER = Pattern.compile("[a-z_][a-z0-9_]*");
 
@@ -30,7 +29,7 @@ record Statements(
     private static final String NEAREST_TEMPLATE = """
             SELECT c.content, c.note_path, c.heading_path, 1 - (c.embedding <=> ?::vector) AS score
             FROM {chunk} c JOIN {note} n ON n.path = c.note_path
-            {topicFilter}
+            WHERE (?::text IS NULL OR n.topic = ?)
             ORDER BY c.embedding <=> ?::vector
             LIMIT ?""";
 
@@ -43,8 +42,7 @@ record Statements(
                 inSchema(INSERT_NOTE_TEMPLATE, schema),
                 inSchema(INSERT_CHUNK_TEMPLATE, schema),
                 inSchema(RETAIN_ONLY_TEMPLATE, schema),
-                inSchema(NEAREST_TEMPLATE.replace("{topicFilter}", ""), schema),
-                inSchema(NEAREST_TEMPLATE.replace("{topicFilter}", "WHERE n.topic = ?"), schema));
+                inSchema(NEAREST_TEMPLATE, schema));
     }
 
     private static String inSchema(String template, String schema) {

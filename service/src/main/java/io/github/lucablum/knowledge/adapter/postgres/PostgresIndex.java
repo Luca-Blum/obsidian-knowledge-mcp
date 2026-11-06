@@ -54,22 +54,23 @@ public class PostgresIndex implements Index {
 
     @Override
     public List<SearchHit> nearest(float[] query, int k) {
-        String vector = Arrays.toString(query);
-        return search(sql.nearest(), select -> {
-            select.setString(1, vector);
-            select.setString(2, vector);
-            select.setInt(3, k);
-        });
+        return nearestInTopic(query, null, k);
     }
 
     @Override
     public List<SearchHit> nearest(float[] query, Topic topic, int k) {
+        return nearestInTopic(query, topic.name(), k);
+    }
+
+    /** A {@code null} topic name leaves the search unrestricted. */
+    private List<SearchHit> nearestInTopic(float[] query, String topicName, int k) {
         String vector = Arrays.toString(query);
-        return search(sql.nearestInTopic(), select -> {
+        return search(sql.nearest(), select -> {
             select.setString(1, vector);
-            select.setString(2, topic.name());
-            select.setString(3, vector);
-            select.setInt(4, k);
+            select.setString(2, topicName);
+            select.setString(3, topicName);
+            select.setString(4, vector);
+            select.setInt(5, k);
         });
     }
 
