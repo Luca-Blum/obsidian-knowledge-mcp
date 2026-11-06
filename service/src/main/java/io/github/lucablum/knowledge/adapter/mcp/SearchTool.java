@@ -14,12 +14,14 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import java.util.List;
 import java.util.Map;
+import org.jmolecules.architecture.hexagonal.PrimaryAdapter;
 
 /**
  * Registers the {@code search} tool programmatically, because its description comes from the Collection's
  * configuration and annotation values must be constants.
  */
 @ApplicationScoped
+@PrimaryAdapter
 public class SearchTool {
 
     private final ToolManager tools;

@@ -3,8 +3,10 @@ package io.github.lucablum.knowledge.domain;
 import java.text.Normalizer;
 import java.util.Objects;
 import java.util.Optional;
+import org.jmolecules.ddd.annotation.ValueObject;
 
 /** Identifies a Note by its path relative to the Vault root, with '/' separators and NFC-normalized. */
+@ValueObject
 public record NotePath(String value) {
 
     public NotePath {

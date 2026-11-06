@@ -16,9 +16,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.jmolecules.architecture.hexagonal.SecondaryAdapter;
 
 /** Reads the Vault from the local file system; never writes to it. */
 @ApplicationScoped
+@SecondaryAdapter
 public class FileSystemVaultReader implements VaultReader {
 
     private final Path root;

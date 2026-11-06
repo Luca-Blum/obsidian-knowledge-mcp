@@ -18,9 +18,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import org.jmolecules.architecture.hexagonal.SecondaryAdapter;
 
 /** Stores Notes and Chunks in the Collection's own schema; vectors live in pgvector columns. */
 @ApplicationScoped
+@SecondaryAdapter
 public class PostgresIndexRepository implements IndexRepository {
 
     private final AgroalDataSource dataSource;

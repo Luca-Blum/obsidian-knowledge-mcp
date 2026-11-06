@@ -2,8 +2,10 @@ package io.github.lucablum.knowledge.domain;
 
 import java.text.Normalizer;
 import java.util.Objects;
+import org.jmolecules.ddd.annotation.ValueObject;
 
 /** The first folder below the Vault root that contains a Note. */
+@ValueObject
 public record Topic(String name) {
 
     public Topic {

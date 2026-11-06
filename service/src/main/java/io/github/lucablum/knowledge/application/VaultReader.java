@@ -2,8 +2,10 @@ package io.github.lucablum.knowledge.application;
 
 import io.github.lucablum.knowledge.domain.NotePath;
 import java.util.List;
+import org.jmolecules.architecture.hexagonal.SecondaryPort;
 
 /** Reads the Collection's Vault. Used on the indexing side only. */
+@SecondaryPort
 public interface VaultReader {
 
     /** Every Note in the Vault, after the ignore rules are applied. */

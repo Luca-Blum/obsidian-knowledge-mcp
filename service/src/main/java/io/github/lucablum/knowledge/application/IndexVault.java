@@ -3,8 +3,10 @@ package io.github.lucablum.knowledge.application;
 import io.github.lucablum.knowledge.domain.NotePath;
 import io.github.lucablum.knowledge.domain.splitting.Splitter;
 import java.util.List;
+import org.jmolecules.architecture.hexagonal.PrimaryPort;
 
 /** Indexes every Note of the Collection's Vault and removes Notes that are no longer there. */
+@PrimaryPort
 public class IndexVault {
 
     private final VaultReader vault;

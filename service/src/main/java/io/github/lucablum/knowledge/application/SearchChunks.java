@@ -3,8 +3,10 @@ package io.github.lucablum.knowledge.application;
 import io.github.lucablum.knowledge.domain.SearchHit;
 import io.github.lucablum.knowledge.domain.Topic;
 import java.util.List;
+import org.jmolecules.architecture.hexagonal.PrimaryPort;
 
 /** Vector search over the Collection's Chunks. */
+@PrimaryPort
 public class SearchChunks {
 
     private final EmbeddingPort embedding;

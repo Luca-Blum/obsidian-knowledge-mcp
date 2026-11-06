@@ -6,9 +6,11 @@ import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import org.jboss.logging.Logger;
+import org.jmolecules.architecture.hexagonal.PrimaryAdapter;
 
 /** Indexes the Collection's Vault in the background once the service has started. */
 @ApplicationScoped
+@PrimaryAdapter
 public class IndexOnStartup {
 
     private static final Logger LOG = Logger.getLogger(IndexOnStartup.class);

@@ -1,8 +1,10 @@
 package io.github.lucablum.knowledge.domain;
 
 import java.util.List;
+import org.jmolecules.ddd.annotation.ValueObject;
 
 /** The headings above a Chunk, outermost first. */
+@ValueObject
 public record HeadingPath(List<String> segments) {
 
     public HeadingPath {

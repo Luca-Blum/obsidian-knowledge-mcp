@@ -3,8 +3,10 @@ package io.github.lucablum.knowledge.application;
 import io.github.lucablum.knowledge.domain.Chunk;
 import java.util.Arrays;
 import java.util.Objects;
+import org.jmolecules.ddd.annotation.ValueObject;
 
 /** A Chunk together with its vector. */
+@ValueObject
 public record EmbeddedChunk(Chunk chunk, float[] embedding) {
 
     /** Arrays compare by identity by default, so equality is defined over their contents. */
