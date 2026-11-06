@@ -33,7 +33,7 @@ def test_imports_a_pdf_from_a_topic_inbox_into_a_source_note(tmp_path):
 
     run_importer(vault)
 
-    note = vault / "Coaching" / "Quellen" / "dependency-rule.md"
+    note = vault / "Coaching" / "Source-Notes" / "dependency-rule.md"
     assert frontmatter(note) == {
         "type": "source",
         "title": "Notes on the Dependency Rule",
@@ -62,7 +62,7 @@ def test_takes_the_title_from_the_first_heading_when_the_pdf_has_no_metadata_tit
 
     run_importer(vault)
 
-    assert frontmatter(vault / "Coaching" / "Quellen" / "untitled.md")["title"] == "The Dependency_Rule"
+    assert frontmatter(vault / "Coaching" / "Source-Notes" / "untitled.md")["title"] == "The Dependency_Rule"
 
 
 def test_leaves_everything_alone_that_is_not_a_pdf_directly_inside_a_topic_inbox(tmp_path):

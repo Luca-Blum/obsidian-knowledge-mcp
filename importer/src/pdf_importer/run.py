@@ -48,7 +48,7 @@ def _import_pdf(pdf: Path, converter: Converter) -> None:
     frontmatter["source"] = f"[[_sources/{pdf.name}]]"
     frontmatter["imported"] = datetime.date.today()
 
-    note = topic / "Quellen" / f"{pdf.stem}.md"
+    note = topic / "Source-Notes" / f"{pdf.stem}.md"
     header = yaml.safe_dump(frontmatter, sort_keys=False, allow_unicode=True)
     _write_atomically(note, f"---\n{header}---\n\n{converted.markdown}\n")
     _move(pdf, topic / "_sources" / pdf.name)

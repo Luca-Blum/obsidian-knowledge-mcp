@@ -1,6 +1,6 @@
 # PDF importer
 
-Turns the PDFs in a Topic's `_inbox/` into Source Notes. It runs on the Mac, converts each PDF with [Docling](https://github.com/docling-project/docling) (OCR included) and writes the Note to the Topic's `Quellen/` folder. The PDF itself then moves to the Topic's `_sources/` folder.
+Turns the PDFs in a Topic's `_inbox/` into Source Notes. It runs on the Mac, converts each PDF with [Docling](https://github.com/docling-project/docling) (OCR included) and writes the Note to the Topic's `Source-Notes/` folder. The PDF itself then moves to the Topic's `_sources/` folder.
 
 The importer is a Python project managed with [uv](https://docs.astral.sh/uv/) and is independent of the Maven build. It shares nothing with the knowledge service except the frontmatter format of a Source Note.
 
@@ -9,10 +9,10 @@ The importer is a Python project managed with [uv](https://docs.astral.sh/uv/) a
 A run looks at every Topic of every Vault it is given, meaning every first-level folder that is not prefixed with `_` or `.`. Only `.pdf` files directly inside `<Topic>/_inbox/` are imported, and everything else is left alone. For each PDF the run:
 
 1. converts it to Markdown with headings and tables,
-2. writes `<Topic>/Quellen/<pdf name>.md` atomically: a temporary file first, then linked into place,
+2. writes `<Topic>/Source-Notes/<pdf name>.md` atomically: a temporary file first, then linked into place,
 3. moves the PDF to `<Topic>/_sources/`.
 
-`Quellen/` and `_sources/` are created when they are missing. The Note starts with this frontmatter:
+`Source-Notes/` and `_sources/` are created when they are missing. The Note starts with this frontmatter:
 
 ```yaml
 ---
