@@ -24,11 +24,6 @@ record HeadingLine(int level, String text) implements MarkdownLine {
         return Optional.of(new HeadingLine(heading.group("marks").length(), withoutClosingHashes(heading.group("text"))));
     }
 
-    @Override
-    public void addTo(ChunkAssembler assembler) {
-        assembler.startSection(this);
-    }
-
     /**
      * The text without trailing whitespace and without closing hashes ({@code ## Title ##}).
      */

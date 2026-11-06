@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
 import io.github.lucablum.knowledge.application.SearchChunks;
+import io.github.lucablum.knowledge.application.SearchRequest;
 import io.github.lucablum.knowledge.domain.SearchHit;
 import io.github.lucablum.knowledge.domain.Topic;
 import io.quarkiverse.mcp.server.ToolManager;
@@ -53,11 +54,7 @@ public class SearchTool {
         Map<String, Object> args = arguments.args();
         String topic = (String) args.get("topic");
         try {
-            String query = (String) args.get("query");
-            int k = k(args.get("k"));
-            List<SearchHit> hits = topic == null || topic.isBlank()
-                    ? search.search(query, k)
-                    : search.search(query, new Topic(topic), k);
+            List<SearchHit> hits = search.search(request((String) args.get("query"), topic, args.get("k")));
             return ToolResponse.success(json.writeValueAsString(Map.of("hits", hits)));
         } catch (IllegalArgumentException e) {
             return ToolResponse.error(e.getMessage());
@@ -66,11 +63,16 @@ public class SearchTool {
         }
     }
 
-    /** A wrong {@code k} is an error rather than the default, so Claude sees it and can correct the call. */
-    private int k(Object value) {
-        if (value == null) {
-            return config.defaultK();
+    private SearchRequest request(String query, String topic, Object k) {
+        SearchRequest request = SearchRequest.of(query);
+        if (topic != null && !topic.isBlank()) {
+            request = request.inTopic(new Topic(topic));
         }
+        return k == null ? request : request.withK(wholeNumber(k));
+    }
+
+    /** A wrong {@code k} is an error rather than the default, so Claude sees it and can correct the call. */
+    private int wholeNumber(Object value) {
         if (value instanceof Integer || value instanceof Long) {
             return Math.clamp(((Number) value).longValue(), Integer.MIN_VALUE, Integer.MAX_VALUE);
         }
