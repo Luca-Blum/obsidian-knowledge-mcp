@@ -7,6 +7,11 @@ import javax.sql.DataSource;
 /** One database transaction: rolled back on {@link #close()} unless it was {@link #commit() committed}. */
 final class Transaction implements AutoCloseable {
 
+    /** Statements that run together or not at all. */
+    interface Work {
+        void run(Connection connection) throws SQLException;
+    }
+
     private final Connection connection;
     private boolean committed;
 
@@ -14,7 +19,17 @@ final class Transaction implements AutoCloseable {
         this.connection = connection;
     }
 
-    static Transaction begin(DataSource dataSource) throws SQLException {
+    /** Runs {@code work} on one connection and commits, or rolls back if it fails. */
+    static void run(DataSource dataSource, Work work) {
+        try (Transaction transaction = begin(dataSource)) {
+            work.run(transaction.connection);
+            transaction.commit();
+        } catch (SQLException e) {
+            throw new IllegalStateException("Transaction failed", e);
+        }
+    }
+
+    private static Transaction begin(DataSource dataSource) throws SQLException {
         Connection connection = dataSource.getConnection();
         try {
             connection.setAutoCommit(false);
@@ -25,11 +40,7 @@ final class Transaction implements AutoCloseable {
         return new Transaction(connection);
     }
 
-    Connection connection() {
-        return connection;
-    }
-
-    void commit() throws SQLException {
+    private void commit() throws SQLException {
         connection.commit();
         committed = true;
     }
