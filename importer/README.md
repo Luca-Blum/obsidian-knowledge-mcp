@@ -12,6 +12,15 @@ A run looks at every Topic of every Vault it is given, meaning every first-level
 2. writes `<Topic>/Source-Notes/<pdf name>.md` atomically: a temporary file first, then linked into place,
 3. moves the PDF to `<Topic>/_sources/`.
 
+## What a run never does
+
+- It never opens an existing Note for writing. If `Source-Notes/` or `_sources/` already holds the name, the new Note and the new PDF both get the same numeric suffix (`name-1.md`, `name-1.pdf`), and the `source` link points at the suffixed PDF.
+- If a PDF cannot be converted, or cannot be moved to `_sources/` after its Note was written (the Note is then deleted again), the PDF moves to `_inbox/_failed/` and a log with the same base name explains the error. A name taken there gets a suffix too.
+- One failing PDF does not stop the others.
+- It skips a PDF that changed within the last 5 seconds, so a file still being copied is picked up by a later run.
+- It holds a lock on the Vault folder while it works. A second run on the same Vault skips it and leaves everything as it is.
+- It never touches `_inbox/_failed/`, other subfolders or non-PDF files.
+
 `Source-Notes/` and `_sources/` are created when they are missing. The Note starts with this frontmatter:
 
 ```yaml
