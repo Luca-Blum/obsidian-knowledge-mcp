@@ -27,7 +27,7 @@ Ollama is expected at `http://localhost:11434` (`quarkus.langchain4j.ollama.base
 
 ```shell
 ollama pull bge-m3      # or: docker run -d -p 11434:11434 --name ollama ollama/ollama && docker exec ollama ollama pull bge-m3
-COLLECTION_VAULT_PATH=/path/to/Engineering ./mvnw quarkus:dev
+COLLECTION_VAULT_PATH=/path/to/Engineering ./service/mvnw -f service/pom.xml quarkus:dev
 ```
 
 The `dev` profile configures the engineering Collection on port 8081 and indexes the Vault in the background after
@@ -40,7 +40,7 @@ claude mcp add --transport http knowledge-engineering http://localhost:8081/mcp
 ## Tests
 
 ```shell
-./mvnw test
+cd service && ./mvnw test
 ```
 
 Tests write Notes into a temporary Vault (`target/test-vault`), index it and search against real Postgres with
