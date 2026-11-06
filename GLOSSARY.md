@@ -27,7 +27,7 @@ Whether a Note is a Source Note or an Own Note. There are exactly these two kind
 _Avoid_: Type, note type
 
 **Source Note**:
-A Note whose frontmatter says `type: source`. The kind belongs to the Note, not to its location: a Note in `Quellen/` without that type is still an Own Note.
+A Note whose frontmatter says `type: source`. The kind belongs to the Note, not to its location: a Note in `Source-Notes/` without that type is still an Own Note.
 _Avoid_: Quellen-Note, source, reference
 
 **Own Note**:
