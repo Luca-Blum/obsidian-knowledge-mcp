@@ -29,7 +29,7 @@ class PostgresIndexRepositoryTest {
     AgroalDataSource dataSource;
 
     @Test
-    void everyChunkRecordsTheEmbeddingModelThatProducedIt() throws SQLException {
+    void whenIndexVault_givenNotes_thenEveryChunkRecordsEmbeddingModel() throws SQLException {
         vault.clear();
         vault.write("Running/Intervals.md", """
                 ## Short

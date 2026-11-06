@@ -32,17 +32,15 @@ class SearchToolTest {
     }
 
     @Test
-    void searchToolCarriesTheDescriptionFromTheCollectionConfiguration() {
+    void whenListTools_givenCollectionDescription_thenSearchToolCarriesIt() {
         client.when()
-                .toolsList(page -> {
-                    assertThat(page.findByName("search").description())
-                            .isEqualTo("Searches the test Collection.");
-                })
+                .toolsList(page -> assertThat(page.findByName("search").description())
+                        .isEqualTo("Searches the test Collection."))
                 .thenAssertResults();
     }
 
     @Test
-    void searchToolReturnsSearchHits() {
+    void whenCallSearchTool_givenTopicAndK_thenReturnSearchHits() {
         vault.write("Running/Intervals.md", """
                 ## Workouts
                 Interval training improves speed
@@ -59,8 +57,15 @@ class SearchToolTest {
                     assertThat(hit.getString("content")).isEqualTo("Interval training improves speed");
                     assertThat(hit.getString("notePath")).isEqualTo("Running/Intervals.md");
                     assertThat(hit.getJsonArray("headingPath")).containsExactly("Workouts");
-                    assertThat(hit.getDouble("score")).isBetween(0.0, 1.0);
+                    assertThat(hit.getDouble("score")).isBetween(-1.0, 1.0);
                 })
+                .thenAssertResults();
+    }
+
+    @Test
+    void whenCallSearchTool_givenKNotAWholeNumber_thenReturnError() {
+        client.when()
+                .toolsCall("search", Map.of("query", "interval training", "k", "ten"), response -> assertThat(response.isError()).isTrue())
                 .thenAssertResults();
     }
 }

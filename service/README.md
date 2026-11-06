@@ -3,7 +3,7 @@
 One instance serves one Collection. It indexes the Collection's Vault into its own Postgres schema and offers
 `search` over MCP (Streamable HTTP, `/mcp`). See [`docs/architecture.md`](../docs/architecture.md).
 
-Requires Java 21+ and Docker (Dev Services start Postgres with pgvector).
+Requires Java 25+ and Docker (Dev Services start Postgres with pgvector).
 
 ## Configuration
 
@@ -19,6 +19,7 @@ A Collection is defined only by configuration:
 | `collection.embedding.dimension` | `COLLECTION_EMBEDDING_DIMENSION` | Vector dimension of that model (default `1024`) |
 | `collection.search.tool-description` | `COLLECTION_SEARCH_TOOL_DESCRIPTION` | Description Claude reads for `search` |
 | `collection.search.default-k` | `COLLECTION_SEARCH_DEFAULT_K` | Search Hits when `k` is not given (default `5`) |
+| `collection.search.max-k` | `COLLECTION_SEARCH_MAX_K` | Largest `k` a caller may ask for (default `20`) |
 
 Ollama is expected at `http://localhost:11434` (`quarkus.langchain4j.ollama.base-url`).
 

@@ -16,18 +16,18 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.regex.Pattern;
 
 /** Stores Notes and Chunks in the Collection's own schema; vectors live in pgvector columns. */
+@SuppressWarnings({"SqlNoDataSourceInspection", "SqlResolve"})
 @ApplicationScoped
 public class PostgresIndexRepository implements IndexRepository {
 
     private static final Pattern IDENTIFIER = Pattern.compile("[a-z_][a-z0-9_]*");
 
     private final AgroalDataSource dataSource;
-    private final String note;
-    private final String chunk;
+    private final String noteTable;
+    private final String chunkTable;
 
     public PostgresIndexRepository(AgroalDataSource dataSource, CollectionConfig collection) {
         String schema = collection.schema();
@@ -35,17 +35,17 @@ public class PostgresIndexRepository implements IndexRepository {
             throw new IllegalArgumentException("Invalid schema name: " + schema);
         }
         this.dataSource = dataSource;
-        this.note = schema + ".note";
-        this.chunk = schema + ".chunk";
+        this.noteTable = schema + ".note";
+        this.chunkTable = schema + ".chunk";
     }
 
     @Override
     public void replace(NotePath path, List<EmbeddedChunk> chunks, String embeddingModel) {
         inTransaction(connection -> {
-            try (PreparedStatement delete = connection.prepareStatement("DELETE FROM " + note + " WHERE path = ?");
+            try (PreparedStatement delete = connection.prepareStatement("DELETE FROM " + noteTable + " WHERE path = ?");
                     PreparedStatement insertNote = connection.prepareStatement(
-                            "INSERT INTO " + note + " (path, topic) VALUES (?, ?)");
-                    PreparedStatement insertChunk = connection.prepareStatement("INSERT INTO " + chunk
+                            "INSERT INTO " + noteTable + " (path, topic) VALUES (?, ?)");
+                    PreparedStatement insertChunk = connection.prepareStatement("INSERT INTO " + chunkTable
                             + " (note_path, ordinal, heading_path, content, embedding, embedding_model)"
                             + " VALUES (?, ?, ?, ?, ?::vector, ?)")) {
                 delete.setString(1, path.value());
@@ -57,7 +57,7 @@ public class PostgresIndexRepository implements IndexRepository {
                     insertChunk.setString(1, path.value());
                     insertChunk.setInt(2, embedded.chunk().ordinal());
                     insertChunk.setArray(3, connection.createArrayOf(
-                            "text", embedded.chunk().headings().headings().toArray()));
+                            "text", embedded.chunk().headings().segments().toArray()));
                     insertChunk.setString(4, embedded.chunk().content());
                     insertChunk.setString(5, Arrays.toString(embedded.embedding()));
                     insertChunk.setString(6, embeddingModel);
@@ -72,7 +72,7 @@ public class PostgresIndexRepository implements IndexRepository {
     public void retainOnly(Collection<NotePath> notes) {
         inTransaction(connection -> {
             try (PreparedStatement delete = connection.prepareStatement(
-                    "DELETE FROM " + note + " WHERE NOT (path = ANY (?))")) {
+                    "DELETE FROM " + noteTable + " WHERE NOT (path = ANY (?))")) {
                 delete.setArray(1, connection.createArrayOf(
                         "text", notes.stream().map(NotePath::value).toArray()));
                 delete.executeUpdate();
@@ -81,18 +81,28 @@ public class PostgresIndexRepository implements IndexRepository {
     }
 
     @Override
-    public List<SearchHit> nearest(float[] query, Optional<Topic> topic, int k) {
+    public List<SearchHit> nearest(float[] query, int k) {
+        return select(query, null, k);
+    }
+
+    @Override
+    public List<SearchHit> nearest(float[] query, Topic topic, int k) {
+        return select(query, topic.name(), k);
+    }
+
+    /** {@code topicName} is {@code null} for a search across the whole Collection. */
+    private List<SearchHit> select(float[] query, String topicName, int k) {
         String sql = "SELECT c.content, c.note_path, c.heading_path, 1 - (c.embedding <=> ?::vector) AS score"
-                + " FROM " + chunk + " c JOIN " + note + " n ON n.path = c.note_path"
-                + (topic.isPresent() ? " WHERE n.topic = ?" : "")
+                + " FROM " + chunkTable + " c JOIN " + noteTable + " n ON n.path = c.note_path"
+                + (topicName != null ? " WHERE n.topic = ?" : "")
                 + " ORDER BY c.embedding <=> ?::vector LIMIT ?";
         String vector = Arrays.toString(query);
         try (Connection connection = dataSource.getConnection();
                 PreparedStatement select = connection.prepareStatement(sql)) {
             int parameter = 1;
             select.setString(parameter++, vector);
-            if (topic.isPresent()) {
-                select.setString(parameter++, topic.get().name());
+            if (topicName != null) {
+                select.setString(parameter++, topicName);
             }
             select.setString(parameter++, vector);
             select.setInt(parameter, k);
@@ -118,18 +128,22 @@ public class PostgresIndexRepository implements IndexRepository {
 
     private void inTransaction(Work work) {
         try (Connection connection = dataSource.getConnection()) {
-            connection.setAutoCommit(false);
-            try {
-                work.run(connection);
-                connection.commit();
-            } catch (SQLException | RuntimeException e) {
-                connection.rollback();
-                throw e;
-            } finally {
-                connection.setAutoCommit(true);
-            }
+            runAtomically(connection, work);
         } catch (SQLException e) {
             throw new IllegalStateException("Index update failed", e);
+        }
+    }
+
+    private static void runAtomically(Connection connection, Work work) throws SQLException {
+        connection.setAutoCommit(false);
+        try {
+            work.run(connection);
+            connection.commit();
+        } catch (SQLException | RuntimeException e) {
+            connection.rollback();
+            throw e;
+        } finally {
+            connection.setAutoCommit(true);
         }
     }
 }

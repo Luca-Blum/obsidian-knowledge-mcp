@@ -300,7 +300,7 @@ Claude formuliert die Suchanfragen selbst; die `@Tool`-Beschreibungen steuern, w
 
 ```java
 @Tool(description = """
-    Durchsucht Lucas Engineering-Wissensbasis (Obsidian).
+    Durchsucht die Engineering-Wissensbasis des Users (Obsidian).
     'query' ist die Frage in eigenen Worten (Vektorsuche, sprachübergreifend).
     'keywords' sind optionale exakte Begriffe für den Volltext
     (Klassennamen, Abkürzungen, Eigennamen).
@@ -316,7 +316,7 @@ Da sich die Instanzen nur in dieser Beschreibung unterscheiden ("Engineering-Wis
 
 | Bereich | Wahl | Begründung |
 | --- | --- | --- |
-| Sprache / Framework | Java 21+, Quarkus (JVM-Modus) | Beruflich relevanter Stack; CDI-Modell nah an Jakarta EE/MicroProfile |
+| Sprache / Framework | Java 25+, Quarkus (JVM-Modus) | Beruflich relevanter Stack; CDI-Modell nah an Jakarta EE/MicroProfile |
 | AI-Bausteine | Quarkus LangChain4j (Embedding-Modell, Embedding-Store, Splitter) | Fertige Bausteine, aber eigene Ingestion statt Easy RAG |
 | MCP | `quarkus-mcp-server-http` (Streamable HTTP) | Remote-Zugriff vom Mac und von claude.ai |
 | Datenbank | Postgres + pgvector (ein Schema pro Collection), Volltext via `tsvector` | Vektor- und Keyword-Suche in einer DB, Hybrid via Reciprocal Rank Fusion |

@@ -39,5 +39,9 @@ public interface CollectionConfig {
 
         @WithDefault("5")
         int defaultK();
+
+        /** Caps {@code k}, so one call cannot pull the whole Collection into Claude's context. */
+        @WithDefault("20")
+        int maxK();
     }
 }

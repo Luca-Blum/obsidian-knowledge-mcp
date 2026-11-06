@@ -11,7 +11,7 @@ public record Chunk(NotePath note, int ordinal, HeadingPath headings, String con
         List<String> context = new ArrayList<>();
         note.topic().map(Topic::name).ifPresent(context::add);
         context.add(note.fileName());
-        context.addAll(headings.headings());
+        context.addAll(headings.segments());
         return String.join(" > ", context) + "\n\n" + content;
     }
 }
