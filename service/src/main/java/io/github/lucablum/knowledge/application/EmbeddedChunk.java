@@ -9,6 +9,16 @@ import org.jmolecules.ddd.annotation.ValueObject;
 @ValueObject
 public record EmbeddedChunk(Chunk chunk, float[] embedding) {
 
+    /** Arrays are mutable, so the vector is copied in and out to keep this a value. */
+    public EmbeddedChunk {
+        embedding = embedding.clone();
+    }
+
+    @Override
+    public float[] embedding() {
+        return embedding.clone();
+    }
+
     /** Arrays compare by identity by default, so equality is defined over their contents. */
     @Override
     public boolean equals(Object other) {
