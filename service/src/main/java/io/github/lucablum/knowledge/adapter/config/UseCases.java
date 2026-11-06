@@ -5,7 +5,7 @@ import io.github.lucablum.knowledge.application.IndexRepository;
 import io.github.lucablum.knowledge.application.IndexVault;
 import io.github.lucablum.knowledge.application.SearchChunks;
 import io.github.lucablum.knowledge.application.VaultReader;
-import io.github.lucablum.knowledge.domain.Splitter;
+import io.github.lucablum.knowledge.domain.splitting.Splitter;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 

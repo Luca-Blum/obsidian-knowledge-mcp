@@ -1,7 +1,7 @@
 package io.github.lucablum.knowledge.application;
 
 import io.github.lucablum.knowledge.domain.NotePath;
-import io.github.lucablum.knowledge.domain.Splitter;
+import io.github.lucablum.knowledge.domain.splitting.Splitter;
 import java.util.List;
 
 /** Indexes every Note of the Collection's Vault and removes Notes that are no longer there. */

@@ -34,4 +34,9 @@ class ArchitectureTest {
     static final ArchRule domainDependsOnNoUseCase = noClasses()
             .that().resideInAPackage("..knowledge.domain..")
             .should().dependOnClassesThat().resideInAPackage("..knowledge.application..");
+
+    @ArchTest
+    static final ArchRule domainModelDependsOnNoSplitting = noClasses()
+            .that().resideInAPackage("..knowledge.domain")
+            .should().dependOnClassesThat().resideInAPackage("..knowledge.domain.splitting..");
 }
