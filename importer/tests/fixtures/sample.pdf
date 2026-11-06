@@ -1,0 +1,62 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 746 >>
+stream
+BT
+72 740 Td
+/F1 18 Tf
+0 -28 Td
+(The Dependency Rule) Tj
+/F1 11 Tf
+0 -21 Td
+(Source code dependencies must point only inward, toward higher-level policies.) Tj
+/F1 11 Tf
+0 -21 Td
+(Nothing in an inner circle can know anything at all about something in an outer circle.) Tj
+/F1 11 Tf
+0 -21 Td
+(In particular, the name of something declared in an outer circle must not be mentioned) Tj
+/F1 11 Tf
+0 -21 Td
+(by the code in an inner circle. That includes functions, classes and variables.) Tj
+/F1 14 Tf
+0 -24 Td
+(Crossing Boundaries) Tj
+/F1 11 Tf
+0 -21 Td
+(When control flow has to cross a boundary against the direction of the dependencies,) Tj
+/F1 11 Tf
+0 -21 Td
+(we use dynamic polymorphism to invert the source code dependency at that point.) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Title (Notes on the Dependency Rule) >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000311 00000 n 
+0000001108 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R /Info 6 0 R >>
+startxref
+1167
+%%EOF
