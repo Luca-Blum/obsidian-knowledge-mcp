@@ -49,11 +49,9 @@ class ArchitectureTest {
     @ArchTest
     static final ArchRule everyAdapterIsMarkedAsOne = classes()
             .that().resideInAPackage("..knowledge.adapter..")
+            .and().resideOutsideOfPackage("..knowledge.adapter.config..")
+            .and().arePublic()
             .and().areTopLevelClasses()
-            .and().haveSimpleNameNotEndingWith("Config")
-            .and().haveSimpleNameNotEndingWith("UseCases")
-            .and().haveSimpleNameNotEndingWith("Statements")
-            .and().haveSimpleNameNotEndingWith("Transaction")
             .should().beAnnotatedWith(PrimaryAdapter.class)
             .orShould().beAnnotatedWith(SecondaryAdapter.class);
 
