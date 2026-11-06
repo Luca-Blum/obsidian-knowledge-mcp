@@ -27,7 +27,7 @@ Whether a Note is a Source Note or an Own Note. There are exactly these two kind
 _Avoid_: Type, note type
 
 **Source Note**:
-A Note whose frontmatter says `type: source`. The kind belongs to the Note, not to its location: a Note in `Quellen/` without that type is still an Own Note.
+A Note whose frontmatter says `type: source`. The kind belongs to the Note, not to its location: a Note in `Source-Notes/` without that type is still an Own Note.
 _Avoid_: Quellen-Note, source, reference
 
 **Own Note**:
@@ -35,7 +35,7 @@ Any Note that is not a Source Note, whatever else its `type` says.
 _Avoid_: Eigene Note, personal note
 
 **Title**:
-The `title` from a Note's frontmatter, or its file name without `.md` if there is none. The first heading is never used.
+The `title` from a Note's frontmatter, or its file name without `.md` if there is none; a Note's own first heading is never used. A Source Note gets its Title once, when it is imported: the PDF's title, else the PDF's first heading, else the PDF's file name.
 
 **Imported Date**:
 The day a Source Note was created from a PDF.

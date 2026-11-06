@@ -1,0 +1,30 @@
+[project]
+name = "pdf-importer"
+version = "0.1.0"
+description = "Imports PDFs from a Topic's _inbox/ into Source Notes with Docling"
+readme = "README.md"
+authors = [
+    { name = "Luca-Blum", email = "luca.bluem95@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "docling==2.148.0",
+    "lingua-language-detector>=2.2.0",
+    "pypdfium2>=5.14.0",
+    "pyyaml>=6.0.3",
+]
+
+[project.scripts]
+pdf-importer = "pdf_importer.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.12.1,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

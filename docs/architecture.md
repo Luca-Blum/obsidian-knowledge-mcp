@@ -1,39 +1,39 @@
-# Obsidian Knowledge-Service – Architekturübersicht
+# Obsidian Knowledge Service – Architecture Overview
 
-Begriffe stehen in [`GLOSSARY.md`](../GLOSSARY.md), Entscheidungen mit ihrer Begründung in [`docs/adr/`](adr/).
+Terms are defined in [`GLOSSARY.md`](../GLOSSARY.md), and decisions with their reasoning are in [`docs/adr/`](adr/).
 
-## Ziel und Leitprinzipien
+## Goal and Guiding Principles
 
-Ein selbst betriebener Knowledge-Service auf dem Raspberry Pi 5 ersetzt den NotebookLM MCP: Claude (AI Coach, Claude Code) stellt Fragen zu einem Themengebiet und bekommt die passenden Stellen aus den eigenen Obsidian-Notes und Quellen – ohne Limits, vollständig selbst verwaltet.
+A self-hosted knowledge service on the Raspberry Pi 5 replaces the NotebookLM MCP. Claude (AI Coach, Claude Code) asks questions about a subject area and gets back the matching passages from your own Obsidian Notes and sources. There are no limits, and you manage all of it yourself.
 
-1. **Obsidian ist die einzige Source of Truth.** Notes, PDFs und Verlinkungen leben in den Vaults auf dem Mac. Alles andere ist abgeleitet.
-2. **Der Pi ist ein reines Read-Model.** Er empfängt die Vaults einseitig und baut daraus Suchindizes. Jeder Index ist jederzeit löschbar und neu aufbaubar; der Pi schreibt nie in einen Vault.
-3. **Agentic RAG: Retrieval auf dem Pi, Generation durch Claude.** Der Service liefert nur Fakten (Chunks, Notes, Links). Claude entscheidet, wann und wie oft es sucht, liest und antwortet. Auf dem Pi läuft kein Sprachmodell, das Antworten formuliert.
-4. **Schwere Arbeit dort, wo Rechenleistung ist.** PDF-Konvertierung mit Docling läuft auf dem Mac, nicht auf dem Pi.
-5. **Modelle sind austauschbar.** Embedding-Modell (und später ein Re-Ranker) stecken hinter Ports und werden nur über Konfiguration gewählt. Ein Wechsel heisst: Konfiguration ändern, Index neu aufbauen, mit dem Evaluations-Set messen.
-6. **Collections sind isoliert.** Engineering und Training sind getrennte Wissensbasen: eigener Vault, eigenes DB-Schema, eigene Service-Instanz mit eigenem MCP-Endpunkt. Ein Client sieht nur die Collections, deren Connector er hat. Geteilt wird nur Infrastruktur (Code, Postgres-Instanz, Ollama). Die Isolation dient der Relevanz und der Konfiguration pro Collection, nicht dem Zugriffsschutz.
+1. **Obsidian is the only source of truth.** Notes, PDFs and links live in the Vaults on the Mac. Everything else is derived.
+2. **The Pi is a pure read model.** It receives the Vaults one way and builds search indexes from them. Every index can be deleted and rebuilt at any time, and the Pi never writes to a Vault.
+3. **Agentic RAG: retrieval on the Pi, generation by Claude.** The service only returns facts (Chunks, Notes, Links). Claude decides when and how often it searches, reads and answers. No language model runs on the Pi to write answers.
+4. **Heavy work runs where the compute is.** PDF conversion with Docling runs on the Mac, not on the Pi.
+5. **Models are replaceable.** The embedding model, and later a re-ranker, sit behind ports and are chosen only through configuration. A switch means changing the configuration, rebuilding the index and measuring against the Evaluation Set.
+6. **Collections are isolated.** Engineering and Training are separate knowledge bases, each with its own Vault, DB schema and service instance with its own MCP endpoint. A client sees only the Collections it has a connector for. Only infrastructure is shared (code, Postgres instance, Ollama). The isolation serves relevance and per-Collection configuration, not access control.
 
-## Systemübersicht
+## System Overview
 
 ```mermaid
 flowchart TB
     subgraph Mac
-        docling["Docling-Import<br/><small>PDF zu Markdown</small>"]
-        vaults["Obsidian-Vaults<br/><small>Engineering, Training</small>"]
+        docling["Docling import<br/><small>PDF to Markdown</small>"]
+        vaults["Obsidian Vaults<br/><small>Engineering, Training</small>"]
         docling --> vaults
     end
-    subgraph Clients["Claude (MCP-Clients)"]
+    subgraph Clients["Claude (MCP clients)"]
         coach["AI Coach<br/><small>claude.ai</small>"]
         code["Claude Code"]
     end
     subgraph Pi["Raspberry Pi 5"]
-        copies["Vault-Kopien<br/><small>je read-only gemountet</small>"]
-        subgraph Instances["eine Instanz pro Collection, gleiches Image"]
-            eng["kb-engineering<br/><small>Schema engineering</small>"]
-            train["kb-training<br/><small>Schema training</small>"]
+        copies["Vault copies<br/><small>each mounted read-only</small>"]
+        subgraph Instances["one instance per Collection, same image"]
+            eng["kb-engineering<br/><small>schema engineering</small>"]
+            train["kb-training<br/><small>schema training</small>"]
         end
-        ollama["Embedding-Modell<br/><small>Ollama, geteilt</small>"]
-        pg["Postgres + pgvector<br/><small>ein Schema pro Collection</small>"]
+        ollama["Embedding model<br/><small>Ollama, shared</small>"]
+        pg["Postgres + pgvector<br/><small>one schema per Collection</small>"]
         copies --> eng
         copies --> train
         eng <--> ollama
@@ -41,48 +41,48 @@ flowchart TB
         eng <--> pg
         train <--> pg
     end
-    vaults -- "Syncthing, einseitig" --> copies
-    Clients <-- "MCP, ein Endpunkt pro Collection" --> Instances
+    vaults -- "Syncthing, one way" --> copies
+    Clients <-- "MCP, one endpoint per Collection" --> Instances
 ```
 
-Der Mac ist Master: Syncthing spiegelt beide Vaults einseitig auf den Pi. Dort indexiert pro Collection eine eigene Service-Instanz ihren Vault in ihr eigenes Schema und liefert Claude per MCP nur Suchtreffer; die Antwort schreibt Claude selbst. Postgres und Ollama teilen sich beide Instanzen.
+The Mac is the master: Syncthing mirrors both Vaults one way to the Pi. There, a separate service instance per Collection indexes its Vault into its own schema. Over MCP it returns only Search Hits to Claude, and Claude writes the answer itself. Both instances share Postgres and Ollama.
 
-## Komponenten
+## Components
 
-| Komponente | Läuft auf | Verantwortung | Schreibt in den Vault? |
+| Component | Runs on | Responsibility | Writes to the Vault? |
 | --- | --- | --- | --- |
-| Obsidian | Mac (Master) | Notes schreiben, Quellen verlinken, PDFs lesen | Ja (du) |
-| Docling-Import | Mac | PDF aus `_inbox` → Markdown-Quellen-Note, PDF nach `_sources` verschieben | Ja |
-| Syncthing | Mac (Send Only) → Pi (Receive Only) | Beide Vaults einseitig auf den Pi spiegeln, inkl. PDFs als Backup | Nein (nur Pi-Kopie) |
-| Quarkus Knowledge-Service | Pi | Vault überwachen, Markdown parsen, chunken, embedden, Hybrid-Suche, MCP-Server; eine Instanz pro Collection | Nein |
-| Postgres + pgvector | Pi | Chunks, Vektoren, Volltextindex, Link-Graph, Metadaten | – |
-| Embedding-Modell | Pi (Ollama, Modell per Konfiguration austauschbar) | Text → Vektor für Chunks und Suchanfragen; multilingual (DE/EN) | – |
-| Tailscale | Mac, Pi | Privater Netzzugang für Claude Code zum MCP-Endpunkt | – |
-| Tunnel mit Auth | Pi | Öffentlich erreichbarer HTTPS-Endpunkt für Custom Connector in claude.ai (AI Coach) | – |
-| Claude (AI Coach, Claude Code) | Anthropic / Mac | Tools aufrufen, Quellen lesen, Antwort mit Zitaten schreiben | Nein |
+| Obsidian | Mac (master) | Write Notes, link sources, read PDFs | Yes (you) |
+| Docling import | Mac | PDF from `_inbox` → Markdown Source Note, move the PDF to `_sources` | Yes |
+| Syncthing | Mac (Send Only) → Pi (Receive Only) | Mirror both Vaults one way to the Pi, PDFs included as a backup | No (Pi copy only) |
+| Quarkus knowledge service | Pi | Watch the Vault, parse Markdown, chunk, embed, hybrid search, MCP server; one instance per Collection | No |
+| Postgres + pgvector | Pi | Chunks, vectors, full-text index, link graph, metadata | – |
+| Embedding model | Pi (Ollama, model replaceable through configuration) | Text → vector for Chunks and queries; multilingual (DE/EN) | – |
+| Tailscale | Mac, Pi | Private network access for Claude Code to the MCP endpoint | – |
+| Tunnel with auth | Pi | Publicly reachable HTTPS endpoint for the custom connector in claude.ai (AI Coach) | – |
+| Claude (AI Coach, Claude Code) | Anthropic / Mac | Call tools, read sources, write the answer with citations | No |
 
-Der Pi hält damit zwei Dinge: eine Kopie aller Quellen (Vault inkl. PDFs) und den daraus abgeleiteten Index. Nur die Markdown-Dateien werden indexiert; PDFs liegen als Original daneben.
+So the Pi holds two things: a copy of all sources (the Vault, PDFs included) and the index derived from it. Only the Markdown files are indexed, and the PDFs sit next to them as originals.
 
-## Vault-Struktur und Konventionen
+## Vault Structure and Conventions
 
-Es gibt zwei Collections, jede mit eigenem Vault. Regel: Was sich gegenseitig verlinken soll, liegt im selben Vault; Wikilinks funktionieren in Obsidian nicht über Vault-Grenzen.
+There are two Collections, each with its own Vault. The rule: whatever should link to each other lives in the same Vault, because wikilinks don't work across Vault boundaries in Obsidian.
 
-| Collection | Vault | Themen | Inhalt |
+| Collection | Vault | Topics | Content |
 | --- | --- | --- | --- |
-| Engineering | `Engineering/` | Coaching, Software-Engineering | Coaching: nur die Quellen aus dem ASE-Coaching; Software-Engineering: allgemeine Fachquellen und eigene Notes |
-| Training | `Training/` | Running, Cycling, Triathlon-Duathlon, Climbing, Bouldering, Physio | Trainingsquellen und eigene Notes |
+| Engineering | `Engineering/` | Coaching, Software-Engineering | Coaching: only the sources from the ASE coaching; Software-Engineering: general technical sources and Own Notes |
+| Training | `Training/` | Running, Cycling, Triathlon-Duathlon, Climbing, Bouldering, Physio | Training sources and Own Notes |
 
-Innerhalb eines Vaults ist der erste Ordner unterhalb des Vault-Roots das Topic; tiefere Ebenen erben es. Es kommt ausschliesslich aus dem Ordner, nie aus dem Frontmatter, und dient als optionaler Filter innerhalb der Collection. Notes direkt im Root werden indexiert, haben aber kein Topic; ein `topic`-Filter schliesst sie aus.
+Within a Vault, the first folder below the Vault root is the Topic, and deeper levels inherit it. The Topic comes only from the folder, never from the frontmatter, and serves as an optional filter within the Collection. Notes directly in the root are indexed but have no Topic, so a `topic` filter excludes them.
 
 ```
 Engineering/                     ← Vault 1 → Collection "engineering"
 ├── Coaching/
-│   ├── _inbox/                  ← PDFs hier ablegen (Docling holt sie ab)
-│   ├── _sources/                ← Original-PDFs nach der Konvertierung
-│   └── Quellen/                 ← von Docling erzeugte Quellen-Notes (.md)
+│   ├── _inbox/                  ← drop PDFs here (Docling picks them up)
+│   ├── _sources/                ← original PDFs after conversion
+│   └── Source-Notes/            ← Source Notes created by Docling (.md)
 └── Software-Engineering/
-    ├── _inbox/  _sources/  Quellen/
-    └── *.md                     ← eigene Notes, verlinken auf Quellen
+    ├── _inbox/  _sources/  Source-Notes/
+    └── *.md                     ← Own Notes, link to sources
 
 Training/                        ← Vault 2 → Collection "training"
 ├── Running/
@@ -90,99 +90,99 @@ Training/                        ← Vault 2 → Collection "training"
 ├── Triathlon-Duathlon/
 ├── Climbing/
 ├── Bouldering/
-└── Physio/                      ← je _inbox/, _sources/, Quellen/, eigene Notes
+└── Physio/                      ← each with _inbox/, _sources/, Source-Notes/, Own Notes
 ```
 
-Eine Quellen-Note bekommt Frontmatter, damit sie verlinkbar und filterbar ist:
+A Source Note gets frontmatter so that it can be linked and filtered:
 
 ```yaml
 ---
 type: source
-title: Clean Architecture – Kapitel 5
+title: Clean Architecture – Chapter 5
 lang: en
 source: "[[_sources/clean-architecture-ch5.pdf]]"
 imported: 2026-11-05
-published: 2017          # optional, von Hand: Jahr, Jahr-Monat oder Datum
-author: Robert C. Martin # optional, für Zitate
-tags: [architektur, dependency-rule]
+published: 2017          # optional, by hand: year, year-month or date
+author: Robert C. Martin # optional, for citations
+tags: [architecture, dependency-rule]
 ---
 ```
 
-- **Note Kind:** `type: source` macht eine Note zur Source Note, alles andere (auch ein fehlendes oder eigenes `type`) zur Own Note. Der Ordner `Quellen/` ist nur Ablage-Konvention; eine Note dort ohne `type: source` erzeugt eine Warnung, wird aber nicht korrigiert.
-- **Title:** `title`, sonst der Dateiname ohne `.md`; die erste H1 wird nie verwendet.
-- **Daten:** `imported` setzt der Importer; `published` ist optional. Fehlende Felder bleiben leer, ohne Rückfall auf die Dateizeit; ungültige Werte erzeugen eine Warnung.
-- **Sprache:** `lang` erkennt der Importer, sonst gilt der Default der Collection; unbekannte Werte erzeugen eine Warnung.
+- **Note Kind:** `type: source` makes a Note a Source Note. Everything else, including a missing or custom `type`, makes it an Own Note. The `Source-Notes/` folder is only a filing convention. A Note there without `type: source` produces a warning but is not corrected.
+- **Title:** `title`, else the file name without `.md`. The first H1 is never used.
+- **Dates:** the importer sets `imported`, and `published` is optional. Missing fields stay empty, with no fallback to the file time. Invalid values produce a warning.
+- **Language:** the importer detects `lang`, otherwise the Collection's default applies. Unknown values produce a warning.
 
-Weitere Regeln:
+Further rules:
 
-- Eigene Notes verlinken mit Wikilinks auf Quellen-Notes; der Service liest diese Links als Graph (Links und Backlinks).
-- Indexiert werden ausschliesslich `.md`-Dateien. Ordner mit `_`- oder `.`-Präfix werden auf jeder Ebene vollständig übersprungen, unabhängig vom Inhalt: `.obsidian/`, `.trash/`, `_inbox/`, `_sources/`, `_eval/`, `_templates/`.
-- Ein neues Thema innerhalb einer Collection ist nur ein neuer Ordner. Eine neue Collection ist ein neuer Vault plus ein Konfigurationseintrag (eine weitere Service-Instanz).
+- Own Notes link to Source Notes with wikilinks. The service reads these links as a graph (Links and Backlinks).
+- Only `.md` files are indexed. Folders prefixed with `_` or `.` are skipped entirely at every level, whatever they contain: `.obsidian/`, `.trash/`, `_inbox/`, `_sources/`, `_eval/`, `_templates/`.
+- A new Topic within a Collection is just a new folder. A new Collection is a new Vault plus one configuration entry (another service instance).
 
-## Abläufe
+## Flows
 
-### PDF-Import (Mac)
+### PDF Import (Mac)
 
-1. PDF in `<Thema>/_inbox/` ablegen.
-2. Das Import-Script ruft Docling auf und erzeugt Markdown mit Headings und Tabellen.
-3. Es schreibt die Quellen-Note nach `<Thema>/Quellen/` mit `type`, `title`, `lang`, `imported` und `source` im Frontmatter (kein `topic`) und verschiebt das PDF nach `<Thema>/_sources/`.
-4. Eine bestehende Quellen-Note wird nie überschrieben; bei Namensgleichheit bekommt die neue ein Suffix.
-5. Scheitert Docling, wandert das PDF mit einem Log nach `<Thema>/_inbox/_failed/`.
-6. Du verlinkst die Quelle aus deinen eigenen Notes.
+1. Drop the PDF into `<Topic>/_inbox/`.
+2. The import script calls Docling and produces Markdown with headings and tables.
+3. It writes the Source Note to `<Topic>/Source-Notes/` with `type`, `title`, `lang`, `imported` and `source` in the frontmatter (no `topic`) and moves the PDF to `<Topic>/_sources/`.
+4. An existing Source Note is never overwritten. On a name clash, the new one gets a suffix.
+5. If Docling fails, the PDF moves to `<Topic>/_inbox/_failed/` together with a log.
+6. You link the source from your Own Notes.
 
-Liefert Docling Markdown ohne brauchbare Headings, korrigiert der Importer nichts; die Grössengrenze des Splitters fängt das ab.
+If Docling returns Markdown without usable headings, the importer corrects nothing. The splitter's size limit catches that case.
 
-### Sync und Indexierung (Pi)
+### Sync and Indexing (Pi)
 
-1. Syncthing überträgt geänderte Dateien vom Mac auf den Pi.
-2. Jede Service-Instanz gleicht ihren Vault mit dem Index ab (Reconciliation): beim Start und alle N Minuten vergleicht sie Note-Pfade und Content-Hash und indexiert nur, was abweicht. Ein File-Watcher beschleunigt das auf Sekunden, ist aber nicht die Quelle der Korrektheit; ein Rename ist Delete plus Create.
-3. Sie parst Frontmatter, Wikilinks und Headings und schneidet die Note in Chunks.
-4. Sie berechnet die Embeddings und ersetzt in einer Transaktion alle Chunks, den Rohtext und die Links dieser Note.
-5. Gelöschte Notes werden aus dem Index entfernt.
+1. Syncthing transfers changed files from the Mac to the Pi.
+2. Each service instance compares its Vault with the index (Reconciliation): at startup and every N minutes it compares Note paths and content hashes and re-indexes only what differs. A file watcher speeds this up to seconds but is not the source of correctness. A rename is a delete plus a create.
+3. It parses frontmatter, wikilinks and headings and cuts the Note into Chunks.
+4. It computes the embeddings and, in one transaction, replaces all Chunks, the raw text and the Links of that Note.
+5. Deleted Notes are removed from the index.
 
-Beim Start vergleicht die Instanz zusätzlich den Index-Fingerprint (Embedding-Modell, Dimension, Chunking-Parameter) mit der Konfiguration. Weicht er ab, startet automatisch ein vollständiger Re-Index; bis er fertig ist, beantwortet die Collection keine Suchen und meldet den Fortschritt (x/y Notes) über Health und MCP-Fehlertext.
+At startup the instance also compares the index fingerprint (embedding model, dimension, chunking parameters) with the configuration. If they differ, a full Re-Index starts automatically. Until it finishes, the Collection answers no searches and reports its progress (x/y Notes) through health and the MCP error text.
 
-### Eine Frage des AI Coach
+### A Question from the AI Coach
 
 ```mermaid
 sequenceDiagram
-    actor Du
+    actor You
     participant Claude as Claude (AI Coach)
-    participant KS as Knowledge-Service
-    participant Index as Suchindex
-    Du->>Claude: Frage zu einem Thema
+    participant KS as Knowledge service
+    participant Index as Search index
+    You->>Claude: Question about a Topic
     Claude->>KS: search(query, keywords?, topic?)
-    KS->>Index: Hybrid-Suche
-    Index-->>KS: Top-Treffer
-    KS-->>Claude: Search Hits (Chunk, Pfade, Note Kind)
-    loop wiederholt, so oft Claude will
+    KS->>Index: Hybrid search
+    Index-->>KS: Top hits
+    KS-->>Claude: Search Hits (Chunk, paths, Note Kind)
+    loop repeated as often as Claude wants
         Claude->>KS: read_note / related
-        KS-->>Claude: ganze Notes, Abschnitte, Links
+        KS-->>Claude: whole Notes, sections, Links
     end
-    Claude-->>Du: Antwort mit Quellen
+    Claude-->>You: Answer with sources
 ```
 
-Claude entscheidet selbst, wie oft es sucht und welche Notes es ganz liest; der Service liefert nur Text, die Antwort entsteht in einem einzigen LLM-Call.
+Claude decides itself how often it searches and which Notes it reads in full. The service only returns text, and the answer comes from a single LLM call.
 
-## Quarkus-Service intern
+## Inside the Quarkus Service
 
 ```mermaid
 flowchart LR
-    subgraph In["Eingehende Adapter"]
-        rec["Reconciliation + File-Watcher<br/><small>Startup, periodisch</small>"]
-        mcp["MCP-Server<br/><small>programmatisch registrierte Tools</small>"]
+    subgraph In["Inbound adapters"]
+        rec["Reconciliation + file watcher<br/><small>startup, periodic</small>"]
+        mcp["MCP server<br/><small>programmatically registered tools</small>"]
     end
-    subgraph Core["Anwendungskern (reines Java)"]
-        ucIndex["Indexierung<br/><small>IndexNote, RemoveNote, Re-Index</small>"]
-        ucSearch["Suche und Lesen<br/><small>Search, ReadNote, Related, Listen</small>"]
-        domain["Domäne<br/><small>Note, Chunk, Topic, Link<br/>Chunking- und Ranking-Regeln</small>"]
+    subgraph Core["Application core (plain Java)"]
+        ucIndex["Indexing<br/><small>IndexNote, RemoveNote, Re-Index</small>"]
+        ucSearch["Search and reading<br/><small>Search, ReadNote, Related, lists</small>"]
+        domain["Domain<br/><small>Note, Chunk, Topic, Link<br/>chunking and ranking rules</small>"]
         ucIndex --> domain
         ucSearch --> domain
     end
-    subgraph Out["Ausgehende Adapter (Ports)"]
-        reader["VaultReader<br/><small>Dateisystem, Markdown</small>"]
+    subgraph Out["Outbound adapters (ports)"]
+        reader["VaultReader<br/><small>file system, Markdown</small>"]
         emb["EmbeddingPort<br/><small>LangChain4j, Ollama</small>"]
-        repo["Index-Repository<br/><small>Notes, Chunks, Links; pgvector, tsvector</small>"]
+        repo["Index repository<br/><small>Notes, Chunks, Links; pgvector, tsvector</small>"]
     end
     rec --> ucIndex
     mcp --> ucSearch
@@ -191,55 +191,55 @@ flowchart LR
     Core --> repo
 ```
 
-Die Domäne kennt weder Quarkus noch Postgres.
+The domain knows neither Quarkus nor Postgres.
 
-Der Service ist hexagonal geschnitten: Domäne und Use Cases sind reines Java, Quarkus, LangChain4j und Postgres stecken nur in den Adaptern. ArchUnit-Tests sichern die Abhängigkeitsrichtung ab, damit z.B. das Embedding-Modell oder der Vector Store austauschbar bleiben.
+The service follows a hexagonal architecture. The domain and use cases are plain Java, and Quarkus, LangChain4j and Postgres appear only in the adapters. ArchUnit tests guard the direction of dependencies, so that the embedding model or the vector store, for example, stay replaceable.
 
-Die Collection ist reine Konfiguration (Name, Vault-Pfad, DB-Schema, MCP-Port, Tool-Beschreibung): dasselbe Image läuft einmal pro Collection. Im Code gibt es keine Fallunterscheidung zwischen Engineering und Training. Jede Instanz verbindet sich mit einer eigenen DB-Rolle, die nur ihr Schema sieht.
+The Collection is pure configuration (name, Vault path, DB schema, MCP port, tool description), and the same image runs once per Collection. The code never distinguishes between Engineering and Training. Each instance connects with its own DB role that sees only its schema.
 
-### MCP-Tools
+### MCP Tools
 
-| Tool | Parameter | Liefert |
+| Tool | Parameters | Returns |
 | --- | --- | --- |
-| `search` | `query`, `keywords?`, `topic?`, `k` | Search Hits: Chunk-Inhalt mit Note-Pfad, Heading-Pfad, Note Kind (`source`/`own`) und Score. Höchstens N Treffer pro Note (konfigurierbar, z.B. 2), mit Angabe, wie viele weitere Chunks der Note gepasst hätten. `keywords` steuert den Volltext, ohne sie wird `query` verwendet. Leer, wenn kein Vektor-Treffer die Minimum Similarity erreicht und der Volltext nichts findet |
-| `read_note` | `path`, `heading?` | Die Note aus dem Index inkl. Frontmatter; lange Notes als Gliederung plus Anfang. `heading` ist ein Heading-Pfad wie im Search Hit; ein mehrdeutiger Pfad liefert alle passenden Abschnitte |
-| `related` | `path` | Getrennte Kategorien: Links auf Notes, Backlinks, Links auf Dateien, unaufgelöste und mehrdeutige Links; Heading-Anker bleiben erhalten |
-| `list_sources` | `topic` | Alle Source Notes eines Topics mit Title und Datum (`published`, sonst `imported`) |
-| `list_topics` | – | Topics dieser Collection mit Anzahl Notes |
+| `search` | `query`, `keywords?`, `topic?`, `k` | Search Hits: Chunk content with Note path, heading path, Note Kind (`source`/`own`) and score. At most N hits per Note (configurable, e.g. 2), stating how many more Chunks of the Note would have matched. `keywords` drives the full-text search, and `query` is used when they are missing. Empty when no vector hit reaches the Minimum Similarity and the full-text search finds nothing |
+| `read_note` | `path`, `heading?` | The Note from the index, frontmatter included; long Notes as an outline plus the beginning. `heading` is a heading path as in the Search Hit; an ambiguous path returns all matching sections |
+| `related` | `path` | Separate categories: Links to Notes, Backlinks, Links to files, Unresolved and Ambiguous Links; heading anchors are kept |
+| `list_sources` | `topic` | All Source Notes of a Topic with Title and date (`published`, else `imported`) |
+| `list_topics` | – | Topics of this Collection with their number of Notes |
 
-`path` ist ein Schlüssel im Index (vault-relativ, NFC-normalisiert, exakt gematcht), kein Dateipfad: Die Abfrageseite hat keinen Dateisystemzugriff, Pfad-Traversal ist durch Konstruktion ausgeschlossen, und Suche und Lesen sehen denselben Stand. Links werden als geschriebener Text gespeichert und erst bei der Abfrage wie in Obsidian aufgelöst ([ADR 0001](adr/0001-links-resolved-at-query-time.md)).
+`path` is a key in the index (Vault-relative, NFC-normalized, matched exactly), not a file path. The query side has no file system access, path traversal is ruled out by construction, and search and reading see the same state. Links are stored as the text that was written and resolved only at query time, the way Obsidian does it ([ADR 0001](adr/0001-links-resolved-at-query-time.md)).
 
-## Retrieval-Qualität
+## Retrieval Quality
 
-Die Suchqualität hängt an vier Stellschrauben; Chunking und Hybrid-Suche bringen meist mehr als ein grösseres Embedding-Modell, weil sie ganze Fehlerklassen beheben statt nur die Ähnlichkeit zu verfeinern.
+Search quality depends on four levers. Chunking and hybrid search usually help more than a bigger embedding model, because they fix whole classes of errors instead of only refining similarity.
 
-### 1. Chunking: eigener Markdown-Splitter
+### 1. Chunking: Our Own Markdown Splitter
 
-Das Markdown wird als Syntaxbaum geparst (z.B. commonmark-java oder flexmark); der Splitter ist Domänenlogik:
+The Markdown is parsed into a syntax tree (e.g. with commonmark-java or flexmark), and the splitter is domain logic:
 
-- Ein Chunk pro H2/H3-Abschnitt (Ebene konfigurierbar).
-- Grenzen in Zeichen, modellunabhängig (Richtwert ca. 200 / 2000): kleinere Abschnitte mit dem Nachbarn zusammenlegen, grössere nach Absätzen teilen, mit leichter Überlappung. Kein Tokenizer im Service; ein Modellvergleich ändert so nur das Modell, nicht die Chunks. Die Obergrenze liegt inklusive Kontext-Präfix weit unter dem Eingabelimit aller Kandidatenmodelle.
-- Nie mitten in Codeblöcken oder Tabellen schneiden; solche atomaren Blöcke dürfen die Obergrenze überschreiten.
-- Wikilinks für das Embedding bereinigen (`[[Clean Architecture|CA]]` → "CA"); der Link selbst wird als geschriebener Text gespeichert.
-- Frontmatter nicht einbetten, sondern als Metadaten speichern (`tags`, Note Kind, Title, Sprache); der Rohtext der ganzen Note wird für `read_note` gespeichert.
-- `ChunkId` = Note-Pfad plus laufende Nummer: eindeutig auch bei doppelten Headings und geteilten Abschnitten, bewusst nicht stabil über Änderungen. Die Einheit des Ersetzens ist die Note; der Heading-Pfad bleibt als Attribut für Embedding-Kontext und Zitate.
-- Geänderte Chunking-Parameter erfordern einen vollständigen Re-Index und werden als eigenes Experiment gemessen.
+- One Chunk per H2/H3 section (the level is configurable).
+- Limits in characters, independent of the model (roughly 200 / 2000): merge smaller sections with their neighbour, split larger ones by paragraph, with a slight overlap. There is no tokenizer in the service, so comparing models changes only the model, not the Chunks. The upper limit, context prefix included, stays far below the input limit of every candidate model.
+- Never cut in the middle of code blocks or tables. Such atomic blocks may exceed the upper limit.
+- Clean up wikilinks for the embedding (`[[Clean Architecture|CA]]` → "CA"). The Link itself is stored as the written text.
+- Don't embed the frontmatter, but store it as metadata (`tags`, Note Kind, Title, language). The raw text of the whole Note is stored for `read_note`.
+- `ChunkId` = Note path plus a running number. It is unique even with duplicate headings and split sections, and deliberately not stable across changes. The unit of replacement is the Note. The heading path stays an attribute for embedding context and citations.
+- Changed chunking parameters require a full Re-Index and are measured as an experiment of their own.
 
-Der wichtigste Hebel ist die Trennung von Embedding-Text und Anzeige-Text: eingebettet wird der Text mit vorangestelltem Kontext, an Claude zurückgegeben nur der Inhalt plus Pfad.
+The most important lever is separating the embedding text from the display text: the text is embedded with a context prefix, and Claude gets back only the content plus the path.
 
 ```java
 public record Chunk(ChunkId id, NotePath note, HeadingPath headings, String content) {
 
-    /** Text für das Embedding: mit Kontext, damit der Vektor weiss, worum es geht. */
+    /** Text for the embedding: with context, so the vector knows what it is about. */
     public String embeddingText(Topic topic, NoteTitle title) {
         return "%s > %s > %s%n%n%s".formatted(topic, title, headings, content);
     }
 }
 ```
 
-### 2. Hybrid-Suche: zwei Ranglisten, eine Fusion
+### 2. Hybrid Search: Two Rankings, One Fusion
 
-Vektorsuche findet Bedeutung, Volltext findet exakte Begriffe (Klassennamen, Abkürzungen, Eigennamen). Die Vektorsuche nutzt `query` und sucht sprachübergreifend; der Volltext nutzt `keywords` (sonst `query`) mit UND-Verknüpfung und ist nur für exakte Begriffe da. Volltext-Treffer kommen ungefiltert durch, Vektor-Treffer nur über der Minimum Similarity. Beide Ranglisten werden per Reciprocal Rank Fusion zusammengeführt:
+Vector search finds meaning, and full-text search finds exact terms (class names, abbreviations, proper names). The vector search uses `query` and works across languages. The full-text search uses `keywords` (else `query`) combined with AND and exists only for exact terms. Full-text hits pass unfiltered, and vector hits pass only above the Minimum Similarity. Both rankings are merged with Reciprocal Rank Fusion:
 
 ```sql
 WITH vec AS (
@@ -263,167 +263,167 @@ ORDER BY score DESC
 LIMIT :k;
 ```
 
-| Stellschraube | Wirkung |
+| Lever | Effect |
 | --- | --- |
-| Kandidaten pro Liste, finales `k` | Breite der Suche vs. Rauschen |
-| Minimum Similarity (Cosine, auf der Vektorliste vor der Fusion) | Unter dem Schwellwert zählt ein Vektor-Treffer nicht; verhindert themenfremde Antworten. RRF bestimmt danach nur die Reihenfolge, ein Schwellwert auf dem RRF-Score wäre wirkungslos ([ADR 0002](adr/0002-minimum-similarity-before-fusion.md)). Der Wert gehört zum Modell und wird pro Collection mit Negativ-Fragen kalibriert |
-| Treffer pro Note | Verhindert, dass eine lange Note alle Plätze belegt |
-| `setweight` auf Titel und Headings | Treffer in Überschriften zählen mehr als im Fliesstext |
-| Sprache pro Note, `to_tsvector(lang::regconfig, …)` | Stemming und Stoppwörter für Deutsch und Englisch statt `'simple'`. Die Anfrage wird mit jeder Sprache der Collection zerlegt, jeder Chunk mit der tsquery seiner Sprache verglichen |
-| Re-Ranker auf die Top 30 (später) | Präzisere Reihenfolge, kostet Rechenzeit auf dem Pi |
+| Candidates per list, final `k` | Breadth of the search vs. noise |
+| Minimum Similarity (cosine, on the vector list before the fusion) | Below the threshold a vector hit doesn't count, which prevents off-topic answers. RRF only sets the order afterwards; a threshold on the RRF score would have no effect ([ADR 0002](adr/0002-minimum-similarity-before-fusion.md)). The value belongs to the model and is calibrated per Collection with Negative Questions |
+| Hits per Note | Keeps one long Note from taking every slot |
+| `setweight` on Title and headings | Hits in headings count more than in body text |
+| Language per Note, `to_tsvector(lang::regconfig, …)` | Stemming and stop words for German and English instead of `'simple'`. The query is parsed with every language of the Collection, and each Chunk is compared with the tsquery of its language |
+| Re-ranker on the top 30 (later) | More precise ordering, costs compute time on the Pi |
 
-Alle Werte kommen aus der MicroProfile Config: ein Experiment ist eine Konfigurationsänderung, kein Code-Change.
+All values come from MicroProfile Config, so an experiment is a configuration change, not a code change.
 
-### 3. Messen: Evaluations-Set als Test
+### 3. Measuring: the Evaluation Set as a Test
 
-Eine Datei mit echten Fragen und den erwarteten Notes:
+A file with real questions and the expected Notes:
 
 ```yaml
-- question: "Was besagt die Dependency Rule?"
+- question: "What does the Dependency Rule say?"
   topic: Software-Engineering
-  expected: [Software-Engineering/Quellen/clean-architecture-ch5.md]
+  expected: [Software-Engineering/Source-Notes/clean-architecture-ch5.md]
 ```
 
-Der Test berechnet drei Kennzahlen, gezählt auf Notes im tatsächlich zurückgegebenen Ergebnis (nicht auf einer nachträglich deduplizierten Liste):
+The test computes three metrics, counted on Notes in the result actually returned (not on a list deduplicated afterwards):
 
-- **Hit@5** (Hauptkennzahl): mindestens eine erwartete Note unter den Top 5, weil Claude von einem guten Einstieg aus weiterliest.
-- **Recall@5**: Anteil der erwarteten Notes unter den Top 5; misst die Abdeckung breiter Fragen.
-- **MRR**: Rang der ersten erwarteten Note.
+- **Hit@5** (main metric): at least one expected Note in the top 5, because Claude reads on from a good starting point.
+- **Recall@5**: the share of expected Notes in the top 5. It measures the coverage of broad questions.
+- **MRR**: the rank of the first expected Note.
 
-Start mit einer Baseline (reine Vektorsuche, feste Chunks), dann immer genau eine Stellschraube ändern und erneut messen. Experimente laufen lokal auf dem Mac (Dev Services, Ollama mit demselben Modellnamen, lokaler Vault); ein Lauf auf dem Pi bestätigt nur die finale Konfiguration, weil Ollama auf ARM und x86 leicht andere Vektoren liefern kann.
+Start with a baseline (pure vector search, fixed Chunks), then always change exactly one lever and measure again. Experiments run locally on the Mac (Dev Services, Ollama with the same model name, a local Vault). A run on the Pi only confirms the final configuration, because Ollama can return slightly different vectors on ARM and x86.
 
-Jede Collection hat ihr eigenes Evaluations-Set. Dazu kommen Negativ-Fragen, z.B. eine Trainingsfrage gegen die Engineering-Collection. Eine Negativ-Frage besteht, wenn kein Vektor-Treffer die Minimum Similarity erreicht; Volltext-Treffer werden getrennt und nur zur Information gemeldet. So zeigt sich, ob der Volltext in der Praxis Rauschen bringt.
+Every Collection has its own Evaluation Set. On top of that there are Negative Questions, e.g. a training question against the Engineering Collection. A Negative Question passes when no vector hit reaches the Minimum Similarity. Full-text hits are reported separately and only for information. This shows whether the full-text search adds noise in practice.
 
-### 4. Tool-Beschreibungen
+### 4. Tool Descriptions
 
-Claude formuliert die Suchanfragen selbst; die `@Tool`-Beschreibungen steuern, wie gründlich es sucht:
+Claude writes the queries itself, and the `@Tool` descriptions steer how thoroughly it searches:
 
 ```java
 @Tool(description = """
-    Durchsucht die Engineering-Wissensbasis des Users (Obsidian).
-    'query' ist die Frage in eigenen Worten (Vektorsuche, sprachübergreifend).
-    'keywords' sind optionale exakte Begriffe für den Volltext
-    (Klassennamen, Abkürzungen, Eigennamen).
-    Setze 'topic', wenn das Themengebiet klar ist (siehe list_topics).
-    Lies vielversprechende Treffer danach mit read_note (optional 'heading'),
-    bevor du antwortest, und zitiere den Note-Pfad.""")
+    Searches Luca's engineering knowledge base (Obsidian).
+    'query' is the question in your own words (vector search, across languages).
+    'keywords' are optional exact terms for the full-text search
+    (class names, abbreviations, proper names).
+    Set 'topic' when the subject area is clear (see list_topics).
+    Then read promising hits with read_note (optionally 'heading')
+    before you answer, and cite the Note path.""")
 SearchResult search(String query, Optional<String> keywords, Optional<String> topic, int k) { … }
 ```
 
-Da sich die Instanzen nur in dieser Beschreibung unterscheiden ("Engineering-Wissensbasis …" vs. "Trainings-Wissensbasis …"), kommt der Text pro Collection aus der Konfiguration. Annotationswerte müssen Konstanten sein; dafür eignet sich die programmatische Tool-Registrierung der MCP-Extension.
+The instances differ only in this description ("engineering knowledge base …" vs. "training knowledge base …"), so the text comes from the configuration per Collection. Annotation values must be constants, which is what the MCP extension's programmatic tool registration is for.
 
-## Technologie-Stack
+## Technology Stack
 
-| Bereich | Wahl | Begründung |
+| Area | Choice | Reasoning |
 | --- | --- | --- |
-| Sprache / Framework | Java 25+, Quarkus (JVM-Modus) | Beruflich relevanter Stack; CDI-Modell nah an Jakarta EE/MicroProfile |
-| AI-Bausteine | Quarkus LangChain4j (Embedding-Modell, Embedding-Store, Splitter) | Fertige Bausteine, aber eigene Ingestion statt Easy RAG |
-| MCP | `quarkus-mcp-server-http` (Streamable HTTP) | Remote-Zugriff vom Mac und von claude.ai |
-| Datenbank | Postgres + pgvector (ein Schema pro Collection), Volltext via `tsvector` | Vektor- und Keyword-Suche in einer DB, Hybrid via Reciprocal Rank Fusion |
-| Embeddings | Default `bge-m3` (1024 Dim.); Kandidat `Qwen3-Embedding-0.6B` | Stark multilingual (DE/EN), läuft auf der Pi-CPU; Wahl per Konfiguration, entschieden per Evaluation |
-| Modell-Runtime | Ollama auf dem Pi | Modell per Name austauschbar, kein Code-Change |
-| PDF-Konvertierung | Docling als Python-Bibliothek im Importer auf dem Mac | Apple Silicon ist um ein Vielfaches schneller als die Pi-CPU |
-| Sync | Syncthing (Send Only / Receive Only) | Einseitig, Pi kann den Vault nicht verändern |
-| Betrieb | Docker Compose auf dem Pi, NVMe-SSD | SD-Karten verschleissen unter Postgres-Last |
+| Language / framework | Java 25+, Quarkus (JVM mode) | Professionally relevant stack; CDI model close to Jakarta EE/MicroProfile |
+| AI building blocks | Quarkus LangChain4j (embedding model, embedding store, splitter) | Ready-made building blocks, but our own ingestion instead of Easy RAG |
+| MCP | `quarkus-mcp-server-http` (Streamable HTTP) | Remote access from the Mac and from claude.ai |
+| Database | Postgres + pgvector (one schema per Collection), full text via `tsvector` | Vector and keyword search in one DB, hybrid via Reciprocal Rank Fusion |
+| Embeddings | Default `bge-m3` (1024 dim.); candidate `Qwen3-Embedding-0.6B` | Strongly multilingual (DE/EN), runs on the Pi CPU; chosen through configuration, decided by evaluation |
+| Model runtime | Ollama on the Pi | Model replaceable by name, no code change |
+| PDF conversion | Docling as a Python library in the importer on the Mac | Apple Silicon is many times faster than the Pi CPU |
+| Sync | Syncthing (Send Only / Receive Only) | One way, the Pi cannot change the Vault |
+| Operations | Docker Compose on the Pi, NVMe SSD | SD cards wear out under Postgres load |
 
-**Ressourcen (Pi 5, 8 GB RAM):** OS ca. 0.5 GB, Postgres ca. 0.5–1 GB, zwei Quarkus-Instanzen mit begrenztem Heap je ca. 0.4–0.6 GB, Ollama mit bge-m3 ca. 1–1.5 GB. Zusammen rund 3.5–4.5 GB, also weiterhin genug Reserve für Re-Indexierung und einen späteren Re-Ranker. Postgres und Ollama werden von beiden Collections geteilt.
+**Resources (Pi 5, 8 GB RAM):** OS about 0.5 GB, Postgres about 0.5–1 GB, two Quarkus instances with a limited heap at about 0.4–0.6 GB each, Ollama with bge-m3 about 1–1.5 GB. Together that is roughly 3.5–4.5 GB, which still leaves enough headroom for a Re-Index and a later re-ranker. Both Collections share Postgres and Ollama.
 
-**Austauschbare Modelle:** Der `EmbeddingPort` kennt nur "Text rein, Vektor raus". Modellname und Vektor-Dimension kommen aus der Konfiguration; jeder Chunk speichert, mit welchem Modell er erzeugt wurde. Ein Modellwechsel erzwingt so einen vollständigen Re-Index, nie einen gemischten Index. Das Embedding bleibt auf dem Pi, weil auch jede Suchanfrage im Moment der Frage mit demselben Modell eingebettet werden muss.
+**Replaceable models:** the `EmbeddingPort` knows only "text in, vector out". The model name and vector dimension come from the configuration, and every Chunk stores which model produced it. A model switch therefore forces a full Re-Index, never a mixed index. Embedding stays on the Pi, because every query also has to be embedded with the same model at the moment it is asked.
 
-**Lizenzen:** Quarkus, LangChain4j, quarkus-mcp-server (Apache 2.0), Postgres und pgvector (PostgreSQL License), Docling und Ollama (MIT), Syncthing (MPL 2.0) und die Embedding-Modelle sind Open Source. Obsidian ist gratis, aber proprietär; ohne Lock-in, weil der Vault aus reinen Markdown-Dateien besteht. Tailscale ist teilweise offen (voll offen: Headscale).
+**Licenses:** Quarkus, LangChain4j and quarkus-mcp-server (Apache 2.0), Postgres and pgvector (PostgreSQL License), Docling and Ollama (MIT), Syncthing (MPL 2.0) and the embedding models are open source. Obsidian is free but proprietary, without lock-in because the Vault consists of plain Markdown files. Tailscale is partly open (fully open: Headscale).
 
 ## Repository
 
-Das ganze System liegt in einem Repo, **`obsidian-knowledge-mcp`**, auch wenn es auf zwei Maschinen läuft. So sind Service, Import-Script, Deployment und Evaluation gemeinsam versioniert.
+The whole system lives in one repository, **`obsidian-knowledge-mcp`**, even though it runs on two machines. That way the service, import script, deployment and evaluation are versioned together.
 
 ```
 obsidian-knowledge-mcp/
-├── service/              ← Quarkus Knowledge-Service (Maven-Modul)
+├── service/              ← Quarkus knowledge service (Maven module)
 │   ├── src/main/java/…   ← domain, application, adapter (hexagonal)
-│   └── src/test/java/…   ← Unit-, ArchUnit-, Integrations- und Evaluationstests
-├── importer/             ← Docling-Import für den Mac (Python-Projekt mit uv + launchd-Template)
-├── deploy/               ← docker-compose.yml, .env.example, Konfiguration pro Collection
-├── docs/                 ← Architektur, ADRs
-├── .github/workflows/    ← Build, Tests, arm64-Image nach GHCR
+│   └── src/test/java/…   ← unit, ArchUnit, integration and evaluation tests
+├── importer/             ← Docling import for the Mac (Python project with uv + launchd template)
+├── deploy/               ← docker-compose.yml, .env.example, configuration per Collection
+├── docs/                 ← architecture, ADRs
+├── .github/workflows/    ← build, tests, arm64 image to GHCR
 ├── README.md
 └── LICENSE
 ```
 
-- **Nie im Repo:** Vault-Inhalte, `.env` mit Tokens und Passwörtern, persönliche Evaluations-Fragen. Die Evaluations-Sets liegen pro Collection im jeweiligen Vault (z.B. `Engineering/_eval/questions.yaml`) und werden dem Test per Pfad übergeben.
-- **Image-Tag:** ein Image für alle Collections; welche Collection eine Instanz bedient, entscheidet nur die Konfiguration in `deploy/`.
+- **Never in the repository:** Vault content, `.env` with tokens and passwords, personal evaluation questions. The Evaluation Sets live per Collection in their Vault (e.g. `Engineering/_eval/questions.yaml`) and are passed to the test by path.
+- **Image tag:** one image for all Collections. Only the configuration in `deploy/` decides which Collection an instance serves.
 
-## Tooling und Betrieb
+## Tooling and Operations
 
-Auf dem Mac laufen vier Tools plus ein Import-Script, auf dem Pi vier Container in einer Compose-Datei (zwei Service-Instanzen, Postgres, Ollama) plus drei native Dienste.
+The Mac runs four tools plus an import script. The Pi runs four containers in one Compose file (two service instances, Postgres, Ollama) plus three native services.
 
 ### Mac
 
-| Tool | Zweck | Installation |
+| Tool | Purpose | Installation |
 | --- | --- | --- |
-| Obsidian | Beide Vaults bearbeiten, Quellen verlinken | App |
-| Docling | PDF → Markdown | Bibliothek im Importer-Projekt (uv), Version gepinnt, OCR an; Modelle vorab mit `docling-tools models download` |
-| Import-Script | `_inbox`-Ordner beider Vaults überwachen, Docling aufrufen, Quellen-Note mit Frontmatter schreiben, PDF nach `_sources` verschieben | Python-Projekt (uv) im Repo, gestartet per `launchd` im Minutentakt; prüft die `_inbox/` aller Topics beider Vaults (Polling statt WatchPaths, das nicht rekursiv ist) |
-| Syncthing | Beide Vaults einseitig zum Pi senden (Send Only) | App oder `brew` |
-| Tailscale | Privates Netz zum Pi | App |
-| Claude Code | MCP-Client mit zwei Connectors, z.B. `http://<pi>.<tailnet>:8081/mcp` (Engineering) und `:8082/mcp` (Training) | vorhanden |
+| Obsidian | Edit both Vaults, link sources | App |
+| Docling | PDF → Markdown | Library in the importer project (uv), version pinned, OCR on; models fetched ahead of time with `docling-tools models download` |
+| Import script | Watch the `_inbox` folders of both Vaults, call Docling, write the Source Note with frontmatter, move the PDF to `_sources` | Python project (uv) in the repository, started by `launchd` every minute; checks the `_inbox/` of every Topic in both Vaults (polling instead of WatchPaths, which is not recursive) |
+| Syncthing | Send both Vaults one way to the Pi (Send Only) | App or `brew` |
+| Tailscale | Private network to the Pi | App |
+| Claude Code | MCP client with two connectors, e.g. `http://<pi>.<tailnet>:8081/mcp` (Engineering) and `:8082/mcp` (Training) | Already installed |
 
-Docker braucht es auf dem Mac nur für die Entwicklung; Quarkus Dev Services starten dort Postgres mit pgvector automatisch.
+Docker is needed on the Mac only for development, where Quarkus Dev Services start Postgres with pgvector automatically.
 
 ### Raspberry Pi 5
 
-| Tool | Zweck | Betrieb |
+| Tool | Purpose | Operation |
 | --- | --- | --- |
-| Raspberry Pi OS Lite (64-bit) | Basis ohne Desktop | auf NVMe-SSD |
-| `kb-engineering` | Quarkus-App für die Collection Engineering: Indexierung, Suche, MCP | Container (eigenes arm64-Image), Schema `engineering` |
-| `kb-training` | Dieselbe Quarkus-App für die Collection Training | Container (gleiches Image, andere Konfiguration), Schema `training` |
-| `postgres` | Chunks, Vektoren, Volltext, Links; ein Schema pro Collection | Container (`pgvector/pgvector`) |
-| `ollama` | Embedding-Modell (bge-m3), von beiden Instanzen genutzt | Container (offizielles Image) |
-| Syncthing | Beide Vaults empfangen (Receive Only) | nativ (apt); jeder Vault als read-only Volume nur in seinen Container |
-| Tailscale | Zugriff vom Mac | nativ (apt) |
-| Tunnel | Öffentliche HTTPS-Endpunkte für claude.ai | nativ: Tailscale Funnel |
+| Raspberry Pi OS Lite (64-bit) | Base system without a desktop | On the NVMe SSD |
+| `kb-engineering` | Quarkus app for the Engineering Collection: indexing, search, MCP | Container (own arm64 image), schema `engineering` |
+| `kb-training` | The same Quarkus app for the Training Collection | Container (same image, different configuration), schema `training` |
+| `postgres` | Chunks, vectors, full text, Links; one schema per Collection | Container (`pgvector/pgvector`) |
+| `ollama` | Embedding model (bge-m3), used by both instances | Container (official image) |
+| Syncthing | Receive both Vaults (Receive Only) | Native (apt); each Vault as a read-only volume, mounted only into its own container |
+| Tailscale | Access from the Mac | Native (apt) |
+| Tunnel | Public HTTPS endpoints for claude.ai | Native: Tailscale Funnel |
 
-Syncthing und Tailscale laufen nativ, weil sie eng mit Netzwerk und Dateisystem des Hosts arbeiten.
+Syncthing and Tailscale run natively because they work closely with the host's network and file system.
 
-### Betrieb
+### Operations
 
-- **Build und Deployment:** Git-Repo + GitHub Actions bauen ein arm64-Image (Jib oder `docker buildx`) und pushen es in die GitHub Container Registry; auf dem Pi `docker compose pull && docker compose up -d`.
-- **Health:** `quarkus-smallrye-health` liefert Healthchecks für Compose.
-- **Re-Index:** startet automatisch, wenn der Index-Fingerprint (Modell, Dimension, Chunking-Parameter) nicht zur Konfiguration passt; ein Admin-Endpunkt erzwingt ihn bei Bedarf. Währenddessen beantwortet die Collection keine Suchen.
-- **Backup:** Vault liegt auf Mac und Pi, dazu Time Machine. Die Datenbank wird nicht gesichert, weil der Index jederzeit aus dem Vault neu aufgebaut werden kann.
-- **Sicherheit:** Jeder Client bekommt pro Collection ein eigenes statisches Bearer-Token (claude.ai, Claude Code), das Quarkus prüft; claude.ai Custom Connectors senden es als Request-Header. Die Tokens liegen in `.env`; ein einzelner Client lässt sich so sperren, ohne die anderen anzufassen. Rotieren heisst: Connector entfernen und neu anlegen, weil sich Auth-Einstellungen danach nicht mehr ändern lassen. Der öffentliche Endpunkt läuft über Tailscale Funnel.
+- **Build and deployment:** the Git repository and GitHub Actions build an arm64 image (Jib or `docker buildx`) and push it to the GitHub Container Registry. On the Pi: `docker compose pull && docker compose up -d`.
+- **Health:** `quarkus-smallrye-health` provides health checks for Compose.
+- **Re-Index:** starts automatically when the index fingerprint (model, dimension, chunking parameters) doesn't match the configuration, and an admin endpoint forces one when needed. Meanwhile the Collection answers no searches.
+- **Backup:** the Vault lives on the Mac and the Pi, plus Time Machine. The database is not backed up, because the index can be rebuilt from the Vault at any time.
+- **Security:** each client gets its own static bearer token per Collection (claude.ai, Claude Code), which Quarkus checks. claude.ai custom connectors send it as a request header. The tokens live in `.env`, so a single client can be blocked without touching the others. Rotating means removing the connector and creating it again, because its auth settings cannot be changed afterwards. The public endpoint runs through Tailscale Funnel.
 
-## Entscheidungen, Trade-offs und nächste Schritte
+## Decisions, Trade-offs and Next Steps
 
-| Entscheidung | Statt | Trade-off |
+| Decision | Instead of | Trade-off |
 | --- | --- | --- |
-| Eigener Quarkus-Service | RAGFlow | Mehr Eigenbau; dafür Obsidian bleibt Master, läuft leicht auf dem Pi, Java-Lerneffekt |
-| Retrieval-only MCP (Agentic RAG) | Server ruft selbst ein LLM auf | Qualität hängt am Client-Modell; dafür ein LLM-Call statt zwei, Claude sieht die Originalquellen |
-| Vault-Master auf dem Mac, Sync einseitig | Pi als Master | Pi ist nur so aktuell wie der letzte Sync (Mac muss laufen) |
-| Docling auf dem Mac | docling-serve auf dem Pi | Import nur am Mac möglich; dafür schnell und Pi bleibt schlank |
-| Zwei Collections: eigener Vault, eigenes Schema, eigene Instanz | Ein Index mit `topic`-Filter | Etwas mehr RAM (zweite JVM) und keine Links zwischen Engineering und Training; dafür echte Isolation und Konfiguration pro Collection (Sprache, Chunking, Modell) |
-| Ein Schema pro Collection in einer Postgres-Instanz, eigene DB-Rolle pro Instanz | Eigene DB-Instanz pro Collection | Gemeinsamer Betrieb; Isolation auf Schema-Ebene reicht für diesen Zweck |
-| Links als Text speichern, bei der Abfrage auflösen (ADR 0001) | Aufgelöster Graph beim Indexieren | Etwas teurere Abfrage; dafür bleibt das Ersetzen auf eine Note begrenzt, Backlinks stimmen auch nach Anlegen oder Umbenennen |
-| Minimum Similarity vor der Fusion (ADR 0002) | Mindest-Score auf dem RRF-Score | Schwellwert ist modellabhängig und muss nach jedem Modellwechsel neu kalibriert werden; dafür trennt er überhaupt passend von unpassend |
-| Reconciliation als Quelle der Korrektheit | Nur File-Watcher | Periodischer Abgleich kostet etwas CPU; dafür keine verpassten Änderungen nach Deploy oder Neustart |
-| `read_note` aus dem Index | Lesen aus dem Dateisystem | Rohtext liegt doppelt; dafür kein Pfad-Traversal und derselbe Stand wie die Suche |
-| Re-Index schaltet die Suche ab | Alten Index bis zum Umschalten weiterbetreiben | Stunden ohne Suche nach einem Modellwechsel; dafür kein doppelter Speicher und keine Umschaltlogik |
-| Statisches Bearer-Token pro Client | OAuth-Server, Cloudflare Access | Rotieren heisst Connector neu anlegen; dafür kein zusätzlicher Dienst |
+| Our own Quarkus service | RAGFlow | More to build; in return Obsidian stays the master, it runs lightly on the Pi, and there is a Java learning effect |
+| Retrieval-only MCP (Agentic RAG) | The server calls an LLM itself | Quality depends on the client model; in return one LLM call instead of two, and Claude sees the original sources |
+| Vault master on the Mac, one-way sync | Pi as master | The Pi is only as current as the last sync (the Mac has to be running) |
+| Docling on the Mac | docling-serve on the Pi | Import works only on the Mac; in return it is fast and the Pi stays lean |
+| Two Collections: own Vault, own schema, own instance | One index with a `topic` filter | A bit more RAM (a second JVM) and no links between Engineering and Training; in return real isolation and configuration per Collection (language, chunking, model) |
+| One schema per Collection in one Postgres instance, own DB role per instance | A separate DB instance per Collection | Shared operations; isolation at schema level is enough for this purpose |
+| Store Links as text, resolve them at query time (ADR 0001) | A resolved graph at indexing time | Slightly more expensive queries; in return replacement stays limited to one Note, and Backlinks stay correct after creating or renaming Notes |
+| Minimum Similarity before the fusion (ADR 0002) | A minimum score on the RRF score | The threshold depends on the model and has to be calibrated again after every model switch; in return it separates relevant from irrelevant at all |
+| Reconciliation as the source of correctness | File watcher only | The periodic comparison costs some CPU; in return no missed changes after a deploy or restart |
+| `read_note` from the index | Reading from the file system | The raw text is stored twice; in return no path traversal and the same state as the search |
+| Re-Index switches search off | Keep serving the old index until the switch-over | Hours without search after a model switch; in return no doubled storage and no switch-over logic |
+| Static bearer token per client | OAuth server, Cloudflare Access | Rotating means creating the connector again; in return no additional service |
 
-### Offene Punkte
+### Open Points
 
-- [x] RAM des Pi 5 klären: 8 GB, reicht für das Setup
-- [x] Collections festlegen: Engineering (Coaching, Software-Engineering) und Training
-- [ ] bge-m3 gegen Qwen3-Embedding-0.6B auf eigenen deutschen und englischen Notes vergleichen
-- [ ] Minimum Similarity pro Collection und Modell mit Negativ-Fragen kalibrieren (Verfahren entschieden, Werte offen)
-- [x] Authentifizierung und Tunnel: Bearer-Token pro Client über Tailscale Funnel
-- [x] Chunking-Strategie: Heading-Splitting plus Grenzen in Zeichen, atomare Blöcke ungeteilt
+- [x] Settle the Pi 5's RAM: 8 GB, enough for the setup
+- [x] Define the Collections: Engineering (Coaching, Software-Engineering) and Training
+- [ ] Compare bge-m3 with Qwen3-Embedding-0.6B on our own German and English Notes
+- [ ] Calibrate the Minimum Similarity per Collection and model with Negative Questions (method decided, values open)
+- [x] Authentication and tunnel: a bearer token per client through Tailscale Funnel
+- [x] Chunking strategy: splitting by heading plus limits in characters, atomic blocks kept whole
 
-### Nächste Schritte
+### Next Steps
 
-1. Zwei Vaults anlegen (Engineering, Training), Syncthing Mac → Pi für beide einrichten.
-2. Docling-Import-Script auf dem Mac (`_inbox` → `Quellen/` + `_sources/`).
-3. Walking Skeleton auf dem Pi, zuerst nur für Engineering: Quarkus + pgvector + Tool `search` (nur Vektor), in Claude Code einbinden.
-4. Evaluations-Set: 15–20 echte Fragen plus Negativ-Fragen, Antworten gegen NotebookLM vergleichen.
-5. Hybrid-Suche, Minimum Similarity, Reconciliation, `read_note`, `related`, `list_sources` ergänzen und erneut messen.
-6. Zweite Instanz für Training aus demselben Image starten (nur Konfiguration).
-7. Zugriff für den AI Coach in claude.ai freischalten; NotebookLM für "ask" ablösen, sobald die Evaluation gleichwertig ist.
+1. Create two Vaults (Engineering, Training) and set up Syncthing Mac → Pi for both.
+2. Docling import script on the Mac (`_inbox` → `Source-Notes/` + `_sources/`).
+3. Walking skeleton on the Pi, first for Engineering only: Quarkus + pgvector + the `search` tool (vector only), connected to Claude Code.
+4. Evaluation Set: 15–20 real questions plus Negative Questions, answers compared with NotebookLM.
+5. Add hybrid search, Minimum Similarity, Reconciliation, `read_note`, `related`, `list_sources` and measure again.
+6. Start a second instance for Training from the same image (configuration only).
+7. Enable access for the AI Coach in claude.ai; replace NotebookLM for "ask" once the evaluation is on par.
