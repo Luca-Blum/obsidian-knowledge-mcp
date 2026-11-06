@@ -5,6 +5,8 @@ import io.github.lucablum.knowledge.application.Index;
 import io.github.lucablum.knowledge.application.IndexVault;
 import io.github.lucablum.knowledge.application.SearchChunks;
 import io.github.lucablum.knowledge.application.Vault;
+import io.github.lucablum.knowledge.application.VaultIndexer;
+import io.github.lucablum.knowledge.application.VectorSearch;
 import io.github.lucablum.knowledge.domain.splitting.Splitter;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
@@ -15,12 +17,12 @@ public class UseCases {
     @Produces
     @ApplicationScoped
     IndexVault indexVault(Vault vault, Embedding embedding, Index index) {
-        return new IndexVault(vault, new Splitter(), embedding, index);
+        return new VaultIndexer(vault, new Splitter(), embedding, index);
     }
 
     @Produces
     @ApplicationScoped
     SearchChunks searchChunks(Embedding embedding, Index index, CollectionConfig collection) {
-        return new SearchChunks(embedding, index, collection.search().maxK());
+        return new VectorSearch(embedding, index, collection.search().maxK());
     }
 }

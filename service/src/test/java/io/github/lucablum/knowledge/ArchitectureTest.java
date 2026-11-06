@@ -3,14 +3,18 @@ package io.github.lucablum.knowledge;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
+import com.tngtech.archunit.core.domain.properties.CanBeAnnotated;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import org.jmolecules.archunit.JMoleculesArchitectureRules;
+import org.jmolecules.architecture.hexagonal.Application;
 import org.jmolecules.architecture.hexagonal.PrimaryAdapter;
+import org.jmolecules.architecture.hexagonal.PrimaryPort;
 import org.jmolecules.architecture.hexagonal.SecondaryAdapter;
 import org.jmolecules.architecture.hexagonal.SecondaryPort;
+import org.jmolecules.ddd.annotation.ValueObject;
 
 /** The domain and the use cases are plain Java; frameworks appear only in adapters. */
 @AnalyzeClasses(packages = "io.github.lucablum.knowledge", importOptions = ImportOption.DoNotIncludeTests.class)
@@ -50,10 +54,25 @@ class ArchitectureTest {
             .orShould().beAnnotatedWith(SecondaryAdapter.class);
 
     @ArchTest
-    static final ArchRule everyOutgoingPortIsMarkedAsOne = classes()
+    static final ArchRule everyInterfaceOfTheApplicationIsAPort = classes()
             .that().resideInAPackage("..knowledge.application")
             .and().areInterfaces()
-            .should().beAnnotatedWith(SecondaryPort.class);
+            .should().beAnnotatedWith(PrimaryPort.class)
+            .orShould().beAnnotatedWith(SecondaryPort.class);
+
+    @ArchTest
+    static final ArchRule portsAreInterfaces = classes()
+            .that().areAnnotatedWith(PrimaryPort.class)
+            .or().areAnnotatedWith(SecondaryPort.class)
+            .should().beInterfaces();
+
+    @ArchTest
+    static final ArchRule everyConcreteClassOfTheApplicationImplementsAPrimaryPort = classes()
+            .that().resideInAPackage("..knowledge.application")
+            .and().areNotInterfaces()
+            .and().areNotAnnotatedWith(ValueObject.class)
+            .should().beAnnotatedWith(Application.class)
+            .andShould().implement(CanBeAnnotated.Predicates.annotatedWith(PrimaryPort.class));
 
     @ArchTest
     static final ArchRule domainDependsOnNoUseCase = noClasses()
