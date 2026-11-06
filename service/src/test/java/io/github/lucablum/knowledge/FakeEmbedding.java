@@ -1,6 +1,6 @@
 package io.github.lucablum.knowledge;
 
-import io.github.lucablum.knowledge.application.EmbeddingPort;
+import io.github.lucablum.knowledge.application.Embedding;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
@@ -14,7 +14,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 @Alternative
 @Priority(1)
 @ApplicationScoped
-public class FakeEmbedding implements EmbeddingPort {
+public class FakeEmbedding implements Embedding {
 
     public static final String MODEL = "fake-bag-of-words";
 

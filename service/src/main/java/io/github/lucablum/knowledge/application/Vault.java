@@ -6,7 +6,7 @@ import org.jmolecules.architecture.hexagonal.SecondaryPort;
 
 /** Reads the Collection's Vault. Used on the indexing side only. */
 @SecondaryPort
-public interface VaultReader {
+public interface Vault {
 
     /** Every Note in the Vault, after the ignore rules are applied. */
     List<NotePath> notes();

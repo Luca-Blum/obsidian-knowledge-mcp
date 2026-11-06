@@ -3,7 +3,7 @@ package io.github.lucablum.knowledge.adapter.postgres;
 import io.agroal.api.AgroalDataSource;
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
 import io.github.lucablum.knowledge.application.EmbeddedChunk;
-import io.github.lucablum.knowledge.application.IndexRepository;
+import io.github.lucablum.knowledge.application.Index;
 import io.github.lucablum.knowledge.domain.Chunk;
 import io.github.lucablum.knowledge.domain.NotePath;
 import io.github.lucablum.knowledge.domain.SearchHit;
@@ -23,12 +23,12 @@ import org.jmolecules.architecture.hexagonal.SecondaryAdapter;
 /** Stores Notes and Chunks in the Collection's own schema; vectors live in pgvector columns. */
 @ApplicationScoped
 @SecondaryAdapter
-public class PostgresIndexRepository implements IndexRepository {
+public class PostgresIndex implements Index {
 
     private final AgroalDataSource dataSource;
     private final Statements sql;
 
-    public PostgresIndexRepository(AgroalDataSource dataSource, CollectionConfig collection) {
+    public PostgresIndex(AgroalDataSource dataSource, CollectionConfig collection) {
         this.dataSource = dataSource;
         this.sql = Statements.forSchema(collection.schema());
     }

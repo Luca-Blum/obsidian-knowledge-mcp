@@ -1,10 +1,10 @@
 package io.github.lucablum.knowledge.adapter.config;
 
-import io.github.lucablum.knowledge.application.EmbeddingPort;
-import io.github.lucablum.knowledge.application.IndexRepository;
+import io.github.lucablum.knowledge.application.Embedding;
+import io.github.lucablum.knowledge.application.Index;
 import io.github.lucablum.knowledge.application.IndexVault;
 import io.github.lucablum.knowledge.application.SearchChunks;
-import io.github.lucablum.knowledge.application.VaultReader;
+import io.github.lucablum.knowledge.application.Vault;
 import io.github.lucablum.knowledge.domain.splitting.Splitter;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
@@ -14,13 +14,13 @@ public class UseCases {
 
     @Produces
     @ApplicationScoped
-    IndexVault indexVault(VaultReader vault, EmbeddingPort embedding, IndexRepository repository) {
-        return new IndexVault(vault, new Splitter(), embedding, repository);
+    IndexVault indexVault(Vault vault, Embedding embedding, Index index) {
+        return new IndexVault(vault, new Splitter(), embedding, index);
     }
 
     @Produces
     @ApplicationScoped
-    SearchChunks searchChunks(EmbeddingPort embedding, IndexRepository repository, CollectionConfig collection) {
-        return new SearchChunks(embedding, repository, collection.search().maxK());
+    SearchChunks searchChunks(Embedding embedding, Index index, CollectionConfig collection) {
+        return new SearchChunks(embedding, index, collection.search().maxK());
     }
 }

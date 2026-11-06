@@ -9,7 +9,7 @@ import org.jmolecules.architecture.hexagonal.SecondaryPort;
 
 /** The Collection's index of Notes and their Chunks. */
 @SecondaryPort
-public interface IndexRepository {
+public interface Index {
 
     /** Replaces the Note and all of its Chunks in one transaction. */
     void replace(NotePath note, List<EmbeddedChunk> chunks, String embeddingModel);

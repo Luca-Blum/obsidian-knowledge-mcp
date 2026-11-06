@@ -2,14 +2,14 @@ package io.github.lucablum.knowledge.adapter.ollama;
 
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
-import io.github.lucablum.knowledge.application.EmbeddingPort;
+import io.github.lucablum.knowledge.application.Embedding;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.jmolecules.architecture.hexagonal.SecondaryAdapter;
 
 /** Embeds text with the configured model served by Ollama. */
 @ApplicationScoped
 @SecondaryAdapter
-public class OllamaEmbedding implements EmbeddingPort {
+public class OllamaEmbedding implements Embedding {
 
     private final EmbeddingModel model;
     private final CollectionConfig.Embedding config;

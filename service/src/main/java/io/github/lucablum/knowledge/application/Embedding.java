@@ -4,7 +4,7 @@ import org.jmolecules.architecture.hexagonal.SecondaryPort;
 
 /** Turns text into a vector with the configured embedding model. */
 @SecondaryPort
-public interface EmbeddingPort {
+public interface Embedding {
 
     /** The name of the model that produces the vectors, recorded with every Chunk. */
     String model();

@@ -9,26 +9,26 @@ import org.jmolecules.architecture.hexagonal.PrimaryPort;
 @PrimaryPort
 public class SearchChunks {
 
-    private final EmbeddingPort embedding;
-    private final IndexRepository repository;
+    private final Embedding embedding;
+    private final Index index;
     private final int maxK;
 
-    public SearchChunks(EmbeddingPort embedding, IndexRepository repository, int maxK) {
+    public SearchChunks(Embedding embedding, Index index, int maxK) {
         this.embedding = embedding;
-        this.repository = repository;
+        this.index = index;
         this.maxK = maxK;
     }
 
     /** The {@code k} Chunks closest in meaning to {@code query}. */
     public List<SearchHit> search(String query, int k) {
         validate(query, k);
-        return repository.nearest(embedding.embed(query), k);
+        return index.nearest(embedding.embed(query), k);
     }
 
     /** The {@code k} Chunks within {@code topic} closest in meaning to {@code query}. */
     public List<SearchHit> search(String query, Topic topic, int k) {
         validate(query, k);
-        return repository.nearest(embedding.embed(query), topic, k);
+        return index.nearest(embedding.embed(query), topic, k);
     }
 
     private void validate(String query, int k) {

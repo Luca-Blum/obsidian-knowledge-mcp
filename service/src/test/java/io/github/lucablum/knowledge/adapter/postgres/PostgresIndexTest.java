@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 
 /** The index can never silently mix models, because every Chunk records the model that produced it. */
 @QuarkusTest
-class PostgresIndexRepositoryTest {
+class PostgresIndexTest {
 
     @Inject
     TestVault vault;

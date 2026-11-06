@@ -1,7 +1,7 @@
 package io.github.lucablum.knowledge.adapter.filesystem;
 
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
-import io.github.lucablum.knowledge.application.VaultReader;
+import io.github.lucablum.knowledge.application.Vault;
 import io.github.lucablum.knowledge.domain.NotePath;
 import io.github.lucablum.knowledge.domain.VaultRules;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -21,14 +21,14 @@ import org.jmolecules.architecture.hexagonal.SecondaryAdapter;
 /** Reads the Vault from the local file system; never writes to it. */
 @ApplicationScoped
 @SecondaryAdapter
-public class FileSystemVaultReader implements VaultReader {
+public class FileSystemVault implements Vault {
 
     private final Path root;
 
     /** The file behind each Note as last scanned; on disk its name may be NFD while the NotePath is NFC. */
     private final Map<NotePath, Path> files = new ConcurrentHashMap<>();
 
-    public FileSystemVaultReader(CollectionConfig collection) {
+    public FileSystemVault(CollectionConfig collection) {
         this.root = collection.vaultPath().toAbsolutePath().normalize();
     }
 

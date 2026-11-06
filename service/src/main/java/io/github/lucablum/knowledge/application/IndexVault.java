@@ -9,16 +9,16 @@ import org.jmolecules.architecture.hexagonal.PrimaryPort;
 @PrimaryPort
 public class IndexVault {
 
-    private final VaultReader vault;
+    private final Vault vault;
     private final Splitter splitter;
-    private final EmbeddingPort embedding;
-    private final IndexRepository repository;
+    private final Embedding embedding;
+    private final Index index;
 
-    public IndexVault(VaultReader vault, Splitter splitter, EmbeddingPort embedding, IndexRepository repository) {
+    public IndexVault(Vault vault, Splitter splitter, Embedding embedding, Index index) {
         this.vault = vault;
         this.splitter = splitter;
         this.embedding = embedding;
-        this.repository = repository;
+        this.index = index;
     }
 
     /** Returns the number of indexed Notes. */
@@ -28,9 +28,9 @@ public class IndexVault {
             List<EmbeddedChunk> chunks = splitter.split(note, vault.read(note)).stream()
                     .map(chunk -> new EmbeddedChunk(chunk, embedding.embed(chunk.embeddingText())))
                     .toList();
-            repository.replace(note, chunks, embedding.model());
+            index.replace(note, chunks, embedding.model());
         }
-        repository.retainOnly(notes);
+        index.retainOnly(notes);
         return notes.size();
     }
 }
