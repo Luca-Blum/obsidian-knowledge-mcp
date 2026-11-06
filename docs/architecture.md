@@ -193,7 +193,7 @@ flowchart LR
 
 The domain knows neither Quarkus nor Postgres.
 
-The service follows a hexagonal architecture. The domain and use cases are plain Java, and Quarkus, LangChain4j and Postgres appear only in the adapters. ArchUnit tests guard the direction of dependencies, so that the embedding model or the vector store, for example, stay replaceable.
+The service follows a hexagonal architecture. The domain and use cases are plain Java, and Quarkus, LangChain4j and Postgres appear only in the adapters. ArchUnit tests guard the direction of dependencies, so that the embedding model or the vector store, for example, stay replaceable. Every type states its role with a jMolecules annotation (primary and secondary ports, application, adapters, value objects), and a use case is a primary port interface with an application class behind it; ADR 0003 has the rules.
 
 The Collection is pure configuration (name, Vault path, DB schema, MCP port, tool description), and the same image runs once per Collection. The code never distinguishes between Engineering and Training. Each instance connects with its own DB role that sees only its schema.
 
