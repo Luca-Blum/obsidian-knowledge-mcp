@@ -1,6 +1,6 @@
 # Obsidian Knowledge-Service – Architekturübersicht
 
-> Diese Datei ist eine Momentaufnahme des Claude Docs [Obsidian Knowledge-Service – Architekturübersicht](https://claude.ai/artifact/7WT73jhWEzpX5dsqbi2zSB) vom 2026-11-06. Die drei Diagramme (Systemübersicht, Ablauf einer Frage, hexagonaler Schnitt) gibt es nur dort. Begriffe stehen in [`GLOSSARY.md`](../GLOSSARY.md), Entscheidungen in [`docs/adr/`](adr/).
+Begriffe stehen in [`GLOSSARY.md`](../GLOSSARY.md), Entscheidungen mit ihrer Begründung in [`docs/adr/`](adr/).
 
 ## Ziel und Leitprinzipien
 
@@ -15,7 +15,35 @@ Ein selbst betriebener Knowledge-Service auf dem Raspberry Pi 5 ersetzt den Note
 
 ## Systemübersicht
 
-*(Diagramm im Claude Doc)*
+```mermaid
+flowchart TB
+    subgraph Mac
+        docling["Docling-Import<br/><small>PDF zu Markdown</small>"]
+        vaults["Obsidian-Vaults<br/><small>Engineering, Training</small>"]
+        docling --> vaults
+    end
+    subgraph Clients["Claude (MCP-Clients)"]
+        coach["AI Coach<br/><small>claude.ai</small>"]
+        code["Claude Code"]
+    end
+    subgraph Pi["Raspberry Pi 5"]
+        copies["Vault-Kopien<br/><small>je read-only gemountet</small>"]
+        subgraph Instances["eine Instanz pro Collection, gleiches Image"]
+            eng["kb-engineering<br/><small>Schema engineering</small>"]
+            train["kb-training<br/><small>Schema training</small>"]
+        end
+        ollama["Embedding-Modell<br/><small>Ollama, geteilt</small>"]
+        pg["Postgres + pgvector<br/><small>ein Schema pro Collection</small>"]
+        copies --> eng
+        copies --> train
+        eng <--> ollama
+        train <--> ollama
+        eng <--> pg
+        train <--> pg
+    end
+    vaults -- "Syncthing, einseitig" --> copies
+    Clients <-- "MCP, ein Endpunkt pro Collection" --> Instances
+```
 
 Der Mac ist Master: Syncthing spiegelt beide Vaults einseitig auf den Pi. Dort indexiert pro Collection eine eigene Service-Instanz ihren Vault in ihr eigenes Schema und liefert Claude per MCP nur Suchtreffer; die Antwort schreibt Claude selbst. Postgres und Ollama teilen sich beide Instanzen.
 
@@ -116,13 +144,54 @@ Beim Start vergleicht die Instanz zusätzlich den Index-Fingerprint (Embedding-M
 
 ### Eine Frage des AI Coach
 
-*(Diagramm im Claude Doc)*
+```mermaid
+sequenceDiagram
+    actor Du
+    participant Claude as Claude (AI Coach)
+    participant KS as Knowledge-Service
+    participant Index as Suchindex
+    Du->>Claude: Frage zu einem Thema
+    Claude->>KS: search(query, keywords?, topic?)
+    KS->>Index: Hybrid-Suche
+    Index-->>KS: Top-Treffer
+    KS-->>Claude: Search Hits (Chunk, Pfade, Note Kind)
+    loop wiederholt, so oft Claude will
+        Claude->>KS: read_note / related
+        KS-->>Claude: ganze Notes, Abschnitte, Links
+    end
+    Claude-->>Du: Antwort mit Quellen
+```
 
 Claude entscheidet selbst, wie oft es sucht und welche Notes es ganz liest; der Service liefert nur Text, die Antwort entsteht in einem einzigen LLM-Call.
 
 ## Quarkus-Service intern
 
-*(Diagramm im Claude Doc)*
+```mermaid
+flowchart LR
+    subgraph In["Eingehende Adapter"]
+        rec["Reconciliation + File-Watcher<br/><small>Startup, periodisch</small>"]
+        mcp["MCP-Server<br/><small>programmatisch registrierte Tools</small>"]
+    end
+    subgraph Core["Anwendungskern (reines Java)"]
+        ucIndex["Indexierung<br/><small>IndexNote, RemoveNote, Re-Index</small>"]
+        ucSearch["Suche und Lesen<br/><small>Search, ReadNote, Related, Listen</small>"]
+        domain["Domäne<br/><small>Note, Chunk, Topic, Link<br/>Chunking- und Ranking-Regeln</small>"]
+        ucIndex --> domain
+        ucSearch --> domain
+    end
+    subgraph Out["Ausgehende Adapter (Ports)"]
+        reader["VaultReader<br/><small>Dateisystem, Markdown</small>"]
+        emb["EmbeddingPort<br/><small>LangChain4j, Ollama</small>"]
+        repo["Index-Repository<br/><small>Notes, Chunks, Links; pgvector, tsvector</small>"]
+    end
+    rec --> ucIndex
+    mcp --> ucSearch
+    Core --> reader
+    Core --> emb
+    Core --> repo
+```
+
+Die Domäne kennt weder Quarkus noch Postgres.
 
 Der Service ist hexagonal geschnitten: Domäne und Use Cases sind reines Java, Quarkus, LangChain4j und Postgres stecken nur in den Adaptern. ArchUnit-Tests sichern die Abhängigkeitsrichtung ab, damit z.B. das Embedding-Modell oder der Vector Store austauschbar bleiben.
 
