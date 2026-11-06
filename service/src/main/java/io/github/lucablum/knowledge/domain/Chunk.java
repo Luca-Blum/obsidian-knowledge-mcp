@@ -10,7 +10,7 @@ public record Chunk(NotePath note, int ordinal, HeadingPath headings, String con
     public String embeddingText() {
         List<String> context = new ArrayList<>();
         note.topic().map(Topic::name).ifPresent(context::add);
-        context.add(note.title());
+        context.add(note.fileName());
         context.addAll(headings.headings());
         return String.join(" > ", context) + "\n\n" + content;
     }

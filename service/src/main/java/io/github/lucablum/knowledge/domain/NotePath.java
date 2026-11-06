@@ -18,8 +18,8 @@ public record NotePath(String value) {
         return slash < 0 ? Optional.empty() : Optional.of(new Topic(value.substring(0, slash)));
     }
 
-    /** The file name without {@code .md}. */
-    public String title() {
+    /** The file name without {@code .md}, which the Title falls back to. */
+    public String fileName() {
         String fileName = value.substring(value.lastIndexOf('/') + 1);
         return fileName.endsWith(".md") ? fileName.substring(0, fileName.length() - ".md".length()) : fileName;
     }
