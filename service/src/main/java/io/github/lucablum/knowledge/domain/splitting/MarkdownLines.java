@@ -1,7 +1,8 @@
 package io.github.lucablum.knowledge.domain.splitting;
 
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -9,31 +10,49 @@ import java.util.regex.Pattern;
  */
 final class MarkdownLines {
 
-    private static final Pattern HEADING = Pattern.compile("(?<marks>#{1,6})\\s+(?<text>(?:\\S.*)?)");
     private static final Pattern CODE_FENCE = Pattern.compile("^\\s*(```|~~~)");
     private static final Pattern FRONTMATTER_FENCE = Pattern.compile("---[ \\t]*");
-
-    private boolean insideCodeFence;
 
     private MarkdownLines() {
     }
 
     static List<MarkdownLine> of(String markdown) {
-        MarkdownLines reader = new MarkdownLines();
-        return withoutFrontmatter(List.of(markdown.split("\\R", -1))).stream().map(reader::classify).toList();
+        Iterator<String> lines = withoutFrontmatter(List.of(markdown.split("\\R", -1))).iterator();
+        List<MarkdownLine> result = new ArrayList<>();
+        while (lines.hasNext()) {
+            String line = lines.next();
+            if (isCodeFence(line)) {
+                result.addAll(codeBlock(line, lines));
+            } else {
+                result.add(headingOrText(line));
+            }
+        }
+        return result;
     }
 
     /**
-     * The text of a heading without trailing whitespace and without closing hashes ({@code ## Title ##}).
+     * The code block from its opening fence up to and including the closing fence, which consumes {@code lines};
+     * an unclosed block runs to the end.
      */
-    private static String headingText(String text) {
-        String stripped = text.stripTrailing();
-        int end = stripped.length();
-        while (end > 0 && stripped.charAt(end - 1) == '#') {
-            end--;
+    private static List<MarkdownLine> codeBlock(String openingFence, Iterator<String> lines) {
+        List<MarkdownLine> block = new ArrayList<>();
+        block.add(new TextLine(openingFence));
+        while (lines.hasNext()) {
+            String line = lines.next();
+            block.add(new TextLine(line));
+            if (isCodeFence(line)) {
+                break;
+            }
         }
-        boolean closingHashes = end < stripped.length() && end > 0 && Character.isWhitespace(stripped.charAt(end - 1));
-        return closingHashes ? stripped.substring(0, end).stripTrailing() : stripped;
+        return block;
+    }
+
+    private static MarkdownLine headingOrText(String line) {
+        return HeadingLine.parse(line).<MarkdownLine>map(heading -> heading).orElseGet(() -> new TextLine(line));
+    }
+
+    private static boolean isCodeFence(String line) {
+        return CODE_FENCE.matcher(line).find();
     }
 
     /**
@@ -53,23 +72,5 @@ final class MarkdownLines {
 
     private static boolean isFrontmatterFence(String line) {
         return FRONTMATTER_FENCE.matcher(line).matches();
-    }
-
-    /**
-     * A code fence line opens or closes a code block; inside one, nothing counts as a heading.
-     */
-    private MarkdownLine classify(String line) {
-        if (CODE_FENCE.matcher(line).find()) {
-            insideCodeFence = !insideCodeFence;
-            return new TextLine(line);
-        }
-        if (insideCodeFence) {
-            return new TextLine(line);
-        }
-        Matcher heading = HEADING.matcher(line);
-        if (heading.matches()) {
-            return new HeadingLine(heading.group("marks").length(), headingText(heading.group("text")));
-        }
-        return new TextLine(line);
     }
 }
