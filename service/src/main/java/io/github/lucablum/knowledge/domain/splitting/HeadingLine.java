@@ -3,10 +3,12 @@ package io.github.lucablum.knowledge.domain.splitting;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.jmolecules.ddd.annotation.ValueObject;
 
 /**
  * A heading line; it ends the current section and opens the next one.
  */
+@ValueObject
 record HeadingLine(int level, String text) implements MarkdownLine {
 
     private static final Pattern HEADING = Pattern.compile("(?<marks>#{1,6})\\s+(?<text>(?:\\S.*)?)");

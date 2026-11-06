@@ -9,7 +9,8 @@ The service is a hexagon with the packages `domain`, `application` and `adapter`
 | Secondary port: what the core needs from the outside | `@SecondaryPort` | interface in `application` | `Index`, `Embedding`, `Vault` |
 | Primary adapter: turns an outside event into a call of a primary port | `@PrimaryAdapter` | class in `adapter` | `SearchTool`, `IndexOnStartup` |
 | Secondary adapter: implements a secondary port with a technology | `@SecondaryAdapter` | class in `adapter`, named after the technology | `PostgresIndex`, `OllamaEmbedding`, `FileSystemVault` |
-| Value object | `@ValueObject` | record in `domain` (or `EmbeddedChunk`) | `NotePath`, `Chunk`, `SearchHit` |
+| Value object | `@ValueObject` | record in `domain` (or `EmbeddedChunk`) | `NotePath`, `Chunk`, `HeadingLine` |
+| Domain service | `@Service` | stateless public class in `domain` | `Splitter` |
 
 A primary adapter depends on the primary port and never on the class that implements it. We first marked the concrete use case classes as `@PrimaryPort` to get the jMolecules rule green. That merged the port with the application behind it and hid the boundary the rule is meant to protect.
 
@@ -18,4 +19,5 @@ A primary adapter depends on the primary port and never on the class that implem
 - A use case is an interface plus an implementation, even when there is only one. This is the price of having the adapter depend on the abstraction, and it lets adapter tests replace the core.
 - Wiring happens in `adapter.config.UseCases`, which returns the interface type.
 - `ArchitectureTest` checks that ports are interfaces, that every interface in `application` is a port, that every concrete class there is an `@Application` implementing a `@PrimaryPort`, that every adapter is marked, and the dependency directions through `JMoleculesArchitectureRules.ensureHexagonal()`.
+- Utility classes (private constructor, statics only, such as `VaultRules`) and package-private builders (`ChunkAssembler`) carry no annotation, because no jMolecules stereotype fits and a forced label would be wrong. `everyPublicConceptOfTheDomainHasADddStereotype` therefore covers public, instantiable top-level types in `domain` only.
 - A new helper type in `adapter` that is neither an adapter nor configuration has to be listed as an exception in `everyAdapterIsMarkedAsOne`, otherwise the test fails.

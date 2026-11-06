@@ -3,8 +3,10 @@ package io.github.lucablum.knowledge.domain.splitting;
 import io.github.lucablum.knowledge.domain.Chunk;
 import io.github.lucablum.knowledge.domain.NotePath;
 import java.util.List;
+import org.jmolecules.ddd.annotation.Service;
 
 /** Splits a Note into one Chunk per heading section. Frontmatter is not part of any Chunk. */
+@Service
 public class Splitter {
 
     public List<Chunk> split(NotePath note, String markdown) {
