@@ -52,13 +52,17 @@ def test_takes_the_title_from_the_first_heading_when_the_pdf_has_no_metadata_tit
     vault = tmp_path / "Engineering"
     inbox = vault / "Coaching" / "_inbox"
     inbox.mkdir(parents=True)
-    # Renaming the key keeps every byte offset, so the PDF stays valid without a title.
-    untitled = SAMPLE_PDF.read_bytes().replace(b"/Title (", b"/Xitle (")
+    # Replacements of equal length keep every byte offset, so the PDF stays valid.
+    untitled = (
+        SAMPLE_PDF.read_bytes()
+        .replace(b"/Title (", b"/Xitle (")
+        .replace(b"(The Dependency Rule)", b"(The Dependency_Rule)")
+    )
     (inbox / "untitled.pdf").write_bytes(untitled)
 
     run_importer(vault)
 
-    assert frontmatter(vault / "Coaching" / "Quellen" / "untitled.md")["title"] == "The Dependency Rule"
+    assert frontmatter(vault / "Coaching" / "Quellen" / "untitled.md")["title"] == "The Dependency_Rule"
 
 
 def test_leaves_everything_alone_that_is_not_a_pdf_directly_inside_a_topic_inbox(tmp_path):

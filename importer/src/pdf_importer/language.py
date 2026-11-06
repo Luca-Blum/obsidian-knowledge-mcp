@@ -2,7 +2,7 @@
 
 from lingua import Language, LanguageDetectorBuilder
 
-_LANGS = {Language.GERMAN: "de", Language.ENGLISH: "en"}
+_LANG_CODES = {Language.GERMAN: "de", Language.ENGLISH: "en"}
 _MIN_CONFIDENCE = 0.8
 
 _detector = None
@@ -19,4 +19,4 @@ def detect_language(text: str) -> str | None:
     best = confidences[0]
     if best.value < _MIN_CONFIDENCE:
         return None
-    return _LANGS.get(best.language)
+    return _LANG_CODES.get(best.language)

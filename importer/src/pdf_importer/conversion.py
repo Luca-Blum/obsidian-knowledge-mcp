@@ -1,6 +1,5 @@
 """Converts a PDF to Markdown with Docling and picks its Title."""
 
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -8,8 +7,8 @@ import pypdfium2
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
-
-_HEADING = re.compile(r"^#+\s+(.+?)\s*$", re.MULTILINE)
+from docling_core.types.doc.document import DoclingDocument
+from docling_core.types.doc.items.text import SectionHeaderItem, TitleItem
 
 
 @dataclass(frozen=True)
@@ -26,19 +25,20 @@ class Converter:
         )
 
     def convert(self, pdf: Path) -> Converted:
-        markdown = self._docling.convert(pdf).document.export_to_markdown()
-        return Converted(markdown, _title(pdf, markdown))
+        document = self._docling.convert(pdf).document
+        return Converted(document.export_to_markdown(), _title(pdf, document))
 
 
-def _title(pdf: Path, markdown: str) -> str:
+def _title(pdf: Path, document: DoclingDocument) -> str:
     """The PDF's metadata title, else the first heading, else the file name."""
-    document = pypdfium2.PdfDocument(pdf)
+    pdf_file = pypdfium2.PdfDocument(pdf)
     try:
-        metadata_title = document.get_metadata_value("Title").strip()
+        metadata_title = pdf_file.get_metadata_value("Title").strip()
     finally:
-        document.close()
+        pdf_file.close()
     if metadata_title:
         return metadata_title
-    if heading := _HEADING.search(markdown):
-        return heading.group(1)
+    for item, _ in document.iterate_items():
+        if isinstance(item, (TitleItem, SectionHeaderItem)) and item.text.strip():
+            return item.text.strip()
     return pdf.stem

@@ -20,7 +20,7 @@ def run(vaults: list[Path]) -> None:
         return
     converter = Converter()
     for pdf in pdfs:
-        _import(pdf, converter)
+        _import_pdf(pdf, converter)
 
 
 def _inbox_pdfs(vault: Path) -> list[Path]:
@@ -39,7 +39,7 @@ def _inbox_pdfs(vault: Path) -> list[Path]:
     ]
 
 
-def _import(pdf: Path, converter: Converter) -> None:
+def _import_pdf(pdf: Path, converter: Converter) -> None:
     topic = pdf.parent.parent
     converted = converter.convert(pdf)
     frontmatter: dict[str, object] = {"type": "source", "title": converted.title}
@@ -56,10 +56,7 @@ def _import(pdf: Path, converter: Converter) -> None:
 
 
 def _write_atomically(target: Path, text: str) -> None:
-    """Writes a temporary file next to the target and links it into place.
-
-    Linking fails instead of replacing a target that already exists.
-    """
+    """Writes a temporary file next to the target and moves it into place."""
     target.parent.mkdir(exist_ok=True)
     with tempfile.NamedTemporaryFile(
         "w", encoding="utf-8", dir=target.parent, prefix=".", suffix=".tmp", delete=False
@@ -68,9 +65,9 @@ def _write_atomically(target: Path, text: str) -> None:
         temporary.flush()
         os.fsync(temporary.fileno())
     try:
-        os.link(temporary.name, target)
+        _move(Path(temporary.name), target)
     finally:
-        os.unlink(temporary.name)
+        Path(temporary.name).unlink(missing_ok=True)
 
 
 def _move(source: Path, target: Path) -> None:
