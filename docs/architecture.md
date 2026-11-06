@@ -180,9 +180,9 @@ flowchart LR
         ucSearch --> domain
     end
     subgraph Out["Outbound adapters (ports)"]
-        reader["VaultReader<br/><small>file system, Markdown</small>"]
-        emb["EmbeddingPort<br/><small>LangChain4j, Ollama</small>"]
-        repo["Index repository<br/><small>Notes, Chunks, Links; pgvector, tsvector</small>"]
+        reader["Vault<br/><small>file system, Markdown</small>"]
+        emb["Embedding<br/><small>LangChain4j, Ollama</small>"]
+        repo["Index<br/><small>Notes, Chunks, Links; pgvector, tsvector</small>"]
     end
     rec --> ucIndex
     mcp --> ucSearch
@@ -193,7 +193,7 @@ flowchart LR
 
 The domain knows neither Quarkus nor Postgres.
 
-The service follows a hexagonal architecture. The domain and use cases are plain Java, and Quarkus, LangChain4j and Postgres appear only in the adapters. ArchUnit tests guard the direction of dependencies, so that the embedding model or the vector store, for example, stay replaceable.
+The service follows a hexagonal architecture. The domain and use cases are plain Java, and Quarkus, LangChain4j and Postgres appear only in the adapters. ArchUnit tests guard the direction of dependencies, so that the embedding model or the vector store, for example, stay replaceable. Every type states its role with a jMolecules annotation (primary and secondary ports, application, adapters, value objects), and a use case is a primary port interface with an application class behind it; ADR 0003 has the rules.
 
 The Collection is pure configuration (name, Vault path, DB schema, MCP port, tool description), and the same image runs once per Collection. The code never distinguishes between Engineering and Training. Each instance connects with its own DB role that sees only its schema.
 
@@ -316,7 +316,7 @@ The instances differ only in this description ("engineering knowledge base …" 
 
 | Area | Choice | Reasoning |
 | --- | --- | --- |
-| Language / framework | Java 21+, Quarkus (JVM mode) | Professionally relevant stack; CDI model close to Jakarta EE/MicroProfile |
+| Language / framework | Java 25+, Quarkus (JVM mode) | Professionally relevant stack; CDI model close to Jakarta EE/MicroProfile |
 | AI building blocks | Quarkus LangChain4j (embedding model, embedding store, splitter) | Ready-made building blocks, but our own ingestion instead of Easy RAG |
 | MCP | `quarkus-mcp-server-http` (Streamable HTTP) | Remote access from the Mac and from claude.ai |
 | Database | Postgres + pgvector (one schema per Collection), full text via `tsvector` | Vector and keyword search in one DB, hybrid via Reciprocal Rank Fusion |
@@ -328,7 +328,7 @@ The instances differ only in this description ("engineering knowledge base …" 
 
 **Resources (Pi 5, 8 GB RAM):** OS about 0.5 GB, Postgres about 0.5–1 GB, two Quarkus instances with a limited heap at about 0.4–0.6 GB each, Ollama with bge-m3 about 1–1.5 GB. Together that is roughly 3.5–4.5 GB, which still leaves enough headroom for a Re-Index and a later re-ranker. Both Collections share Postgres and Ollama.
 
-**Replaceable models:** the `EmbeddingPort` knows only "text in, vector out". The model name and vector dimension come from the configuration, and every Chunk stores which model produced it. A model switch therefore forces a full Re-Index, never a mixed index. Embedding stays on the Pi, because every query also has to be embedded with the same model at the moment it is asked.
+**Replaceable models:** the `Embedding` knows only "text in, vector out". The model name and vector dimension come from the configuration, and every Chunk stores which model produced it. A model switch therefore forces a full Re-Index, never a mixed index. Embedding stays on the Pi, because every query also has to be embedded with the same model at the moment it is asked.
 
 **Licenses:** Quarkus, LangChain4j and quarkus-mcp-server (Apache 2.0), Postgres and pgvector (PostgreSQL License), Docling and Ollama (MIT), Syncthing (MPL 2.0) and the embedding models are open source. Obsidian is free but proprietary, without lock-in because the Vault consists of plain Markdown files. Tailscale is partly open (fully open: Headscale).
 
