@@ -53,6 +53,18 @@ public class ScheduledReconciliation {
         }
         if (executor != null) {
             executor.shutdownNow();
+            awaitRunningReconciliation();
+        }
+    }
+
+    /** An interrupted run rolls back its current Note; waiting keeps it from outliving the datasource. */
+    private void awaitRunningReconciliation() {
+        try {
+            if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
+                LOG.warnf("Reconciliation of Collection %s did not stop within 10 seconds", collection.name());
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -68,6 +80,9 @@ public class ScheduledReconciliation {
 
     /** Every further change postpones the run, so a burst of changes leads to one Reconciliation. */
     private synchronized void reconcileAfterChange() {
+        if (executor.isShutdown()) {
+            return;
+        }
         if (afterChange != null) {
             afterChange.cancel(false);
         }
@@ -79,9 +94,10 @@ public class ScheduledReconciliation {
     private void reconcile() {
         try {
             Reconciled reconciled = indexVault.run();
-            if (reconciled.indexed() > 0 || reconciled.removed() > 0) {
-                LOG.infof("Reconciled Collection %s: indexed %d, removed %d, unchanged %d Notes", collection.name(),
-                        reconciled.indexed(), reconciled.removed(), reconciled.unchanged());
+            if (reconciled.indexed() > 0 || reconciled.removed() > 0 || !reconciled.failed().isEmpty()) {
+                LOG.infof("Reconciled Collection %s: indexed %d, removed %d, unchanged %d, failed %d Notes",
+                        collection.name(), reconciled.indexed(), reconciled.removed(), reconciled.unchanged(),
+                        reconciled.failed().size());
             }
         } catch (RuntimeException e) {
             LOG.errorf(e, "Reconciliation of Collection %s failed", collection.name());

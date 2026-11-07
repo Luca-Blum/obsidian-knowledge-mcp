@@ -3,6 +3,9 @@ package io.github.lucablum.knowledge.application;
 import io.github.lucablum.knowledge.domain.ContentHash;
 import io.github.lucablum.knowledge.domain.NotePath;
 import io.github.lucablum.knowledge.domain.splitting.Splitter;
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +17,8 @@ import org.jmolecules.architecture.hexagonal.Application;
  */
 @Application
 public class ContentHashReconciliation implements IndexVault {
+
+    private static final Logger LOG = System.getLogger(ContentHashReconciliation.class.getName());
 
     private final Vault vault;
     private final Splitter splitter;
@@ -27,24 +32,34 @@ public class ContentHashReconciliation implements IndexVault {
         this.index = index;
     }
 
-    /** Each Note is committed on its own, so a run that fails halfway keeps what it indexed so far. */
+    /**
+     * Each Note is committed on its own. A Note that cannot be read or embedded keeps its previous version and does
+     * not hold up the others, so one broken Note never stops the index from following the rest of the Vault.
+     */
     @Override
     public synchronized Reconciled run() {
-        Map<NotePath, ContentHash> gone = new HashMap<>(index.contentHashes());
+        Map<NotePath, ContentHash> notInVault = new HashMap<>(index.contentHashes());
         int indexed = 0;
         int unchanged = 0;
+        List<NotePath> failed = new ArrayList<>();
         for (VaultNote note : vault.notes()) {
-            String text = note.text();
-            ContentHash hash = ContentHash.of(text);
-            if (hash.equals(gone.remove(note.path()))) {
-                unchanged++;
-            } else {
-                index.replace(note.path(), hash, embed(note.path(), text), embedding.model());
-                indexed++;
+            ContentHash indexedHash = notInVault.remove(note.path());
+            try {
+                String text = note.text();
+                ContentHash hash = ContentHash.of(text);
+                if (hash.equals(indexedHash)) {
+                    unchanged++;
+                } else {
+                    index.replace(note.path(), hash, embed(note.path(), text), embedding.model());
+                    indexed++;
+                }
+            } catch (RuntimeException e) {
+                LOG.log(Level.WARNING, "Cannot index Note " + note.path(), e);
+                failed.add(note.path());
             }
         }
-        index.remove(gone.keySet());
-        return new Reconciled(indexed, gone.size(), unchanged);
+        index.remove(notInVault.keySet());
+        return new Reconciled(indexed, notInVault.size(), unchanged, failed);
     }
 
     private List<EmbeddedChunk> embed(NotePath path, String text) {

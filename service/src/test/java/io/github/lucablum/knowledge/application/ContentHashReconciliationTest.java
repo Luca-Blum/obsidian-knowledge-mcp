@@ -34,7 +34,7 @@ class ContentHashReconciliationTest {
 
         Reconciled reconciled = indexVault.run();
 
-        assertThat(reconciled).isEqualTo(new Reconciled(1, 0, 0));
+        assertThat(reconciled).isEqualTo(new Reconciled(1, 0, 0, List.of()));
         assertThat(index.contentOf("Running/Intervals.md")).containsExactly("Interval training improves speed");
     }
 
@@ -47,13 +47,13 @@ class ContentHashReconciliationTest {
 
         Reconciled reconciled = indexVault.run();
 
-        assertThat(reconciled).isEqualTo(new Reconciled(0, 0, 1));
+        assertThat(reconciled).isEqualTo(new Reconciled(0, 0, 1, List.of()));
         assertThat(embedding.texts).isEmpty();
         assertThat(index.replaced).isEmpty();
     }
 
     @Test
-    void whenIndexVault_givenChangedNote_thenReindexOnlyThatNote() {
+    void whenIndexVault_givenChangedNote_thenIndexOnlyThatNote() {
         vault.put("Running/Intervals.md", "Interval training improves speed");
         vault.put("Running/Tempo.md", "Tempo runs");
         indexVault.run();
@@ -62,7 +62,7 @@ class ContentHashReconciliationTest {
 
         Reconciled reconciled = indexVault.run();
 
-        assertThat(reconciled).isEqualTo(new Reconciled(1, 0, 1));
+        assertThat(reconciled).isEqualTo(new Reconciled(1, 0, 1, List.of()));
         assertThat(index.replaced).containsExactly(new NotePath("Running/Tempo.md"));
         assertThat(index.contentOf("Running/Tempo.md")).containsExactly("Tempo runs at threshold pace");
     }
@@ -76,7 +76,7 @@ class ContentHashReconciliationTest {
 
         Reconciled reconciled = indexVault.run();
 
-        assertThat(reconciled).isEqualTo(new Reconciled(0, 1, 1));
+        assertThat(reconciled).isEqualTo(new Reconciled(0, 1, 1, List.of()));
         assertThat(index.paths()).containsExactly(new NotePath("Running/Intervals.md"));
     }
 
@@ -89,12 +89,12 @@ class ContentHashReconciliationTest {
 
         Reconciled reconciled = indexVault.run();
 
-        assertThat(reconciled).isEqualTo(new Reconciled(1, 1, 0));
+        assertThat(reconciled).isEqualTo(new Reconciled(1, 1, 0, List.of()));
         assertThat(index.paths()).containsExactly(new NotePath("Running/Speed/Intervals.md"));
     }
 
     @Test
-    void whenIndexVault_givenIndexFromEarlierRun_thenReindexNoteChangedSince() {
+    void whenIndexVault_givenIndexFromEarlierRun_thenIndexNoteChangedSince() {
         vault.put("Running/Tempo.md", "Tempo runs");
         indexVault.run();
         vault.put("Running/Tempo.md", "Tempo runs at threshold pace");
@@ -102,8 +102,22 @@ class ContentHashReconciliationTest {
 
         Reconciled reconciled = afterRestart.run();
 
-        assertThat(reconciled).isEqualTo(new Reconciled(1, 0, 0));
+        assertThat(reconciled).isEqualTo(new Reconciled(1, 0, 0, List.of()));
         assertThat(index.contentOf("Running/Tempo.md")).containsExactly("Tempo runs at threshold pace");
+    }
+
+    @Test
+    void whenIndexVault_givenNoteThatCannotBeEmbedded_thenIndexTheOthersAndStillRemoveDeletedNotes() {
+        vault.put("Running/Tempo.md", "Tempo runs");
+        indexVault.run();
+        vault.remove("Running/Tempo.md");
+        vault.put("Running/Broken.md", "unembeddable");
+        vault.put("Running/Intervals.md", "Interval training improves speed");
+
+        Reconciled reconciled = indexVault.run();
+
+        assertThat(reconciled).isEqualTo(new Reconciled(1, 1, 0, List.of(new NotePath("Running/Broken.md"))));
+        assertThat(index.paths()).containsExactly(new NotePath("Running/Intervals.md"));
     }
 
     private static final class InMemoryVault implements Vault {
@@ -182,6 +196,9 @@ class ContentHashReconciliationTest {
 
         @Override
         public float[] embed(String text) {
+            if (text.contains("unembeddable")) {
+                throw new IllegalStateException("Ollama rejected the text");
+            }
             texts.add(text);
             return new float[] {1};
         }

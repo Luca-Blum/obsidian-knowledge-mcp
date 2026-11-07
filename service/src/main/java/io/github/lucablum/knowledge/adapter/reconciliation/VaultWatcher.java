@@ -22,8 +22,8 @@ import org.jboss.logging.Logger;
 /**
  * Reports changes in the Vault's folders through the file system's {@link WatchService}. A {@code WatchService}
  * watches single folders, so every folder is registered, including the ones created later. Folders that hold no
- * Notes are not watched, and names prefixed with {@code _} or {@code .}, such as Syncthing's temporary files, are
- * ignored.
+ * Notes are not watched, and hidden files such as Syncthing's temporary {@code .syncthing.*.tmp} are ignored: the
+ * rename to the final name reports the change.
  */
 final class VaultWatcher implements AutoCloseable {
 
@@ -80,7 +80,7 @@ final class VaultWatcher implements AutoCloseable {
                 continue;
             }
             Path name = (Path) event.context();
-            if (VaultRules.skipsFolder(name.toString())) {
+            if (name.toString().startsWith(".")) {
                 continue;
             }
             relevant = true;

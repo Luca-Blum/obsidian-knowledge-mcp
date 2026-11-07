@@ -26,7 +26,7 @@ class BackgroundReconciliationTest {
 
     /** Far longer than any test waits, so only start-up and the file watcher can trigger a Reconciliation. */
     private static final String INTERVAL = "1h";
-    private static final Duration WITHIN_SECONDS = Duration.ofSeconds(20);
+    private static final Duration TIMEOUT = Duration.ofSeconds(20);
 
     @Inject
     TestVault vault;
@@ -36,18 +36,22 @@ class BackgroundReconciliationTest {
 
     @Test
     void whenServiceStarts_givenNoteWrittenWhileStopped_thenIndexIt() {
-        assertThat(notePathsFoundWithin(WITHIN_SECONDS, "Running/Tempo.md", "threshold pace"))
+        assertThat(notePathsFoundWithin(TIMEOUT, "Running/Tempo.md", "threshold pace"))
                 .contains("Running/Tempo.md");
     }
 
     @Test
     void whenNoteWritten_givenServiceRunning_thenIndexItWithinSeconds() {
-        notePathsFoundWithin(WITHIN_SECONDS, "Running/Tempo.md", "threshold pace");
+        awaitStartupReconciliation();
 
         vault.write("Cycling/Indoor/Sweet Spot.md", "Sweet spot intervals on the trainer");
 
-        assertThat(notePathsFoundWithin(WITHIN_SECONDS, "Cycling/Indoor/Sweet Spot.md", "sweet spot trainer"))
+        assertThat(notePathsFoundWithin(TIMEOUT, "Cycling/Indoor/Sweet Spot.md", "sweet spot trainer"))
                 .contains("Cycling/Indoor/Sweet Spot.md");
+    }
+
+    private void awaitStartupReconciliation() {
+        notePathsFoundWithin(TIMEOUT, "Running/Tempo.md", "threshold pace");
     }
 
     /** Searches until {@code expected} is among the Note paths found, or {@code timeout} has passed. */
