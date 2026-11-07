@@ -5,6 +5,7 @@ import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
 import io.github.lucablum.knowledge.application.EmbeddedChunk;
 import io.github.lucablum.knowledge.application.Index;
 import io.github.lucablum.knowledge.domain.Chunk;
+import io.github.lucablum.knowledge.domain.ContentHash;
 import io.github.lucablum.knowledge.domain.NotePath;
 import io.github.lucablum.knowledge.domain.SearchHit;
 import io.github.lucablum.knowledge.domain.Topic;
@@ -17,7 +18,9 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.jmolecules.architecture.hexagonal.SecondaryAdapter;
 
 /** Stores Notes and Chunks in the Collection's own schema; vectors live in pgvector columns. */
@@ -33,19 +36,38 @@ public class PostgresIndex implements Index {
         this.sql = Statements.forSchema(collection.schema());
     }
 
+    /** A Note indexed before content hashes were stored has none, so it is left out and indexed again. */
     @Override
-    public void replace(NotePath path, List<EmbeddedChunk> chunks, String embeddingModel) {
+    public Map<NotePath, ContentHash> contentHashes() {
+        Map<NotePath, ContentHash> hashes = new HashMap<>();
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement select = connection.prepareStatement(sql.contentHashes());
+                ResultSet rows = select.executeQuery()) {
+            while (rows.next()) {
+                String hash = rows.getString("content_hash");
+                if (hash != null) {
+                    hashes.put(new NotePath(rows.getString("path")), new ContentHash(hash));
+                }
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Reading the content hashes failed", e);
+        }
+        return hashes;
+    }
+
+    @Override
+    public void replace(NotePath path, ContentHash hash, List<EmbeddedChunk> chunks, String embeddingModel) {
         Transaction.run(dataSource, connection -> {
             deleteNote(connection, path);
-            insertNote(connection, path);
+            insertNote(connection, path, hash);
             insertChunks(connection, path, chunks, embeddingModel);
         });
     }
 
     @Override
-    public void retainOnly(Collection<NotePath> notes) {
+    public void remove(Collection<NotePath> notes) {
         Transaction.run(dataSource, connection -> {
-            try (PreparedStatement delete = connection.prepareStatement(sql.retainOnly())) {
+            try (PreparedStatement delete = connection.prepareStatement(sql.removeNotes())) {
                 delete.setArray(1, textArray(connection, notes.stream().map(NotePath::value).toList()));
                 delete.executeUpdate();
             }
@@ -81,10 +103,11 @@ public class PostgresIndex implements Index {
         }
     }
 
-    private void insertNote(Connection connection, NotePath path) throws SQLException {
+    private void insertNote(Connection connection, NotePath path, ContentHash hash) throws SQLException {
         try (PreparedStatement insert = connection.prepareStatement(sql.insertNote())) {
             insert.setString(1, path.value());
             insert.setString(2, path.topic().map(Topic::name).orElse(null));
+            insert.setString(3, hash.value());
             insert.executeUpdate();
         }
     }

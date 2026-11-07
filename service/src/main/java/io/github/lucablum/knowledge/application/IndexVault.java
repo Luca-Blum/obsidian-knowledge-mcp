@@ -2,10 +2,12 @@ package io.github.lucablum.knowledge.application;
 
 import org.jmolecules.architecture.hexagonal.PrimaryPort;
 
-/** Indexes every Note of the Collection's Vault and removes Notes that are no longer there. */
+/**
+ * Reconciliation: brings the index in line with the Collection's Vault, indexing new and changed Notes and removing
+ * Notes that are no longer there. A rename is a removal plus a new Note.
+ */
 @PrimaryPort
 public interface IndexVault {
 
-    /** Returns the number of indexed Notes. */
-    int run();
+    Reconciled run();
 }

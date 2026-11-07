@@ -11,20 +11,23 @@ record Statements(
         String deleteNote,
         String insertNote,
         String insertChunk,
-        String retainOnly,
+        String contentHashes,
+        String removeNotes,
         String nearest) {
 
     private static final Pattern IDENTIFIER = Pattern.compile("[a-z_][a-z0-9_]*");
 
     private static final String DELETE_NOTE_TEMPLATE = "DELETE FROM {note} WHERE path = ?";
 
-    private static final String INSERT_NOTE_TEMPLATE = "INSERT INTO {note} (path, topic) VALUES (?, ?)";
+    private static final String INSERT_NOTE_TEMPLATE = "INSERT INTO {note} (path, topic, content_hash) VALUES (?, ?, ?)";
 
     private static final String INSERT_CHUNK_TEMPLATE = """
             INSERT INTO {chunk} (note_path, ordinal, heading_path, content, embedding, embedding_model)
             VALUES (?, ?, ?, ?, ?::vector, ?)""";
 
-    private static final String RETAIN_ONLY_TEMPLATE = "DELETE FROM {note} WHERE NOT (path = ANY (?))";
+    private static final String CONTENT_HASHES_TEMPLATE = "SELECT path, content_hash FROM {note}";
+
+    private static final String REMOVE_NOTES_TEMPLATE = "DELETE FROM {note} WHERE path = ANY (?)";
 
     private static final String NEAREST_TEMPLATE = """
             SELECT c.content, c.note_path, c.heading_path, 1 - (c.embedding <=> ?::vector) AS score
@@ -41,7 +44,8 @@ record Statements(
                 inSchema(DELETE_NOTE_TEMPLATE, schema),
                 inSchema(INSERT_NOTE_TEMPLATE, schema),
                 inSchema(INSERT_CHUNK_TEMPLATE, schema),
-                inSchema(RETAIN_ONLY_TEMPLATE, schema),
+                inSchema(CONTENT_HASHES_TEMPLATE, schema),
+                inSchema(REMOVE_NOTES_TEMPLATE, schema),
                 inSchema(NEAREST_TEMPLATE, schema));
     }
 
