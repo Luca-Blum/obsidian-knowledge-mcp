@@ -126,6 +126,8 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/io.github.lucablum.pdf-i
 
 Change the two Vault paths, the interval or the log file in those `sed` lines to suit. A third Vault needs another `--vault` pair in the plist. To change anything later, edit the installed plist, then `launchctl bootout gui/$(id -u)/io.github.lucablum.pdf-importer` and bootstrap again. To remove the agent, boot it out and delete the plist.
 
+The template sets `DOCLING_DEVICE=cpu`. Docling's default on Apple Silicon is the GPU (`mps`), and there a larger PDF crashed the whole run with a segfault (exit code 139) and stayed in `_inbox/` without a log, so every following run crashed on it again. On the CPU the same 5 MB PDF converts in about 70 seconds. Remove the variable from the plist if you want to try the GPU.
+
 ### Check that it works
 
 1. Drop a PDF into `<Vault>/<Topic>/_inbox/`.

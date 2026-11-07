@@ -16,6 +16,11 @@
         <string>--vault</string>
         <string>__VAULT_2__</string>
     </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>DOCLING_DEVICE</key>
+        <string>cpu</string>
+    </dict>
     <key>StartInterval</key>
     <integer>__INTERVAL_SECONDS__</integer>
     <key>StandardErrorPath</key>
