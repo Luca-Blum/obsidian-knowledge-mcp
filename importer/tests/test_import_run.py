@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -34,6 +35,13 @@ def settled(pdf: Path) -> Path:
     """Backdates the PDF so the importer treats it as fully copied."""
     long_ago = pdf.stat().st_mtime - 3600
     os.utime(pdf, (long_ago, long_ago))
+    return pdf
+
+
+def fresh(pdf: Path) -> Path:
+    """Postdates the PDF, so it still counts as changed a moment ago however long the importer takes to start."""
+    soon = time.time() + 60
+    os.utime(pdf, (soon, soon))
     return pdf
 
 
@@ -210,7 +218,9 @@ def test_a_pdf_that_changed_a_moment_ago_is_skipped_until_a_later_run(tmp_path):
     vault = tmp_path / "Engineering"
     inbox = vault / "Coaching" / "_inbox"
     inbox.mkdir(parents=True)
-    (inbox / "half-copied.pdf").write_bytes(b"%PDF-1.7 still being copied")
+    half_copied = inbox / "half-copied.pdf"
+    half_copied.write_bytes(b"%PDF-1.7 still being copied")
+    fresh(half_copied)
     before = snapshot(vault)
 
     run_importer(vault)
@@ -499,7 +509,9 @@ def test_the_log_names_a_file_that_changed_a_moment_ago_as_skipped(tmp_path):
     vault = tmp_path / "Engineering"
     inbox = vault / "Coaching" / "_inbox"
     inbox.mkdir(parents=True)
-    (inbox / "half-copied.pdf").write_bytes(b"%PDF-1.7 still being copied")
+    half_copied = inbox / "half-copied.pdf"
+    half_copied.write_bytes(b"%PDF-1.7 still being copied")
+    fresh(half_copied)
 
     log = run_importer(vault)
 

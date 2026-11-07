@@ -21,7 +21,10 @@ A Collection is defined only by configuration:
 | `collection.search.default-k` | `COLLECTION_SEARCH_DEFAULT_K` | Search Hits when `k` is not given (default `5`) |
 | `collection.search.max-k` | `COLLECTION_SEARCH_MAX_K` | Largest `k` a caller may ask for (default `20`) |
 
-Ollama is expected at `http://localhost:11434` (`quarkus.langchain4j.ollama.base-url`).
+In the `prod` profile the database and Ollama come from `DATABASE_URL`, `DATABASE_USER`, `DATABASE_PASSWORD` and
+`OLLAMA_BASE_URL`; `/q/health/ready` reports readiness. See [`deploy/`](../deploy/README.md).
+
+In development, Ollama is expected at `http://localhost:11434` (`quarkus.langchain4j.ollama.base-url`).
 
 ## Run locally and connect Claude Code
 
