@@ -1,4 +1,6 @@
-# Runs on the Raspberry Pi 5. Update with: docker compose pull && docker compose up -d
+# Runs on the Raspberry Pi 5. The Deploy workflow starts it on every push to main.
+name: knowledgebase
+
 services:
   postgres:
     image: pgvector/pgvector:pg17

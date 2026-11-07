@@ -354,7 +354,7 @@ obsidian-knowledge-mcp/
 
 ## Tooling and Operations
 
-The Mac runs four tools plus an import script. The Pi runs four containers in one Compose file (two service instances, Postgres, Ollama) plus three native services.
+The Mac runs four tools plus an import script. The Pi runs four containers in one Compose file (two service instances, Postgres, Ollama) plus four native services.
 
 ### Mac
 
@@ -381,12 +381,13 @@ Docker is needed on the Mac only for development, where Quarkus Dev Services sta
 | Syncthing | Receive both Vaults (Receive Only) | Native (apt); each Vault as a read-only volume, mounted only into its own container |
 | Tailscale | Access from the Mac | Native (apt) |
 | Tunnel | Public HTTPS endpoints for claude.ai | Native: Tailscale Funnel |
+| GitHub Actions runner | Deploys every push to `main` (`docker compose up --wait`) | Native, self-hosted runner with label `pi`, as a service |
 
 Syncthing and Tailscale run natively because they work closely with the host's network and file system.
 
 ### Operations
 
-- **Build and deployment:** the Git repository and GitHub Actions build an arm64 image (Jib or `docker buildx`) and push it to the GitHub Container Registry. On the Pi: `docker compose pull && docker compose up -d`.
+- **Build and deployment:** the Git repository and GitHub Actions build an arm64 image (Jib or `docker buildx`) and push it to the GitHub Container Registry. A self-hosted runner on the Pi then starts every instance on the image of that commit (`docker compose up --wait`), so a merge to `main` is deployed and an unhealthy instance fails the workflow.
 - **Health:** `quarkus-smallrye-health` provides health checks for Compose.
 - **Re-Index:** starts automatically when the index fingerprint (model, dimension, chunking parameters) doesn't match the configuration, and an admin endpoint forces one when needed. Meanwhile the Collection answers no searches.
 - **Backup:** the Vault lives on the Mac and the Pi, plus Time Machine. The database is not backed up, because the index can be rebuilt from the Vault at any time.

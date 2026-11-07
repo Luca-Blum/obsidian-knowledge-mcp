@@ -1,4 +1,4 @@
-name: Image
+name: Deploy
 
 on:
   push:
@@ -7,6 +7,9 @@ on:
 permissions:
   contents: read
   packages: write
+
+env:
+  IMAGE: ghcr.io/luca-blum/obsidian-knowledge-mcp
 
 jobs:
   image:
@@ -38,5 +41,27 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: |
-            ghcr.io/luca-blum/obsidian-knowledge-mcp:latest
-            ghcr.io/luca-blum/obsidian-knowledge-mcp:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+
+  # Runs on the self-hosted runner on the Pi and updates every Collection at once
+  deploy:
+    needs: image
+    runs-on: [self-hosted, pi]
+    concurrency: deploy
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Start the new image and wait until every instance is healthy
+        env:
+          IMAGE: ${{ env.IMAGE }}:${{ github.sha }}
+        run: >-
+          docker compose --file deploy/docker-compose.yml --env-file /srv/knowledgebase/.env
+          up --detach --pull always --wait --wait-timeout 600

@@ -3,25 +3,37 @@
 `docker-compose.yml` runs Postgres with pgvector, Ollama and `knowledgebase-engineering` on the Pi. The Vault is synced by
 Syncthing and mounted read-only into `knowledgebase-engineering` only.
 
-## First setup
+## First setup on the Pi
 
-```shell
-cp .env.example .env    # set POSTGRES_PASSWORD and ENGINEERING_VAULT_DIR; the rest has working defaults
-docker login ghcr.io    # only if the image is private
-docker compose up -d
-```
+1. Put the configuration where the Deploy workflow looks for it:
+   ```shell
+   sudo mkdir -p /srv/knowledgebase && sudo chown $USER /srv/knowledgebase
+   cp deploy/.env.example /srv/knowledgebase/.env   # set POSTGRES_PASSWORD and ENGINEERING_VAULT_DIR; the rest has working defaults
+   ```
+2. Install a self-hosted runner for this repository (GitHub → Settings → Actions → Runners → New self-hosted runner,
+   Linux ARM64). Give it the label `pi`, run it as a user in the `docker` group, and install it as a service
+   (`sudo ./svc.sh install && sudo ./svc.sh start`).
+3. Push to `main`, or rerun the latest Deploy workflow.
 
-`ollama-pull` downloads the embedding model once. `knowledgebase-engineering` waits for healthy Postgres and Ollama, and its own
+`ollama-pull` downloads the embedding model once. Each instance waits for healthy Postgres and Ollama, and its own
 health check (`/q/health/ready`) reports ready once the datasource works.
 
-## Update
+## Deploy
+
+Every push to `main` runs the Deploy workflow:
+
+1. `image` tests the service, builds the arm64 image and publishes it to `ghcr.io/luca-blum/obsidian-knowledge-mcp`
+   (tags `latest` and the commit SHA).
+2. `deploy` runs on the Pi and starts every instance on the image of that commit with `docker compose up --wait`.
+   The job fails if an instance does not become healthy within 10 minutes.
+
+To roll back, rerun the Deploy workflow of an earlier commit. To deploy by hand from a clone on the Pi:
 
 ```shell
-docker compose pull && docker compose up -d
+docker login ghcr.io
+IMAGE=ghcr.io/luca-blum/obsidian-knowledge-mcp:<commit-sha> \
+  docker compose --file deploy/docker-compose.yml --env-file /srv/knowledgebase/.env up --detach --pull always --wait
 ```
-
-CI builds the arm64 image on every push to `main` and publishes it to
-`ghcr.io/luca-blum/obsidian-knowledge-mcp` (tags `latest` and the commit SHA).
 
 ## Memory
 
