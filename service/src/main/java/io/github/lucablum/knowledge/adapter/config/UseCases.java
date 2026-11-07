@@ -24,6 +24,7 @@ public class UseCases {
     @ApplicationScoped
     SearchChunks searchChunks(Embedding embedding, Index index, CollectionConfig collection) {
         CollectionConfig.Search search = collection.search();
-        return new VectorSearch(embedding, index, search.defaultK(), search.maxK());
+        return new VectorSearch(embedding, index, search.defaultK(), search.maxK(), search.minimumSimilarity(),
+                search.maxHitsPerNote());
     }
 }

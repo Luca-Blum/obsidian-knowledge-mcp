@@ -17,9 +17,9 @@ public interface Index {
     /** Removes every Note that is not among {@code notes}. */
     void retainOnly(Collection<NotePath> notes);
 
-    /** The {@code k} Chunks whose vectors are closest to {@code query}. */
-    List<SearchHit> nearest(float[] query, int k);
+    /** Every Chunk whose cosine similarity to {@code query} reaches {@code minimumSimilarity}, closest first. */
+    List<SearchHit> nearest(float[] query, double minimumSimilarity);
 
-    /** The {@code k} Chunks within {@code topic} whose vectors are closest to {@code query}. */
-    List<SearchHit> nearest(float[] query, Topic topic, int k);
+    /** The same as {@link #nearest(float[], double)}, restricted to the Chunks within {@code topic}. */
+    List<SearchHit> nearest(float[] query, Topic topic, double minimumSimilarity);
 }

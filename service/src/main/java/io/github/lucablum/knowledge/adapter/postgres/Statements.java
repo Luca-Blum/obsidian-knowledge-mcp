@@ -30,8 +30,8 @@ record Statements(
             SELECT c.content, c.note_path, c.heading_path, 1 - (c.embedding <=> ?::vector) AS score
             FROM {chunk} c JOIN {note} n ON n.path = c.note_path
             WHERE (?::text IS NULL OR n.topic = ?)
-            ORDER BY c.embedding <=> ?::vector
-            LIMIT ?""";
+              AND 1 - (c.embedding <=> ?::vector) >= ?
+            ORDER BY c.embedding <=> ?::vector""";
 
     static Statements forSchema(String schema) {
         if (!IDENTIFIER.matcher(schema).matches()) {

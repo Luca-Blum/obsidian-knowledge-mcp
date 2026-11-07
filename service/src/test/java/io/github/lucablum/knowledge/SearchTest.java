@@ -2,6 +2,7 @@ package io.github.lucablum.knowledge;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
 import io.github.lucablum.knowledge.application.IndexVault;
@@ -140,7 +141,7 @@ class SearchTest {
         vault.write("Running/Intervals.md", "Interval training improves speed");
         indexVault.run();
         vault.clear();
-        vault.write("Running/Tempo.md", "Tempo runs");
+        vault.write("Running/Tempo.md", "Interval training as tempo runs");
         indexVault.run();
 
         List<SearchHit> hits = search.search(SearchRequest.of("interval training").withK(10));
@@ -149,11 +150,50 @@ class SearchTest {
     }
 
     @Test
-    void whenSearch_givenNoK_thenReturnCollectionDefaultNumberOfHits() {
-        int defaultK = collection.search().defaultK();
-        vault.write("Notes.md", IntStream.rangeClosed(1, defaultK + 2)
+    void whenSearch_givenQueryFarFromEveryChunk_thenReturnNoSearchHits() {
+        vault.write("Running/Intervals.md", "Interval training improves speed");
+        indexVault.run();
+
+        List<SearchHit> hits = search.search(SearchRequest.of("apples and pears").withK(10));
+
+        assertThat(hits).isEmpty();
+    }
+
+    @Test
+    void whenSearch_givenLongNoteMatchingInManyChunks_thenReturnAtMostTwoHitsOfIt() {
+        vault.write("Running/Long.md", IntStream.rangeClosed(1, 4)
                 .mapToObj(i -> "## Section " + i + "\ntempo run " + i)
                 .collect(Collectors.joining("\n\n")));
+        vault.write("Running/Short.md", "tempo run once");
+        indexVault.run();
+
+        List<SearchHit> hits = search.search(SearchRequest.of("tempo run").withK(10));
+
+        assertThat(hits).extracting(SearchHit::notePath)
+                .containsExactlyInAnyOrder("Running/Long.md", "Running/Long.md", "Running/Short.md");
+    }
+
+    @Test
+    void whenSearch_givenNoteCappedOrCutByK_thenEachHitReportsItsNotesFurtherMatchingChunks() {
+        vault.write("Running/Long.md", IntStream.rangeClosed(1, 4)
+                .mapToObj(i -> "## Section " + i + "\ntempo run " + i)
+                .collect(Collectors.joining("\n\n")));
+        vault.write("Running/Short.md", "tempo with apples pears plums cherries");
+        vault.write("Cycling/Bike.md", "apples and pears");
+        indexVault.run();
+
+        List<SearchHit> all = search.search(SearchRequest.of("tempo run").withK(10));
+        List<SearchHit> first = search.search(SearchRequest.of("tempo run").withK(1));
+
+        assertThat(all).extracting(SearchHit::notePath, SearchHit::moreInNote).containsExactlyInAnyOrder(
+                tuple("Running/Long.md", 2), tuple("Running/Long.md", 2), tuple("Running/Short.md", 0));
+        assertThat(first).extracting(SearchHit::moreInNote).containsExactly(3);
+    }
+
+    @Test
+    void whenSearch_givenNoK_thenReturnCollectionDefaultNumberOfHits() {
+        int defaultK = collection.search().defaultK();
+        IntStream.rangeClosed(1, defaultK + 2).forEach(i -> vault.write("Running/Tempo " + i + ".md", "tempo run " + i));
         indexVault.run();
 
         List<SearchHit> hits = search.search(SearchRequest.of("tempo run"));
