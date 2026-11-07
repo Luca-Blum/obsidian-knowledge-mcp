@@ -27,6 +27,7 @@ jobs:
 
   importer:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: importer
@@ -50,4 +51,4 @@ jobs:
       - name: Install
         run: uv sync --locked
       - name: Test
-        run: uv run pytest
+        run: uv run pytest --durations=10
