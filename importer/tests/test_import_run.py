@@ -11,9 +11,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
 
-SAMPLE_PDF = Path(__file__).parent / "fixtures" / "sample.pdf"
+FIXTURES = Path(__file__).parent / "fixtures"
+SAMPLE_PDF = FIXTURES / "sample.pdf"
+DOCUMENT_EXTENSIONS = ["epub", "docx", "doc", "odt", "rtf"]
 
 
 def run_importer(*vaults: Path) -> None:
@@ -241,3 +244,46 @@ def test_the_original_keeps_its_own_extension_and_a_suffix_goes_before_it(tmp_pa
     assert frontmatter(topic / "Source-Notes" / "Paper.md")["source"] == "[[_sources/Paper.PDF]]"
     assert frontmatter(topic / "Source-Notes" / "Paper-1.md")["source"] == "[[_sources/Paper-1.PDF]]"
     assert sorted(f.name for f in (topic / "_sources").iterdir()) == ["Paper-1.PDF", "Paper.PDF"]
+
+
+@pytest.mark.parametrize("extension", DOCUMENT_EXTENSIONS)
+def test_imports_a_text_document_into_a_source_note_titled_by_its_first_heading(tmp_path, extension):
+    vault = tmp_path / "Engineering"
+    topic = vault / "Coaching"
+    sample = (FIXTURES / f"sample.{extension}").read_bytes()
+    put_in_inbox(vault, f"book.{extension}", sample)
+
+    run_importer(vault)
+
+    note = topic / "Source-Notes" / "book.md"
+    header = frontmatter(note)
+    assert header["type"] == "source"
+    assert header["title"] == "Notes on the Dependency Rule"
+    assert header["imported"] == datetime.date.today()
+    assert header["source"] == f"[[_sources/book.{extension}]]"
+    assert "Source code dependencies must point only inward" in note.read_text(encoding="utf-8")
+    assert (topic / "_sources" / f"book.{extension}").read_bytes() == sample
+    assert list((topic / "_inbox").iterdir()) == []
+
+
+def test_a_text_document_without_a_heading_is_titled_by_its_file_name(tmp_path):
+    vault = tmp_path / "Engineering"
+    put_in_inbox(vault, "no-heading.docx", (FIXTURES / "headless.docx").read_bytes())
+
+    run_importer(vault)
+
+    assert frontmatter(vault / "Coaching" / "Source-Notes" / "no-heading.md")["title"] == "no-heading"
+
+
+@pytest.mark.parametrize("extension", DOCUMENT_EXTENSIONS)
+def test_a_corrupt_text_document_ends_in_failed_with_a_log_and_nothing_else_changes(tmp_path, extension):
+    vault = tmp_path / "Engineering"
+    topic = vault / "Coaching"
+    corrupt = os.urandom(2048)
+    put_in_inbox(vault, f"broken.{extension}", corrupt)
+
+    run_importer(vault)
+
+    assert (topic / "_inbox" / "_failed" / f"broken.{extension}").read_bytes() == corrupt
+    assert (topic / "_inbox" / "_failed" / "broken.log").read_text(encoding="utf-8").strip()
+    assert sorted(f.name for f in vault.rglob("*") if f.is_file()) == sorted(["broken.log", f"broken.{extension}"])
