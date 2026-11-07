@@ -10,7 +10,7 @@ import io.github.lucablum.knowledge.domain.NoteKind;
 import io.github.lucablum.knowledge.domain.NotePath;
 import io.github.lucablum.knowledge.domain.PublishedDate;
 import io.github.lucablum.knowledge.domain.SearchHit;
-import io.github.lucablum.knowledge.domain.SourceListing;
+import io.github.lucablum.knowledge.domain.SourceNoteListing;
 import io.github.lucablum.knowledge.domain.Topic;
 import io.github.lucablum.knowledge.domain.TopicCount;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -89,8 +89,8 @@ public class PostgresIndex implements Index {
     }
 
     @Override
-    public List<SourceListing> sources(Topic topic) {
-        return query(sql.sources(), select -> select.setString(1, topic.name()), PostgresIndex::toSourceListing);
+    public List<SourceNoteListing> sourceNotes(Topic topic) {
+        return query(sql.sourceNotes(), select -> select.setString(1, topic.name()), PostgresIndex::toSourceNoteListing);
     }
 
     private void deleteNote(Connection connection, NotePath path) throws SQLException {
@@ -156,12 +156,12 @@ public class PostgresIndex implements Index {
                 row.getString("content"),
                 row.getString("note_path"),
                 List.of((String[]) row.getArray("heading_path").getArray()),
-                NoteKind.ofType(row.getString("kind")),
+                NoteKind.ofLabel(row.getString("kind")),
                 row.getDouble("score"));
     }
 
-    private static SourceListing toSourceListing(ResultSet row) throws SQLException {
-        return new SourceListing(
+    private static SourceNoteListing toSourceNoteListing(ResultSet row) throws SQLException {
+        return new SourceNoteListing(
                 row.getString("path"),
                 row.getString("title"),
                 Optional.ofNullable(row.getString("published")).map(PublishedDate::new),

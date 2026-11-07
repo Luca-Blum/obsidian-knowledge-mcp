@@ -13,8 +13,7 @@ public record NoteLanguage(String code) {
     private static final Set<String> KNOWN = Set.of("de", "en");
 
     public NoteLanguage {
-        Objects.requireNonNull(code);
-        code = code.strip().toLowerCase(Locale.ROOT);
+        code = normalize(code);
         if (!KNOWN.contains(code)) {
             throw new IllegalArgumentException("Unknown language: " + code + ", known are " + KNOWN);
         }
@@ -22,7 +21,11 @@ public record NoteLanguage(String code) {
 
     /** Empty if {@code code} is not a known language. */
     public static Optional<NoteLanguage> parse(String code) {
-        return KNOWN.contains(code.strip().toLowerCase(Locale.ROOT)) ? Optional.of(new NoteLanguage(code)) : Optional.empty();
+        return KNOWN.contains(normalize(code)) ? Optional.of(new NoteLanguage(code)) : Optional.empty();
+    }
+
+    private static String normalize(String code) {
+        return Objects.requireNonNull(code).strip().toLowerCase(Locale.ROOT);
     }
 
     @Override

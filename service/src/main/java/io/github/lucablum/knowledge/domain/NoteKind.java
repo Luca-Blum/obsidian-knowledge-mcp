@@ -23,4 +23,14 @@ public enum NoteKind {
     public String label() {
         return label;
     }
+
+    /** The kind whose {@link #label()} is {@code label}. */
+    public static NoteKind ofLabel(String label) {
+        for (NoteKind kind : values()) {
+            if (kind.label.equals(label)) {
+                return kind;
+            }
+        }
+        throw new IllegalArgumentException("Unknown Note Kind: " + label);
+    }
 }

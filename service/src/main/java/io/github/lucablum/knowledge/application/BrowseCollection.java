@@ -1,6 +1,6 @@
 package io.github.lucablum.knowledge.application;
 
-import io.github.lucablum.knowledge.domain.SourceListing;
+import io.github.lucablum.knowledge.domain.SourceNoteListing;
 import io.github.lucablum.knowledge.domain.Topic;
 import io.github.lucablum.knowledge.domain.TopicCount;
 import java.util.List;
@@ -14,5 +14,5 @@ public interface BrowseCollection {
     List<TopicCount> topics();
 
     /** The Source Notes of {@code topic}, by Title. */
-    List<SourceListing> sources(Topic topic);
+    List<SourceNoteListing> sourceNotes(Topic topic);
 }

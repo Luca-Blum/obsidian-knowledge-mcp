@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lucablum.knowledge.application.BrowseCollection;
-import io.github.lucablum.knowledge.domain.SourceListing;
+import io.github.lucablum.knowledge.domain.SourceNoteListing;
 import io.github.lucablum.knowledge.domain.Topic;
 import io.github.lucablum.knowledge.domain.TopicCount;
 import io.quarkiverse.mcp.server.Tool;
@@ -43,7 +43,7 @@ public class BrowseTools {
         if (topic == null || topic.isBlank()) {
             return ToolResponse.error("topic must not be blank");
         }
-        List<SourceEntry> sources = browse.sources(new Topic(topic)).stream().map(SourceEntry::of).toList();
+        List<SourceEntry> sources = browse.sourceNotes(new Topic(topic)).stream().map(SourceEntry::of).toList();
         return success(Map.of("sources", sources));
     }
 
@@ -66,7 +66,7 @@ public class BrowseTools {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private record SourceEntry(String notePath, String title, String date, String author) {
 
-        static SourceEntry of(SourceListing source) {
+        static SourceEntry of(SourceNoteListing source) {
             return new SourceEntry(
                     source.notePath(), source.title(), source.date().orElse(null), source.author().orElse(null));
         }

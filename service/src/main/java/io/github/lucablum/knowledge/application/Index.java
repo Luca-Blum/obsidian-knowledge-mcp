@@ -3,7 +3,7 @@ package io.github.lucablum.knowledge.application;
 import io.github.lucablum.knowledge.domain.Note;
 import io.github.lucablum.knowledge.domain.NotePath;
 import io.github.lucablum.knowledge.domain.SearchHit;
-import io.github.lucablum.knowledge.domain.SourceListing;
+import io.github.lucablum.knowledge.domain.SourceNoteListing;
 import io.github.lucablum.knowledge.domain.Topic;
 import io.github.lucablum.knowledge.domain.TopicCount;
 import java.util.Collection;
@@ -30,5 +30,5 @@ public interface Index {
     List<TopicCount> topics();
 
     /** The Source Notes within {@code topic}, ordered by Title. */
-    List<SourceListing> sources(Topic topic);
+    List<SourceNoteListing> sourceNotes(Topic topic);
 }

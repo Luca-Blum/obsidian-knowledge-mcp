@@ -1,6 +1,6 @@
 package io.github.lucablum.knowledge.application;
 
-import io.github.lucablum.knowledge.domain.SourceListing;
+import io.github.lucablum.knowledge.domain.SourceNoteListing;
 import io.github.lucablum.knowledge.domain.Topic;
 import io.github.lucablum.knowledge.domain.TopicCount;
 import java.util.List;
@@ -22,7 +22,7 @@ public class IndexLookup implements BrowseCollection {
     }
 
     @Override
-    public List<SourceListing> sources(Topic topic) {
-        return index.sources(topic);
+    public List<SourceNoteListing> sourceNotes(Topic topic) {
+        return index.sourceNotes(topic);
     }
 }

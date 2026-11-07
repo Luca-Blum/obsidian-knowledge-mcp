@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.tuple;
 
 import io.github.lucablum.knowledge.application.BrowseCollection;
 import io.github.lucablum.knowledge.application.IndexVault;
-import io.github.lucablum.knowledge.domain.SourceListing;
+import io.github.lucablum.knowledge.domain.SourceNoteListing;
 import io.github.lucablum.knowledge.domain.Topic;
 import io.github.lucablum.knowledge.domain.TopicCount;
 import io.quarkus.test.junit.QuarkusTest;
@@ -53,7 +53,7 @@ class BrowseTest {
         vault.write("Cycling/Source-Notes/Coggan.md", source("title: Coggan"));
         indexVault.run();
 
-        assertThat(browse.sources(new Topic("Running"))).extracting(SourceListing::notePath)
+        assertThat(browse.sourceNotes(new Topic("Running"))).extracting(SourceNoteListing::notePath)
                 .containsExactlyInAnyOrder("Running/Source-Notes/Daniels.md", "Running/Plans/Seiler.md");
     }
 
@@ -68,7 +68,7 @@ class BrowseTest {
                 """);
         indexVault.run();
 
-        assertThat(browse.sources(new Topic("Running"))).extracting(SourceListing::title)
+        assertThat(browse.sourceNotes(new Topic("Running"))).extracting(SourceNoteListing::title)
                 .containsExactly("Daniels Formula");
     }
 
@@ -79,7 +79,7 @@ class BrowseTest {
         vault.write("Running/Day.md", source("title: Day\npublished: 2021-03-14\nimported: 2026-01-05"));
         indexVault.run();
 
-        assertThat(browse.sources(new Topic("Running"))).extracting(SourceListing::title, SourceListing::date)
+        assertThat(browse.sourceNotes(new Topic("Running"))).extracting(SourceNoteListing::title, SourceNoteListing::date)
                 .containsExactlyInAnyOrder(
                         tuple("Year", Optional.of("2021")),
                         tuple("Month", Optional.of("2021-03")),
@@ -91,7 +91,7 @@ class BrowseTest {
         vault.write("Running/Daniels.md", source("imported: 2026-01-05"));
         indexVault.run();
 
-        assertThat(browse.sources(new Topic("Running"))).extracting(SourceListing::date)
+        assertThat(browse.sourceNotes(new Topic("Running"))).extracting(SourceNoteListing::date)
                 .containsExactly(Optional.of("2026-01-05"));
     }
 
@@ -101,7 +101,7 @@ class BrowseTest {
         vault.write("Running/Invalid.md", source("title: Invalid\npublished: spring 2021\nimported: yesterday"));
         indexVault.run();
 
-        assertThat(browse.sources(new Topic("Running"))).extracting(SourceListing::date)
+        assertThat(browse.sourceNotes(new Topic("Running"))).extracting(SourceNoteListing::date)
                 .containsExactly(Optional.empty(), Optional.empty());
     }
 
@@ -111,7 +111,7 @@ class BrowseTest {
         vault.write("Running/Anonymous.md", source("title: Anonymous"));
         indexVault.run();
 
-        assertThat(browse.sources(new Topic("Running"))).extracting(SourceListing::notePath, SourceListing::author)
+        assertThat(browse.sourceNotes(new Topic("Running"))).extracting(SourceNoteListing::notePath, SourceNoteListing::author)
                 .containsExactlyInAnyOrder(
                         tuple("Running/Daniels.md", Optional.of("Jack Daniels")),
                         tuple("Running/Anonymous.md", Optional.empty()));

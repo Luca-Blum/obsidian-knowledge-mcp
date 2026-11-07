@@ -6,7 +6,7 @@ import org.jmolecules.ddd.annotation.ValueObject;
 
 /** A Source Note as listed for its Topic, before Claude decides whether to search or read it. */
 @ValueObject
-public record SourceListing(
+public record SourceNoteListing(
         String notePath,
         String title,
         Optional<PublishedDate> published,

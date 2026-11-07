@@ -14,7 +14,7 @@ record Statements(
         String retainOnly,
         String nearest,
         String topics,
-        String sources) {
+        String sourceNotes) {
 
     private static final Pattern IDENTIFIER = Pattern.compile("[a-z_][a-z0-9_]*");
 
@@ -43,7 +43,7 @@ record Statements(
             GROUP BY topic
             ORDER BY topic""";
 
-    private static final String SOURCES_TEMPLATE = """
+    private static final String SOURCE_NOTES_TEMPLATE = """
             SELECT path, title, published, imported, author FROM {note}
             WHERE kind = 'source' AND topic = ?
             ORDER BY lower(title), path""";
@@ -59,7 +59,7 @@ record Statements(
                 inSchema(RETAIN_ONLY_TEMPLATE, schema),
                 inSchema(NEAREST_TEMPLATE, schema),
                 inSchema(TOPICS_TEMPLATE, schema),
-                inSchema(SOURCES_TEMPLATE, schema));
+                inSchema(SOURCE_NOTES_TEMPLATE, schema));
     }
 
     private static String inSchema(String template, String schema) {
