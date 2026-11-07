@@ -1,25 +1,37 @@
 # PDF importer
 
-Turns the PDFs in a Topic's `_inbox/` into Source Notes. It runs on the Mac, converts each PDF with [Docling](https://github.com/docling-project/docling) (OCR included) and writes the Note to the Topic's `Source-Notes/` folder. The PDF itself then moves to the Topic's `_sources/` folder.
+Turns the documents in a Topic's `_inbox/` into Source Notes. It runs on the Mac, converts each file with [Docling](https://github.com/docling-project/docling) (OCR included for PDFs) and writes the Note to the Topic's `Source-Notes/` folder. The original then moves to the Topic's `_sources/` folder.
+
+## Supported formats
+
+| Format | Extension | Title |
+| --- | --- | --- |
+| PDF | `.pdf` | metadata title, else first heading, else file name |
+| EPUB | `.epub` | first heading, else file name |
+| Word | `.docx`, `.doc` | first heading, else file name |
+| OpenDocument text | `.odt` | first heading, else file name |
+| Rich Text | `.rtf` | first heading, else file name |
+
+`.doc` and `.rtf` are converted through LibreOffice, so they need it installed (`brew install --cask libreoffice`). A `.doc` can lose the structure of its tables on the way. An EPUB whose chapters mark headings with styled paragraphs instead of heading tags gets the file name as its Title and no headings in the text.
 
 The importer is a Python project managed with [uv](https://docs.astral.sh/uv/) and is independent of the Maven build. It shares nothing with the knowledge service except the frontmatter format of a Source Note.
 
 ## What a run does
 
-A run looks at every Topic of every Vault it is given, meaning every first-level folder that is not prefixed with `_` or `.`. Only files with an accepted extension (today `.pdf`, listed in `conversion.py`) directly inside `<Topic>/_inbox/` are imported, and everything else is left alone. For each PDF the run:
+A run looks at every Topic of every Vault it is given, meaning every first-level folder that is not prefixed with `_` or `.`. Only files with an accepted extension (the table above, listed in `conversion.py`) directly inside `<Topic>/_inbox/` are imported, and everything else is left alone. For each file the run:
 
 1. converts it to Markdown with headings and tables,
-2. writes `<Topic>/Source-Notes/<pdf name>.md` atomically: a temporary file first, then linked into place,
-3. moves the PDF to `<Topic>/_sources/`.
+2. writes `<Topic>/Source-Notes/<file name>.md` atomically: a temporary file first, then linked into place,
+3. moves the original to `<Topic>/_sources/`.
 
 ## What a run never does
 
-- It never opens an existing Note for writing. If `Source-Notes/` or `_sources/` already holds the name, the new Note and the new PDF both get the same numeric suffix (`name-1.md`, `name-1.pdf`; the original keeps its own extension), and the `source` link points at the suffixed PDF.
-- If a PDF cannot be converted, or cannot be moved to `_sources/` after its Note was written (the Note is then deleted again), the PDF moves to `_inbox/_failed/` and a log with the same base name explains the error. A name taken there gets a suffix too.
-- One failing PDF does not stop the others.
-- It skips a PDF that changed within the last 5 seconds, so a file still being copied is picked up by a later run.
+- It never opens an existing Note for writing. If `Source-Notes/` or `_sources/` already holds the name, the new Note and the new original both get the same numeric suffix (`name-1.md`, `name-1.pdf`; the original keeps its own extension), and the `source` link points at the suffixed original.
+- If a file cannot be converted, or cannot be moved to `_sources/` after its Note was written (the Note is then deleted again), the file moves to `_inbox/_failed/` and a log with the same base name explains the error. A name taken there gets a suffix too.
+- One failing file does not stop the others.
+- It skips a file that changed within the last 5 seconds, so a file still being copied is picked up by a later run.
 - It holds a lock on the Vault folder while it works. A second run on the same Vault skips it and leaves everything as it is.
-- It never touches `_inbox/_failed/`, other subfolders or non-PDF files.
+- It never touches `_inbox/_failed/`, other subfolders or files with other extensions.
 
 `Source-Notes/` and `_sources/` are created when they are missing. The Note starts with this frontmatter:
 
@@ -33,7 +45,7 @@ imported: 2026-11-06
 ---
 ```
 
-- `title` comes from the PDF's metadata title, else from the first heading of the converted text, else from the file name.
+- `title` follows the Title column of the table above.
 - `lang` is `de` or `en` when the offline detector ([Lingua](https://github.com/pemistahl/lingua-py)) is confident. It is left out otherwise, and the Collection's default applies.
 - `topic`, `published`, `author` and `tags` are never written. `published`, `author` and `tags` are for you to add by hand.
 
@@ -72,3 +84,5 @@ uv run pytest
 They only run locally. They do not run in GitHub Actions, because Docling would download its models on every CI run. The first run downloads them and takes about a minute longer.
 
 `tests/fixtures/sample.pdf` is generated by `tests/fixtures/make_sample_pdf.py`. Run that script only to change the fixture.
+
+The other fixtures (`sample.docx`, `.doc`, `.odt`, `.rtf`, `.epub` and `headless.docx`) are generated by `tests/fixtures/make_sample_documents.py`, which needs LibreOffice.

@@ -14,7 +14,7 @@ from pathlib import Path
 
 import yaml
 
-from pdf_importer.conversion import ACCEPTED_EXTENSIONS, Converter
+from pdf_importer.conversion import Converter, accepted_extensions
 from pdf_importer.language import detect_language
 
 log = logging.getLogger(__name__)
@@ -101,12 +101,13 @@ def _inbox_files(vault: Path) -> list[Path]:
         for folder in sorted(vault.iterdir())
         if folder.is_dir() and not folder.name.startswith(("_", "."))
     ]
+    accepted = accepted_extensions()
     return [
         candidate
         for topic in topics
         if (topic / "_inbox").is_dir()
         for candidate in sorted((topic / "_inbox").iterdir())
-        if candidate.is_file() and candidate.suffix.lower() in ACCEPTED_EXTENSIONS
+        if candidate.is_file() and candidate.suffix.lower() in accepted
     ]
 
 

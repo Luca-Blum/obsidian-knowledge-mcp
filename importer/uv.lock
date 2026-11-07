@@ -5,9 +5,12 @@ resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
-    "python_full_version < '3.14' and sys_platform == 'win32'",
-    "python_full_version < '3.14' and sys_platform == 'emscripten'",
-    "python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32'",
+    "python_full_version < '3.13' and sys_platform == 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
+    "python_full_version < '3.13' and sys_platform == 'emscripten'",
+    "python_full_version == '3.13.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.13' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
 [[package]]
@@ -1299,6 +1302,19 @@ wheels = [
 ]
 
 [[package]]
+name = "odfdo"
+version = "3.27.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "lxml" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/63/a7/31f29d2bd39b36557a8e5c7cc557c00b7340fa8ab0878de063f113e6c076/odfdo-3.27.3.tar.gz", hash = "sha256:20d87b7842193917f9804011c83b28a5925a5ff3211d4ac4c5cdade20d5eb54a", size = 342839, upload-time = "2026-10-24T17:53:10.627Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b3/91/04ddf6995bbde740f9a5b39db491d7a3550bbcfa6e65e0f11b865f5f7581/odfdo-3.27.3-py3-none-any.whl", hash = "sha256:6f791c3b095922f11c78d0bfa1ec5a200f13adc3156cb0c785f1ec472fc8d4f4", size = 440824, upload-time = "2026-10-24T17:53:08.87Z" },
+]
+
+[[package]]
 name = "olefile"
 version = "0.47"
 source = { registry = "https://pypi.org/simple" }
@@ -1428,6 +1444,7 @@ source = { editable = "." }
 dependencies = [
     { name = "docling" },
     { name = "lingua-language-detector" },
+    { name = "odfdo" },
     { name = "pypdfium2" },
     { name = "pyyaml" },
 ]
@@ -1441,6 +1458,7 @@ dev = [
 requires-dist = [
     { name = "docling", specifier = "==2.148.0" },
     { name = "lingua-language-detector", specifier = ">=2.2.0" },
+    { name = "odfdo", specifier = "==3.27.3" },
     { name = "pypdfium2", specifier = ">=5.14.0" },
     { name = "pyyaml", specifier = ">=6.0.3" },
 ]
