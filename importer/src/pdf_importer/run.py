@@ -1,4 +1,4 @@
-"""One importer run: every PDF in every Topic's _inbox/ becomes a Source Note."""
+"""One importer run: every source file in every Topic's _inbox/ becomes a Source Note."""
 
 import contextlib
 import datetime
@@ -14,7 +14,7 @@ from pathlib import Path
 
 import yaml
 
-from pdf_importer.conversion import Converter
+from pdf_importer.conversion import ACCEPTED_EXTENSIONS, Converter
 from pdf_importer.language import detect_language
 
 log = logging.getLogger(__name__)
@@ -51,51 +51,51 @@ def _locked(vault: Path) -> Iterator[bool]:
 
 
 def _import_vault(vault: Path) -> None:
-    pdfs = _settled(_inbox_pdfs(vault))
-    if not pdfs:
+    files = _settled(_inbox_files(vault))
+    if not files:
         return
     try:
         converter = Converter()
     except Exception:
         log.exception("could not start the converter")
         return
-    for pdf in pdfs:
+    for file in files:
         try:
-            _import_pdf(pdf, converter)
+            _import_file(file, converter)
         except Exception:
-            log.exception("failed to import %s", pdf)
-            _fail(pdf, traceback.format_exc())
+            log.exception("failed to import %s", file)
+            _fail(file, traceback.format_exc())
 
 
-def _settled(pdfs: list[Path]) -> list[Path]:
-    """The PDFs whose size and modification time have not changed for a few seconds.
+def _settled(files: list[Path]) -> list[Path]:
+    """The files whose size and modification time have not changed for a few seconds.
 
-    A PDF that changed recently may still be being copied. Comparing two looks
+    A file that changed recently may still be being copied. Comparing two looks
     a moment apart also catches a copy that keeps the original modification time.
     """
-    first = {pdf: _fingerprint(pdf) for pdf in pdfs}
+    first = {file: _fingerprint(file) for file in files}
     if first:
         time.sleep(1)
     settled = []
-    for pdf, before in first.items():
-        after = _fingerprint(pdf)
+    for file, before in first.items():
+        after = _fingerprint(file)
         if after is None or after != before or time.time() - after[1] < SETTLE_SECONDS:
-            log.info("skipping %s: changed a moment ago", pdf)
+            log.info("skipping %s: changed a moment ago", file)
         else:
-            settled.append(pdf)
+            settled.append(file)
     return settled
 
 
-def _fingerprint(pdf: Path) -> tuple[int, float] | None:
+def _fingerprint(file: Path) -> tuple[int, float] | None:
     try:
-        stat = pdf.stat()
+        stat = file.stat()
     except FileNotFoundError:
         return None
     return stat.st_size, stat.st_mtime
 
 
-def _inbox_pdfs(vault: Path) -> list[Path]:
-    """The PDFs directly inside `<Topic>/_inbox/` of every Topic of the Vault."""
+def _inbox_files(vault: Path) -> list[Path]:
+    """The source files directly inside `<Topic>/_inbox/` of every Topic of the Vault."""
     topics = [
         folder
         for folder in sorted(vault.iterdir())
@@ -106,45 +106,45 @@ def _inbox_pdfs(vault: Path) -> list[Path]:
         for topic in topics
         if (topic / "_inbox").is_dir()
         for candidate in sorted((topic / "_inbox").iterdir())
-        if candidate.is_file() and candidate.suffix.lower() == ".pdf"
+        if candidate.is_file() and candidate.suffix.lower() in ACCEPTED_EXTENSIONS
     ]
 
 
-def _import_pdf(pdf: Path, converter: Converter) -> None:
-    topic = pdf.parent.parent
-    converted = converter.convert(pdf)
-    name = _free_name(pdf.stem, [(topic / "Source-Notes", ".md"), (topic / "_sources", ".pdf")])
+def _import_file(file: Path, converter: Converter) -> None:
+    topic = file.parent.parent
+    converted = converter.convert(file)
+    name = _free_name(file.stem, [(topic / "Source-Notes", ".md"), (topic / "_sources", file.suffix)])
     frontmatter: dict[str, object] = {"type": "source", "title": converted.title}
     if lang := detect_language(converted.markdown):
         frontmatter["lang"] = lang
-    frontmatter["source"] = f"[[_sources/{name}.pdf]]"
+    frontmatter["source"] = f"[[_sources/{name}{file.suffix}]]"
     frontmatter["imported"] = datetime.date.today()
 
     note = topic / "Source-Notes" / f"{name}.md"
     header = yaml.safe_dump(frontmatter, sort_keys=False, allow_unicode=True)
     _write_atomically(note, f"---\n{header}---\n\n{converted.markdown}\n")
     try:
-        _move(pdf, topic / "_sources" / f"{name}.pdf")
+        _move(file, topic / "_sources" / f"{name}{file.suffix}")
     except Exception:
         note.unlink(missing_ok=True)
         raise
-    log.info("imported %s as %s", pdf, note)
+    log.info("imported %s as %s", file, note)
 
 
-def _fail(pdf: Path, explanation: str) -> None:
-    """Moves the PDF to `_inbox/_failed/` and writes a log with the same base name next to it."""
-    failed = pdf.parent / "_failed"
+def _fail(file: Path, explanation: str) -> None:
+    """Moves the file to `_inbox/_failed/` and writes a log with the same base name next to it."""
+    failed = file.parent / "_failed"
     try:
-        name = _free_name(pdf.stem, [(failed, ".pdf"), (failed, ".log")])
+        name = _free_name(file.stem, [(failed, file.suffix), (failed, ".log")])
         log_file = failed / f"{name}.log"
         _write_atomically(log_file, explanation)
         try:
-            _move(pdf, failed / f"{name}.pdf")
+            _move(file, failed / f"{name}{file.suffix}")
         except Exception:
             log_file.unlink(missing_ok=True)
             raise
     except Exception:
-        log.exception("could not move %s to %s", pdf, failed)
+        log.exception("could not move %s to %s", file, failed)
 
 
 def _free_name(stem: str, places: list[tuple[Path, str]]) -> str:

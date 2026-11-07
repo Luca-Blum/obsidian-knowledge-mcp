@@ -227,3 +227,17 @@ def test_a_run_gives_way_while_another_run_holds_the_vault(tmp_path):
     finally:
         holder.kill()
         holder.wait()
+
+
+def test_the_original_keeps_its_own_extension_and_a_suffix_goes_before_it(tmp_path):
+    vault = tmp_path / "Engineering"
+    topic = vault / "Coaching"
+    sample = SAMPLE_PDF.read_bytes()
+    put_in_inbox(vault, "Paper.PDF", sample)
+    run_importer(vault)
+    put_in_inbox(vault, "Paper.PDF", sample)
+    run_importer(vault)
+
+    assert frontmatter(topic / "Source-Notes" / "Paper.md")["source"] == "[[_sources/Paper.PDF]]"
+    assert frontmatter(topic / "Source-Notes" / "Paper-1.md")["source"] == "[[_sources/Paper-1.PDF]]"
+    assert sorted(f.name for f in (topic / "_sources").iterdir()) == ["Paper-1.PDF", "Paper.PDF"]

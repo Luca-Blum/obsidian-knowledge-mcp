@@ -6,7 +6,7 @@ The importer is a Python project managed with [uv](https://docs.astral.sh/uv/) a
 
 ## What a run does
 
-A run looks at every Topic of every Vault it is given, meaning every first-level folder that is not prefixed with `_` or `.`. Only `.pdf` files directly inside `<Topic>/_inbox/` are imported, and everything else is left alone. For each PDF the run:
+A run looks at every Topic of every Vault it is given, meaning every first-level folder that is not prefixed with `_` or `.`. Only files with an accepted extension (today `.pdf`, listed in `conversion.py`) directly inside `<Topic>/_inbox/` are imported, and everything else is left alone. For each PDF the run:
 
 1. converts it to Markdown with headings and tables,
 2. writes `<Topic>/Source-Notes/<pdf name>.md` atomically: a temporary file first, then linked into place,
@@ -14,7 +14,7 @@ A run looks at every Topic of every Vault it is given, meaning every first-level
 
 ## What a run never does
 
-- It never opens an existing Note for writing. If `Source-Notes/` or `_sources/` already holds the name, the new Note and the new PDF both get the same numeric suffix (`name-1.md`, `name-1.pdf`), and the `source` link points at the suffixed PDF.
+- It never opens an existing Note for writing. If `Source-Notes/` or `_sources/` already holds the name, the new Note and the new PDF both get the same numeric suffix (`name-1.md`, `name-1.pdf`; the original keeps its own extension), and the `source` link points at the suffixed PDF.
 - If a PDF cannot be converted, or cannot be moved to `_sources/` after its Note was written (the Note is then deleted again), the PDF moves to `_inbox/_failed/` and a log with the same base name explains the error. A name taken there gets a suffix too.
 - One failing PDF does not stop the others.
 - It skips a PDF that changed within the last 5 seconds, so a file still being copied is picked up by a later run.
