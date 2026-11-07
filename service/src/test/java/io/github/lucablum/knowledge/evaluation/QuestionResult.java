@@ -31,7 +31,7 @@ record QuestionResult(Question question, List<SearchHit> hits) {
         return 0;
     }
 
-    boolean hit() {
+    boolean found() {
         return firstExpectedRank() > 0;
     }
 

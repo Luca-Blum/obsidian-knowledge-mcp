@@ -18,7 +18,7 @@ record Report(List<QuestionResult> questions, List<NegativeResult> negativeQuest
 
     /** The share of Questions with at least one expected Note in the top 5. */
     double hitAt5() {
-        return mean(result -> result.hit() ? 1 : 0);
+        return mean(result -> result.found() ? 1 : 0);
     }
 
     /** The mean share of expected Notes in the top 5. */

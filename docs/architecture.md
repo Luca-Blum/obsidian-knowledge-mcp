@@ -276,12 +276,15 @@ All values come from MicroProfile Config, so an experiment is a configuration ch
 
 ### 3. Measuring: the Evaluation Set as a Test
 
-A file with real questions and the expected Notes:
+A file with real questions and the expected Notes, plus the Negative Questions (format and how to run it: [`service/README.md`](../service/README.md#evaluation)):
 
 ```yaml
-- question: "What does the Dependency Rule say?"
-  topic: Software-Engineering
-  expected: [Software-Engineering/Source-Notes/clean-architecture-ch5.md]
+questions:
+  - question: "What does the Dependency Rule say?"
+    topic: Software-Engineering
+    expected: [Software-Engineering/Source-Notes/clean-architecture-ch5.md]
+negative-questions:
+  - question: "How should I taper before a marathon?"
 ```
 
 The test computes three metrics, counted on Notes in the result actually returned (not on a list deduplicated afterwards):

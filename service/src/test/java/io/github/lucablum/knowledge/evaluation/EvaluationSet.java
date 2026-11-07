@@ -8,8 +8,11 @@ import io.github.lucablum.knowledge.domain.Topic;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -31,6 +34,15 @@ record EvaluationSet(List<Question> questions, List<NegativeQuestion> negativeQu
     EvaluationSet {
         questions = List.copyOf(questions);
         negativeQuestions = List.copyOf(negativeQuestions);
+    }
+
+    /** The expected Notes that are not among {@code vaultNotes}, such as a misspelt or renamed path. */
+    Set<NotePath> missingNotes(Collection<NotePath> vaultNotes) {
+        Set<NotePath> missing = questions.stream()
+                .flatMap(question -> question.expected().stream())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        missing.removeAll(Set.copyOf(vaultNotes));
+        return missing;
     }
 
     /** @throws IllegalArgumentException if the file does not follow the format or a question has no expected Note */

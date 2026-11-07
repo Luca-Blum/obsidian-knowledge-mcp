@@ -8,6 +8,7 @@ import io.github.lucablum.knowledge.domain.Topic;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -64,6 +65,17 @@ class EvaluationSetTest {
                 """);
 
         assertThatThrownBy(() -> EvaluationSet.read(file)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void whenFindMissingNotes_givenExpectedNoteNotInVault_thenReturnIt() {
+        EvaluationSet set = new EvaluationSet(List.of(
+                new Question("How do I run a kata?", null, Set.of(new NotePath("Coaching/Kata.md"))),
+                new Question("What is a dojo?", null, Set.of(new NotePath("Coaching/Dojo (renamed).md")))), List.of());
+
+        Set<NotePath> missing = set.missingNotes(List.of(new NotePath("Coaching/Kata.md"), new NotePath("Index.md")));
+
+        assertThat(missing).containsExactly(new NotePath("Coaching/Dojo (renamed).md"));
     }
 
     private Path write(String content) throws IOException {

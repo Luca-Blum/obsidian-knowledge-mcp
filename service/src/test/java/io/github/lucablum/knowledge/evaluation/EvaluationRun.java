@@ -6,6 +6,8 @@ import io.github.lucablum.knowledge.FakeEmbedding;
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
 import io.github.lucablum.knowledge.application.IndexVault;
 import io.github.lucablum.knowledge.application.SearchChunks;
+import io.github.lucablum.knowledge.application.Vault;
+import io.github.lucablum.knowledge.application.VaultNote;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
@@ -30,6 +32,9 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 class EvaluationRun {
 
     @Inject
+    Vault vault;
+
+    @Inject
     IndexVault indexVault;
 
     @Inject
@@ -41,8 +46,10 @@ class EvaluationRun {
     @Test
     void whenEvaluate_givenEvaluationSet_thenWriteSummaryAndDetails() throws IOException {
         EvaluationSet set = EvaluationSet.read(Path.of(System.getProperty("evaluation.set")));
+        assertThat(set.missingNotes(vault.notes().stream().map(VaultNote::path).toList()))
+                .as("Expected Notes that are not in %s", collection.vaultPath())
+                .isEmpty();
         int notes = indexVault.run();
-        assertThat(notes).as("Notes indexed from %s", collection.vaultPath()).isPositive();
 
         Report report = new Evaluation(search).run(set);
 
