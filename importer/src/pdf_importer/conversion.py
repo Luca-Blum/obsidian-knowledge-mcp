@@ -1,5 +1,6 @@
-"""Converts a PDF to Markdown with Docling and picks its Title."""
+"""Converts a source file to Markdown with Docling and picks its Title."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -24,12 +25,12 @@ class Converter:
             format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=options)}
         )
 
-    def convert(self, pdf: Path) -> Converted:
-        document = self._docling.convert(pdf).document
-        return Converted(document.export_to_markdown(), _title(pdf, document))
+    def convert(self, source: Path) -> Converted:
+        document = self._docling.convert(source).document
+        return Converted(document.export_to_markdown(), _TITLE_RULES[source.suffix.lower()](source, document))
 
 
-def _title(pdf: Path, document: DoclingDocument) -> str:
+def _pdf_title(pdf: Path, document: DoclingDocument) -> str:
     """The PDF's metadata title, else the first heading, else the file name."""
     pdf_file = pypdfium2.PdfDocument(pdf)
     try:
@@ -42,3 +43,11 @@ def _title(pdf: Path, document: DoclingDocument) -> str:
         if isinstance(item, (TitleItem, SectionHeaderItem)) and item.text.strip():
             return item.text.strip()
     return pdf.stem
+
+
+# How each accepted format picks its Title. Adding a format is one line here plus a test.
+_TITLE_RULES: dict[str, Callable[[Path, DoclingDocument], str]] = {
+    ".pdf": _pdf_title,
+}
+
+ACCEPTED_EXTENSIONS = frozenset(_TITLE_RULES)
