@@ -83,31 +83,39 @@ gh api repos/Luca-Blum/obsidian-knowledge-mcp/actions/runners --jq '.runners[] |
 
 ### 3. Syncthing for the Vault
 
-On the Pi:
+On the Pi, install Syncthing and print its Device ID:
 
 ```shell
 sudo apt-get install -y syncthing
 sudo systemctl enable --now syncthing@$USER
-syncthing cli config folders add --id engineering-vault --label "Engineering Vault" --path /srv/vaults/Engineering
-syncthing cli config folders engineering-vault type set receiveonly
-syncthing --device-id    # the Pi's Device ID, needed on the Mac
+syncthing --device-id
 ```
 
 On the Mac (`brew install --cask syncthing`, web UI at http://localhost:8384):
 
 1. **Add Remote Device**: enter the Pi's Device ID.
-2. **Add Folder**: choose the Vault folder and set the **Folder ID** to `engineering-vault`. It must match the ID on
-   the Pi exactly. Under **Sharing**, tick the Pi.
+2. Share the Vault folder with the Pi (folder → Edit → Sharing → tick the Pi). Note the folder's **Folder ID**
+   (folder → Edit → General). For the Engineering Vault it is `Engineering`.
+3. Copy the Mac's Device ID (Actions → Show ID).
 
-On the Pi, accept the Mac: copy the Mac's Device ID from its web UI (Actions → Show ID) and run
+Back on the Pi, add the Mac and the folder. `<FOLDER-ID>` must be exactly the Folder ID from the Mac, or Syncthing
+treats them as two different folders and nothing syncs:
 
 ```shell
 syncthing cli config devices add --device-id <MAC-DEVICE-ID> --name mac
-syncthing cli config folders engineering-vault devices add --device-id <MAC-DEVICE-ID>
+syncthing cli config folders add --id <FOLDER-ID> --label Engineering --path /srv/vaults/Engineering
+syncthing cli config folders <FOLDER-ID> type set receiveonly
+syncthing cli config folders <FOLDER-ID> ignore-perms set true
+syncthing cli config folders <FOLDER-ID> devices add --device-id <MAC-DEVICE-ID>
 ```
 
-The folder is **Receive Only** on the Pi, so a change on the Pi is never sent back to the Mac. The Pi's web UI only
-listens on the Pi itself. To open it from the Mac: `ssh -L 8384:localhost:8384 <user>@<pi>`, then
+- **Receive Only**: a change on the Pi is never sent back to the Mac.
+- **Ignore permissions**: the importer creates Source Notes that only their owner may read (mode `600`). Without this
+  setting Syncthing copies that mode to the Pi, and the service, which runs as a different user in its container,
+  cannot read them. If files arrived before the setting was on, fix them once with `chmod -R a+rX /srv/vaults/Engineering`.
+
+`syncthing cli show pending folders` lists a folder the Mac offers that the Pi has not added, and shows its Folder ID.
+The Pi's web UI only listens on the Pi itself. To open it from the Mac: `ssh -L 8384:localhost:8384 <user>@<pi>`, then
 http://localhost:8384.
 
 Check the sync with `syncthing cli show connections` (the Mac shows `"connected": true`) and `ls /srv/vaults/Engineering`.
@@ -116,6 +124,21 @@ Check the sync with `syncthing cli show connections` (the Mac shows `"connected"
 
 Push to `main`, or rerun the latest Deploy workflow (GitHub → Actions → Deploy → Re-run all jobs). The first run takes
 a few minutes longer, because `ollama-pull` downloads the embedding model (about 1.2 GB).
+
+## Indexing
+
+For now the service indexes the whole Vault **once, when it starts**. It does not notice later changes yet
+(Reconciliation, issue #11). It embeds Notes one chunk at a time on the Pi's CPU, which takes several seconds per
+chunk: roughly an hour per 4 MB of Markdown. Every deploy restarts the service, so it indexes everything again. Search
+works during indexing, but only finds the Notes indexed so far.
+
+To pick up new Notes now, restart the service: `docker restart knowledgebase-knowledgebase-engineering-1`.
+
+Progress, as the number of chunks in the index:
+
+```shell
+docker exec knowledgebase-postgres-1 psql -U knowledge -d knowledge -Atc "select count(*) from engineering.chunk"
+```
 
 ## Check that it runs
 
@@ -162,4 +185,6 @@ leaves room for Postgres and Ollama in 8 GB.
 | The `deploy` job waits for a runner forever | The runner is offline: `sudo systemctl status 'actions.runner.*'`. |
 | `set in .env` error in the `deploy` job | `/srv/knowledgebase/.env` is missing or a required value is empty. |
 | `knowledgebase-engineering` never gets healthy | Look at its logs. It waits for Postgres and Ollama first, and the first model download can take a while. |
-| Search finds nothing | The Vault is empty on the Pi: check the Syncthing connection. |
+| Search finds nothing | The Vault is empty on the Pi (check the Syncthing connection), or the files arrived after the service started (restart it). |
+| `AccessDeniedException` in the logs | The Notes are not readable for the container: see *Ignore permissions* above. |
+| `timeout period ... exceeded while executing POST /api/embed` | Ollama is slower than `OLLAMA_TIMEOUT` (default `120s`). Raise it in `.env`. |
