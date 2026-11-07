@@ -28,7 +28,7 @@ def run(vaults: list[Path]) -> None:
         try:
             with _locked(vault) as acquired:
                 if not acquired:
-                    log.warning("skipping %s: another run holds it", vault)
+                    log.warning("skipped %s: another run holds it", vault)
                     continue
                 _import_vault(vault)
         except OSError:
@@ -60,10 +60,12 @@ def _import_vault(vault: Path) -> None:
         log.exception("could not start the converter")
         return
     for file in files:
+        started = time.monotonic()
         try:
-            _import_file(file, converter)
+            note = _import_file(file, converter)
+            log.info("converted %s as %s in %.1fs", file, note, time.monotonic() - started)
         except Exception:
-            log.exception("failed to import %s", file)
+            log.exception("failed %s in %.1fs", file, time.monotonic() - started)
             _fail(file, traceback.format_exc())
 
 
@@ -80,7 +82,7 @@ def _settled(files: list[Path]) -> list[Path]:
     for file, before in first.items():
         after = _fingerprint(file)
         if after is None or after != before or time.time() - after[1] < SETTLE_SECONDS:
-            log.info("skipping %s: changed a moment ago", file)
+            log.info("skipped %s: changed a moment ago", file)
         else:
             settled.append(file)
     return settled
@@ -111,7 +113,7 @@ def _inbox_files(vault: Path) -> list[Path]:
     ]
 
 
-def _import_file(file: Path, converter: Converter) -> None:
+def _import_file(file: Path, converter: Converter) -> Path:
     topic = file.parent.parent
     converted = converter.convert(file)
     name = _free_name(file.stem, [(topic / "Source-Notes", ".md"), (topic / "_sources", file.suffix)])
@@ -132,7 +134,7 @@ def _import_file(file: Path, converter: Converter) -> None:
     except Exception:
         note.unlink(missing_ok=True)
         raise
-    log.info("imported %s as %s", file, note)
+    return note
 
 
 def _fail(file: Path, explanation: str) -> None:

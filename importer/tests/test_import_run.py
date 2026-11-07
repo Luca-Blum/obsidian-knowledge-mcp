@@ -6,6 +6,7 @@ and asserts only on the files it leaves in the Vault.
 
 import datetime
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -20,9 +21,13 @@ DOCUMENT_EXTENSIONS = ["epub", "docx", "doc", "odt", "rtf"]
 MARKUP_EXTENSIONS = ["pptx", "ppt", "odp", "html", "mhtml", "adoc", "tex", "xml"]
 
 
-def run_importer(*vaults: Path) -> None:
+def run_importer(*vaults: Path) -> str:
+    """Runs the importer once and returns what it logged, as launchd would write it to its log file."""
     args = [arg for vault in vaults for arg in ("--vault", str(vault))]
-    subprocess.run([sys.executable, "-m", "pdf_importer", *args], check=True)
+    result = subprocess.run(
+        [sys.executable, "-m", "pdf_importer", *args], check=True, capture_output=True, text=True
+    )
+    return result.stderr
 
 
 def settled(pdf: Path) -> Path:
@@ -470,3 +475,32 @@ def test_a_markdown_file_with_broken_frontmatter_ends_in_failed(tmp_path):
 
     assert (topic / "_inbox" / "_failed" / "broken.md").read_bytes() == broken
     assert not (topic / "Source-Notes").exists()
+
+
+def test_the_log_names_each_file_as_converted_with_its_duration(tmp_path):
+    vault = tmp_path / "Engineering"
+    put_in_inbox(vault, "dependency-rule.pdf", SAMPLE_PDF.read_bytes())
+
+    log = run_importer(vault)
+
+    assert re.search(r"converted .*dependency-rule\.pdf .* in \d+\.\d+s", log)
+
+
+def test_the_log_names_each_file_as_failed_with_its_duration(tmp_path):
+    vault = tmp_path / "Engineering"
+    put_in_inbox(vault, "broken.pdf", os.urandom(2048))
+
+    log = run_importer(vault)
+
+    assert re.search(r"failed .*broken\.pdf in \d+\.\d+s", log)
+
+
+def test_the_log_names_a_file_that_changed_a_moment_ago_as_skipped(tmp_path):
+    vault = tmp_path / "Engineering"
+    inbox = vault / "Coaching" / "_inbox"
+    inbox.mkdir(parents=True)
+    (inbox / "half-copied.pdf").write_bytes(b"%PDF-1.7 still being copied")
+
+    log = run_importer(vault)
+
+    assert re.search(r"skipped .*half-copied\.pdf", log)
