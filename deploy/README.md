@@ -1,7 +1,7 @@
 # Deploy to the Raspberry Pi
 
-`docker-compose.yml` runs Postgres with pgvector, Ollama and `kb-engineering` on the Pi. The Vault is synced by
-Syncthing and mounted read-only into `kb-engineering` only.
+`docker-compose.yml` runs Postgres with pgvector, Ollama and `knowledgebase-engineering` on the Pi. The Vault is synced by
+Syncthing and mounted read-only into `knowledgebase-engineering` only.
 
 ## First setup
 
@@ -11,7 +11,7 @@ docker login ghcr.io    # only if the image is private
 docker compose up -d
 ```
 
-`ollama-pull` downloads the embedding model once. `kb-engineering` waits for healthy Postgres and Ollama, and its own
+`ollama-pull` downloads the embedding model once. `knowledgebase-engineering` waits for healthy Postgres and Ollama, and its own
 health check (`/q/health/ready`) reports ready once the datasource works.
 
 ## Update

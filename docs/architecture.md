@@ -29,8 +29,8 @@ flowchart TB
     subgraph Pi["Raspberry Pi 5"]
         copies["Vault copies<br/><small>each mounted read-only</small>"]
         subgraph Instances["one instance per Collection, same image"]
-            eng["kb-engineering<br/><small>schema engineering</small>"]
-            train["kb-training<br/><small>schema training</small>"]
+            eng["knowledgebase-engineering<br/><small>schema engineering</small>"]
+            train["knowledgebase-training<br/><small>schema training</small>"]
         end
         ollama["Embedding model<br/><small>Ollama, shared</small>"]
         pg["Postgres + pgvector<br/><small>one schema per Collection</small>"]
@@ -374,8 +374,8 @@ Docker is needed on the Mac only for development, where Quarkus Dev Services sta
 | Tool | Purpose | Operation |
 | --- | --- | --- |
 | Raspberry Pi OS Lite (64-bit) | Base system without a desktop | On the NVMe SSD |
-| `kb-engineering` | Quarkus app for the Engineering Collection: indexing, search, MCP | Container (own arm64 image), schema `engineering` |
-| `kb-training` | The same Quarkus app for the Training Collection | Container (same image, different configuration), schema `training` |
+| `knowledgebase-engineering` | Quarkus app for the Engineering Collection: indexing, search, MCP | Container (own arm64 image), schema `engineering` |
+| `knowledgebase-training` | The same Quarkus app for the Training Collection | Container (same image, different configuration), schema `training` |
 | `postgres` | Chunks, vectors, full text, Links; one schema per Collection | Container (`pgvector/pgvector`) |
 | `ollama` | Embedding model (bge-m3), used by both instances | Container (official image) |
 | Syncthing | Receive both Vaults (Receive Only) | Native (apt); each Vault as a read-only volume, mounted only into its own container |

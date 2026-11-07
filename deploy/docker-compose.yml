@@ -37,7 +37,7 @@ services:
     entrypoint: ["ollama", "pull", "${EMBEDDING_MODEL:-bge-m3}"]
     restart: "no"
 
-  kb-engineering:
+  knowledgebase-engineering:
     image: ${IMAGE:-ghcr.io/luca-blum/obsidian-knowledge-mcp:latest}
     restart: unless-stopped
     depends_on:
