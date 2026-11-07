@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>io.github.lucablum.pdf-importer</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>__UV__</string>
+        <string>run</string>
+        <string>--project</string>
+        <string>__IMPORTER_DIR__</string>
+        <string>pdf-importer</string>
+        <string>--vault</string>
+        <string>__VAULT_1__</string>
+        <string>--vault</string>
+        <string>__VAULT_2__</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>__INTERVAL_SECONDS__</integer>
+    <key>StandardErrorPath</key>
+    <string>__LOG_FILE__</string>
+    <key>StandardOutPath</key>
+    <string>__LOG_FILE__</string>
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

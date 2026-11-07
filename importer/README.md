@@ -84,7 +84,63 @@ uv run docling-tools models download
 uv run pdf-importer --vault ~/Obsidian/Engineering --vault ~/Obsidian/Training
 ```
 
-Each import is logged to stderr.
+Each file is logged to stderr with its outcome and, for a converted or failed file, how long it took:
+
+```text
+2026-11-06 14:02:11,512 INFO converted /…/Coaching/_inbox/dependency-rule.pdf as /…/Coaching/Source-Notes/dependency-rule.md in 8.3s
+2026-11-06 14:02:12,044 ERROR failed /…/Coaching/_inbox/broken.pdf in 0.4s
+2026-11-06 14:02:13,100 INFO skipped /…/Coaching/_inbox/half-copied.pdf: changed a moment ago
+```
+
+## Run in the background
+
+A `launchd` agent starts the importer about once a minute after login. Each run scans every Topic's `_inbox/` in the Vaults it is given, so a new Topic needs no change here. The repository holds only a template, `launchd/io.github.lucablum.pdf-importer.plist`. The Vault paths, the interval and the log location are placeholders that you fill in when you install it, so they live in `~/Library/LaunchAgents/`, outside the code.
+
+### Download Docling's models first
+
+Do this once before installing the agent. Otherwise the first background import downloads several hundred MB of models while it runs, and a slow or offline Mac makes that import fail:
+
+```sh
+uv run docling-tools models download
+```
+
+The models land in Docling's default cache and are shared by the background runs, because the agent runs as you.
+
+### Install the agent
+
+From this directory:
+
+```sh
+mkdir -p ~/Library/Logs/pdf-importer
+sed \
+  -e "s|__UV__|$(command -v uv)|" \
+  -e "s|__IMPORTER_DIR__|$PWD|" \
+  -e "s|__VAULT_1__|$HOME/Obsidian/Engineering|" \
+  -e "s|__VAULT_2__|$HOME/Obsidian/Training|" \
+  -e "s|__INTERVAL_SECONDS__|60|" \
+  -e "s|__LOG_FILE__|$HOME/Library/Logs/pdf-importer/importer.log|g" \
+  launchd/io.github.lucablum.pdf-importer.plist \
+  > ~/Library/LaunchAgents/io.github.lucablum.pdf-importer.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/io.github.lucablum.pdf-importer.plist
+```
+
+Change the two Vault paths, the interval or the log file in those `sed` lines to suit. A third Vault needs another `--vault` pair in the plist. To change anything later, edit the installed plist, then `launchctl bootout gui/$(id -u)/io.github.lucablum.pdf-importer` and bootstrap again. To remove the agent, boot it out and delete the plist.
+
+### Check that it works
+
+1. Drop a PDF into `<Vault>/<Topic>/_inbox/`.
+2. Wait one interval, plus the time the conversion takes.
+3. Check that `<Topic>/Source-Notes/` holds the Note and `_sources/` the PDF, and that the log shows the file as converted:
+
+```sh
+tail -f ~/Library/Logs/pdf-importer/importer.log
+```
+
+If nothing happens, `launchctl print gui/$(id -u)/io.github.lucablum.pdf-importer` shows the agent's state and last exit code.
+
+### Retry a failed file
+
+A failed file waits in `<Topic>/_inbox/_failed/` with a `.log` next to it that holds the error. Fix the cause if there is one, then move the file back into `<Topic>/_inbox/`. The next run picks it up. Delete the old `.log` once you no longer need it.
 
 ## Tests
 
