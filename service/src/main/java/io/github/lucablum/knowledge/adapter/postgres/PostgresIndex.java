@@ -5,19 +5,27 @@ import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
 import io.github.lucablum.knowledge.application.EmbeddedChunk;
 import io.github.lucablum.knowledge.application.Index;
 import io.github.lucablum.knowledge.domain.Chunk;
+import io.github.lucablum.knowledge.domain.Note;
+import io.github.lucablum.knowledge.domain.NoteKind;
 import io.github.lucablum.knowledge.domain.NotePath;
+import io.github.lucablum.knowledge.domain.PublishedDate;
 import io.github.lucablum.knowledge.domain.SearchHit;
+import io.github.lucablum.knowledge.domain.SourceListing;
 import io.github.lucablum.knowledge.domain.Topic;
+import io.github.lucablum.knowledge.domain.TopicCount;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.sql.Array;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import org.jmolecules.architecture.hexagonal.SecondaryAdapter;
 
 /** Stores Notes and Chunks in the Collection's own schema; vectors live in pgvector columns. */
@@ -34,11 +42,11 @@ public class PostgresIndex implements Index {
     }
 
     @Override
-    public void replace(NotePath path, List<EmbeddedChunk> chunks, String embeddingModel) {
+    public void replace(Note note, List<EmbeddedChunk> chunks, String embeddingModel) {
         Transaction.run(dataSource, connection -> {
-            deleteNote(connection, path);
-            insertNote(connection, path);
-            insertChunks(connection, path, chunks, embeddingModel);
+            deleteNote(connection, note.path());
+            insertNote(connection, note);
+            insertChunks(connection, note.path(), chunks, embeddingModel);
         });
     }
 
@@ -65,13 +73,24 @@ public class PostgresIndex implements Index {
     /** A {@code null} topic name leaves the search unrestricted. */
     private List<SearchHit> nearestInTopic(float[] query, String topicName, int k) {
         String vector = Arrays.toString(query);
-        return search(sql.nearest(), select -> {
+        return query(sql.nearest(), select -> {
             select.setString(1, vector);
             select.setString(2, topicName);
             select.setString(3, topicName);
             select.setString(4, vector);
             select.setInt(5, k);
-        });
+        }, PostgresIndex::toSearchHit);
+    }
+
+    @Override
+    public List<TopicCount> topics() {
+        return query(sql.topics(), select -> {},
+                row -> new TopicCount(new Topic(row.getString("topic")), row.getInt("notes")));
+    }
+
+    @Override
+    public List<SourceListing> sources(Topic topic) {
+        return query(sql.sources(), select -> select.setString(1, topic.name()), PostgresIndex::toSourceListing);
     }
 
     private void deleteNote(Connection connection, NotePath path) throws SQLException {
@@ -81,10 +100,16 @@ public class PostgresIndex implements Index {
         }
     }
 
-    private void insertNote(Connection connection, NotePath path) throws SQLException {
+    private void insertNote(Connection connection, Note note) throws SQLException {
         try (PreparedStatement insert = connection.prepareStatement(sql.insertNote())) {
-            insert.setString(1, path.value());
-            insert.setString(2, path.topic().map(Topic::name).orElse(null));
+            insert.setString(1, note.path().value());
+            insert.setString(2, note.path().topic().map(Topic::name).orElse(null));
+            insert.setString(3, note.kind().label());
+            insert.setString(4, note.title());
+            insert.setObject(5, note.imported().orElse(null), Types.DATE);
+            insert.setString(6, note.published().map(PublishedDate::value).orElse(null));
+            insert.setString(7, note.author().orElse(null));
+            insert.setString(8, note.language().code());
             insert.executeUpdate();
         }
     }
@@ -106,24 +131,24 @@ public class PostgresIndex implements Index {
         }
     }
 
-    private List<SearchHit> search(String statement, Parameters parameters) {
+    private <T> List<T> query(String statement, Parameters parameters, Row<T> row) {
         try (Connection connection = dataSource.getConnection();
                 PreparedStatement select = connection.prepareStatement(statement)) {
             parameters.bindTo(select);
-            return readHits(select);
+            return readRows(select, row);
         } catch (SQLException e) {
-            throw new IllegalStateException("Search failed", e);
+            throw new IllegalStateException("Query failed", e);
         }
     }
 
-    private static List<SearchHit> readHits(PreparedStatement select) throws SQLException {
-        List<SearchHit> hits = new ArrayList<>();
+    private static <T> List<T> readRows(PreparedStatement select, Row<T> row) throws SQLException {
+        List<T> results = new ArrayList<>();
         try (ResultSet rows = select.executeQuery()) {
             while (rows.next()) {
-                hits.add(toSearchHit(rows));
+                results.add(row.read(rows));
             }
         }
-        return hits;
+        return results;
     }
 
     private static SearchHit toSearchHit(ResultSet row) throws SQLException {
@@ -131,7 +156,17 @@ public class PostgresIndex implements Index {
                 row.getString("content"),
                 row.getString("note_path"),
                 List.of((String[]) row.getArray("heading_path").getArray()),
+                NoteKind.ofType(row.getString("kind")),
                 row.getDouble("score"));
+    }
+
+    private static SourceListing toSourceListing(ResultSet row) throws SQLException {
+        return new SourceListing(
+                row.getString("path"),
+                row.getString("title"),
+                Optional.ofNullable(row.getString("published")).map(PublishedDate::new),
+                Optional.ofNullable(row.getObject("imported", LocalDate.class)),
+                Optional.ofNullable(row.getString("author")));
     }
 
     private static Array textArray(Connection connection, Collection<String> values) throws SQLException {
@@ -140,5 +175,9 @@ public class PostgresIndex implements Index {
 
     private interface Parameters {
         void bindTo(PreparedStatement statement) throws SQLException;
+    }
+
+    private interface Row<T> {
+        T read(ResultSet row) throws SQLException;
     }
 }

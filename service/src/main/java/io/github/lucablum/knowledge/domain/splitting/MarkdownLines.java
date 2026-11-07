@@ -1,5 +1,6 @@
 package io.github.lucablum.knowledge.domain.splitting;
 
+import io.github.lucablum.knowledge.domain.Frontmatter;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -11,7 +12,6 @@ import java.util.regex.Pattern;
 final class MarkdownLines {
 
     private static final Pattern CODE_FENCE = Pattern.compile("^\\s*(```|~~~)");
-    private static final Pattern FRONTMATTER_FENCE = Pattern.compile("---[ \\t]*");
 
     private MarkdownLines() {
     }
@@ -55,22 +55,7 @@ final class MarkdownLines {
         return CODE_FENCE.matcher(line).find();
     }
 
-    /**
-     * Frontmatter is the block between a first line and the next line of {@code ---}; unclosed, it is just text.
-     */
     private static List<String> withoutFrontmatter(List<String> lines) {
-        if (!isFrontmatterFence(lines.getFirst())) {
-            return lines;
-        }
-        for (int i = 1; i < lines.size(); i++) {
-            if (isFrontmatterFence(lines.get(i))) {
-                return lines.subList(i + 1, lines.size());
-            }
-        }
-        return lines;
-    }
-
-    private static boolean isFrontmatterFence(String line) {
-        return FRONTMATTER_FENCE.matcher(line).matches();
+        return lines.subList(Frontmatter.bodyStart(lines), lines.size());
     }
 }

@@ -26,6 +26,17 @@ public record NotePath(String value) {
         return fileName.endsWith(".md") ? fileName.substring(0, fileName.length() - ".md".length()) : fileName;
     }
 
+    /** Whether a folder on the way to the Note, at any depth, is called {@code folderName}. */
+    public boolean isInFolder(String folderName) {
+        String[] segments = value.split("/");
+        for (int i = 0; i < segments.length - 1; i++) {
+            if (segments[i].equals(folderName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public String toString() {
         return value;
