@@ -19,7 +19,7 @@ Turns the documents in a Topic's `_inbox/` into Source Notes. It runs on the Mac
 | LaTeX | `.tex` | first heading, else file name |
 | JATS XML | `.xml` | article title, else file name |
 
-`.doc`, `.rtf` and `.ppt` are converted through LibreOffice, so they need it installed (`brew install --cask libreoffice`). An `.xml` file that is not JATS is not guessed at: it moves to `_inbox/_failed/` with a log, like a corrupt file. So does an `.html` or `.tex` file that contains binary data. A `.doc` can lose the structure of its tables on the way. An EPUB whose chapters mark headings with styled paragraphs instead of heading tags gets the file name as its Title and no headings in the text.
+`.doc`, `.rtf` and `.ppt` are converted through LibreOffice, so they need it installed (`brew install --cask libreoffice`). An `.xml` file that is not JATS is not guessed at: it moves to `_inbox/_failed/` with a log, like a corrupt file. So does an `.html`, `.mhtml`, `.adoc` or `.tex` file that contains binary data. A `.doc` can lose the structure of its tables on the way. An EPUB whose chapters mark headings with styled paragraphs instead of heading tags gets the file name as its Title and no headings in the text.
 
 The importer is a Python project managed with [uv](https://docs.astral.sh/uv/) and is independent of the Maven build. It shares nothing with the knowledge service except the frontmatter format of a Source Note.
 

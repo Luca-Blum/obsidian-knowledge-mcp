@@ -63,8 +63,9 @@ _SIGNATURES = {
 }
 
 
-# Docling's HTML and LaTeX parsers tolerate anything, so binary content has to be turned away first.
-_TEXT_FORMATS = frozenset({".html", ".tex"})
+# Docling's text parsers tolerate anything, so binary content has to be turned away first.
+_TEXT_FORMATS = frozenset({".html", ".mhtml", ".adoc", ".tex"})
+_BINARY_SNIFF_BYTES = 8192
 
 
 def _require_signature(source: Path) -> None:
@@ -74,8 +75,10 @@ def _require_signature(source: Path) -> None:
         with source.open("rb") as file:
             if file.read(len(signature)) != signature:
                 raise ValueError(f"{source.name} is not a valid {extension} file")
-    if extension in _TEXT_FORMATS and b"\x00" in source.read_bytes():
-        raise ValueError(f"{source.name} is not a text file")
+    if extension in _TEXT_FORMATS:
+        with source.open("rb") as file:
+            if b"\x00" in file.read(_BINARY_SNIFF_BYTES):
+                raise ValueError(f"{source.name} is not a text file")
 
 
 # How each accepted format picks its Title. Adding a format is one line here plus a test,
