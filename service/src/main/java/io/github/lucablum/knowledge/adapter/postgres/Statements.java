@@ -31,7 +31,8 @@ record Statements(
             FROM {chunk} c JOIN {note} n ON n.path = c.note_path
             WHERE (?::text IS NULL OR n.topic = ?)
               AND 1 - (c.embedding <=> ?::vector) >= ?
-            ORDER BY c.embedding <=> ?::vector""";
+            ORDER BY c.embedding <=> ?::vector, c.note_path, c.ordinal
+            LIMIT ?""";
 
     static Statements forSchema(String schema) {
         if (!IDENTIFIER.matcher(schema).matches()) {

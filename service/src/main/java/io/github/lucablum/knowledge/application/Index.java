@@ -17,9 +17,12 @@ public interface Index {
     /** Removes every Note that is not among {@code notes}. */
     void retainOnly(Collection<NotePath> notes);
 
-    /** Every Chunk whose cosine similarity to {@code query} reaches {@code minimumSimilarity}, closest first. */
-    List<SearchHit> nearest(float[] query, double minimumSimilarity);
+    /**
+     * The {@code limit} Chunks closest to {@code query} whose cosine similarity reaches {@code minimumSimilarity},
+     * closest first.
+     */
+    List<SearchHit> nearest(float[] query, double minimumSimilarity, int limit);
 
-    /** The same as {@link #nearest(float[], double)}, restricted to the Chunks within {@code topic}. */
-    List<SearchHit> nearest(float[] query, Topic topic, double minimumSimilarity);
+    /** The same as {@link #nearest(float[], double, int)}, restricted to the Chunks within {@code topic}. */
+    List<SearchHit> nearest(float[] query, Topic topic, double minimumSimilarity, int limit);
 }

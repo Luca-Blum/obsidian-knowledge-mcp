@@ -53,5 +53,9 @@ public interface CollectionConfig {
         /** Caps the Search Hits of one Note, so one long Note cannot take every slot. */
         @WithDefault("2")
         int maxHitsPerNote();
+
+        /** How many of the closest Chunks a search looks at; {@code moreInNote} counts only among them. */
+        @WithDefault("50")
+        int candidates();
     }
 }

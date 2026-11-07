@@ -4,6 +4,7 @@ import io.github.lucablum.knowledge.application.Embedding;
 import io.github.lucablum.knowledge.application.Index;
 import io.github.lucablum.knowledge.application.IndexVault;
 import io.github.lucablum.knowledge.application.SearchChunks;
+import io.github.lucablum.knowledge.application.SearchSettings;
 import io.github.lucablum.knowledge.application.Vault;
 import io.github.lucablum.knowledge.application.VaultIndexer;
 import io.github.lucablum.knowledge.application.VectorSearch;
@@ -24,7 +25,7 @@ public class UseCases {
     @ApplicationScoped
     SearchChunks searchChunks(Embedding embedding, Index index, CollectionConfig collection) {
         CollectionConfig.Search search = collection.search();
-        return new VectorSearch(embedding, index, search.defaultK(), search.maxK(), search.minimumSimilarity(),
-                search.maxHitsPerNote());
+        return new VectorSearch(embedding, index, new SearchSettings(search.defaultK(), search.maxK(),
+                search.minimumSimilarity(), search.maxHitsPerNote(), search.candidates()));
     }
 }

@@ -53,17 +53,17 @@ public class PostgresIndex implements Index {
     }
 
     @Override
-    public List<SearchHit> nearest(float[] query, double minimumSimilarity) {
-        return nearestInTopic(query, null, minimumSimilarity);
+    public List<SearchHit> nearest(float[] query, double minimumSimilarity, int limit) {
+        return nearestInTopic(query, null, minimumSimilarity, limit);
     }
 
     @Override
-    public List<SearchHit> nearest(float[] query, Topic topic, double minimumSimilarity) {
-        return nearestInTopic(query, topic.name(), minimumSimilarity);
+    public List<SearchHit> nearest(float[] query, Topic topic, double minimumSimilarity, int limit) {
+        return nearestInTopic(query, topic.name(), minimumSimilarity, limit);
     }
 
     /** A {@code null} topic name leaves the search unrestricted. */
-    private List<SearchHit> nearestInTopic(float[] query, String topicName, double minimumSimilarity) {
+    private List<SearchHit> nearestInTopic(float[] query, String topicName, double minimumSimilarity, int limit) {
         String vector = Arrays.toString(query);
         return search(sql.nearest(), select -> {
             select.setString(1, vector);
@@ -72,6 +72,7 @@ public class PostgresIndex implements Index {
             select.setString(4, vector);
             select.setDouble(5, minimumSimilarity);
             select.setString(6, vector);
+            select.setInt(7, limit);
         });
     }
 
@@ -132,7 +133,8 @@ public class PostgresIndex implements Index {
                 row.getString("content"),
                 row.getString("note_path"),
                 List.of((String[]) row.getArray("heading_path").getArray()),
-                row.getDouble("score"));
+                row.getDouble("score"),
+                0);
     }
 
     private static Array textArray(Connection connection, Collection<String> values) throws SQLException {
