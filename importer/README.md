@@ -18,8 +18,10 @@ Turns the documents in a Topic's `_inbox/` into Source Notes. It runs on the Mac
 | AsciiDoc | `.adoc` | first heading, else file name |
 | LaTeX | `.tex` | first heading, else file name |
 | JATS XML | `.xml` | article title, else file name |
+| Markdown | `.md` | existing `title`, else first heading, else file name |
+| Plain text | `.txt` | file name |
 
-`.doc`, `.rtf` and `.ppt` are converted through LibreOffice, so they need it installed (`brew install --cask libreoffice`). An `.xml` file that is not JATS is not guessed at: it moves to `_inbox/_failed/` with a log, like a corrupt file. So does an `.html`, `.mhtml`, `.adoc` or `.tex` file that contains binary data. A `.doc` can lose the structure of its tables on the way. An EPUB whose chapters mark headings with styled paragraphs instead of heading tags gets the file name as its Title and no headings in the text.
+`.doc`, `.rtf` and `.ppt` are converted through LibreOffice, so they need it installed (`brew install --cask libreoffice`). An `.xml` file that is not JATS is not guessed at: it moves to `_inbox/_failed/` with a log, like a corrupt file. So does an `.html`, `.mhtml`, `.adoc`, `.tex`, `.md` or `.txt` file that contains binary data, and a `.md` whose frontmatter is not valid YAML. A `.doc` can lose the structure of its tables on the way. An EPUB whose chapters mark headings with styled paragraphs instead of heading tags gets the file name as its Title and no headings in the text.
 
 The importer is a Python project managed with [uv](https://docs.astral.sh/uv/) and is independent of the Maven build. It shares nothing with the knowledge service except the frontmatter format of a Source Note.
 
@@ -55,6 +57,10 @@ imported: 2026-11-06
 - `title` follows the Title column of the table above.
 - `lang` is `de` or `en` when the offline detector ([Lingua](https://github.com/pemistahl/lingua-py)) is confident. It is left out otherwise, and the Collection's default applies.
 - `topic`, `published`, `author` and `tags` are never written. `published`, `author` and `tags` are for you to add by hand.
+
+### Markdown and text files
+
+A `.md` and a `.txt` skip Docling: the text becomes the Note body, apart from trailing blank lines. A `.txt` is never parsed for frontmatter, so its Title is the file name. A `.md` that already has frontmatter keeps every value in it. A `title` that is empty or not text counts as missing. The importer only adds the fields that are missing (`title`, `lang`, `source`, `imported`), and `type: source` is always set, replacing any other `type`, because otherwise the file would not be a Source Note.
 
 ## Install
 
