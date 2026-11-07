@@ -1,0 +1,12 @@
+MIME-Version: 1.0
+Content-Type: multipart/related; boundary="----sample"; type="text/html"
+
+------sample
+Content-Type: text/html; charset="utf-8"
+Content-Location: http://example.com/index.html
+
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Browser tab</title></head>
+<body><h1>Notes on the Dependency Rule</h1><p>Source code dependencies must point only inward, toward higher-level policies.</p><h2>Crossing Boundaries</h2><p>We use dynamic polymorphism to invert the source code dependency at that point.</p></body></html>
+
+------sample--

@@ -1,0 +1,7 @@
+= Notes on the Dependency Rule
+
+Source code dependencies must point only inward, toward higher-level policies.
+
+== Crossing Boundaries
+
+We use dynamic polymorphism to invert the source code dependency at that point.
