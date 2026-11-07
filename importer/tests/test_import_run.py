@@ -92,7 +92,7 @@ def test_takes_the_title_from_the_first_heading_when_the_pdf_has_no_metadata_tit
 def test_leaves_everything_alone_that_is_not_a_pdf_directly_inside_a_topic_inbox(tmp_path):
     vault = tmp_path / "Engineering"
     untouched = [
-        vault / "Coaching" / "_inbox" / "notes.txt",
+        vault / "Coaching" / "_inbox" / "notes.csv",
         vault / "Coaching" / "_inbox" / "_failed" / "broken.pdf",
         vault / "_templates" / "_inbox" / "template.pdf",
         vault / ".obsidian" / "_inbox" / "plugin.pdf",
@@ -335,3 +335,138 @@ def test_an_xml_file_that_is_not_jats_ends_in_failed_with_a_log_and_nothing_else
     assert (topic / "_inbox" / "_failed" / "config.xml").read_bytes() == config
     assert (topic / "_inbox" / "_failed" / "config.log").read_text(encoding="utf-8").strip()
     assert sorted(f.name for f in vault.rglob("*") if f.is_file()) == ["config.log", "config.xml"]
+
+
+ENGLISH = "Source code dependencies must point only inward, toward higher-level policies. "
+
+
+def test_a_markdown_file_without_frontmatter_gets_the_importer_fields(tmp_path):
+    vault = tmp_path / "Engineering"
+    topic = vault / "Coaching"
+    original = f"Intro line.\n\n# Dependency Rule\n\n{ENGLISH * 3}\n".encode()
+    put_in_inbox(vault, "rule.md", original)
+
+    run_importer(vault)
+
+    note = topic / "Source-Notes" / "rule.md"
+    assert frontmatter(note) == {
+        "type": "source",
+        "title": "Dependency Rule",
+        "lang": "en",
+        "source": "[[_sources/rule.md]]",
+        "imported": datetime.date.today(),
+    }
+    assert note.read_text(encoding="utf-8").endswith(original.decode())
+    assert (topic / "_sources" / "rule.md").read_bytes() == original
+    assert list((topic / "_inbox").iterdir()) == []
+
+
+def test_a_markdown_file_keeps_its_own_fields_and_gains_only_the_missing_ones(tmp_path):
+    vault = tmp_path / "Engineering"
+    topic = vault / "Coaching"
+    put_in_inbox(
+        vault,
+        "own.md",
+        f"---\ntype: article\ntitle: My Title\nauthor: Ada\nlang: de\ntags: [a, b]\n---\n# Other Heading\n\n{ENGLISH}\n".encode(),
+    )
+
+    run_importer(vault)
+
+    note = topic / "Source-Notes" / "own.md"
+    assert frontmatter(note) == {
+        "type": "source",
+        "title": "My Title",
+        "author": "Ada",
+        "lang": "de",
+        "tags": ["a", "b"],
+        "source": "[[_sources/own.md]]",
+        "imported": datetime.date.today(),
+    }
+    text = note.read_text(encoding="utf-8")
+    assert text.count("---\n") == 2
+    assert text.endswith(f"# Other Heading\n\n{ENGLISH}\n")
+
+
+def test_a_markdown_file_without_title_or_heading_is_titled_by_its_file_name(tmp_path):
+    vault = tmp_path / "Engineering"
+    put_in_inbox(vault, "plain-name.md", b"---\nauthor: Ada\n---\nJust words.\n")
+
+    run_importer(vault)
+
+    assert frontmatter(vault / "Coaching" / "Source-Notes" / "plain-name.md")["title"] == "plain-name"
+
+
+def test_a_heading_inside_a_code_fence_is_not_the_title(tmp_path):
+    vault = tmp_path / "Engineering"
+    put_in_inbox(vault, "fenced.md", b"```sh\n# a comment\n```\n\n## Real\n")
+
+    run_importer(vault)
+
+    assert frontmatter(vault / "Coaching" / "Source-Notes" / "fenced.md")["title"] == "Real"
+
+
+def test_a_text_file_is_taken_over_as_the_note_body(tmp_path):
+    vault = tmp_path / "Engineering"
+    topic = vault / "Coaching"
+    original = f"{ENGLISH * 3}\nSecond line.\n".encode()
+    put_in_inbox(vault, "memo.txt", original)
+
+    run_importer(vault)
+
+    note = topic / "Source-Notes" / "memo.md"
+    header = frontmatter(note)
+    assert header["type"] == "source"
+    assert header["title"] == "memo"
+    assert header["source"] == "[[_sources/memo.txt]]"
+    assert note.read_text(encoding="utf-8").endswith(f"---\n\n{original.decode()}")
+    assert (topic / "_sources" / "memo.txt").read_bytes() == original
+
+
+def test_a_text_file_with_frontmatter_lookalike_is_not_parsed(tmp_path):
+    vault = tmp_path / "Engineering"
+    put_in_inbox(vault, "dashes.txt", b"---\ntitle: Nope\n---\nBody\n")
+
+    run_importer(vault)
+
+    note = vault / "Coaching" / "Source-Notes" / "dashes.md"
+    assert frontmatter(note)["title"] == "dashes"
+    assert note.read_text(encoding="utf-8").endswith("---\ntitle: Nope\n---\nBody\n")
+
+
+def test_a_markdown_file_never_overwrites_an_existing_note(tmp_path):
+    vault = tmp_path / "Engineering"
+    topic = vault / "Coaching"
+    (topic / "Source-Notes").mkdir(parents=True)
+    (topic / "Source-Notes" / "rule.md").write_text("mine", encoding="utf-8")
+    put_in_inbox(vault, "rule.md", b"# Rule\n")
+
+    run_importer(vault)
+
+    assert (topic / "Source-Notes" / "rule.md").read_text(encoding="utf-8") == "mine"
+    assert frontmatter(topic / "Source-Notes" / "rule-1.md")["source"] == "[[_sources/rule-1.md]]"
+    assert (topic / "_sources" / "rule-1.md").read_bytes() == b"# Rule\n"
+
+
+@pytest.mark.parametrize("name", ["bin.md", "bin.txt"])
+def test_binary_data_in_a_markdown_or_text_file_ends_in_failed(tmp_path, name):
+    vault = tmp_path / "Engineering"
+    topic = vault / "Coaching"
+    corrupt = os.urandom(2048) + b"\x00"
+    put_in_inbox(vault, name, corrupt)
+
+    run_importer(vault)
+
+    assert (topic / "_inbox" / "_failed" / name).read_bytes() == corrupt
+    assert sorted(f.name for f in vault.rglob("*") if f.is_file()) == sorted([name, "bin.log"])
+
+
+def test_a_markdown_file_with_broken_frontmatter_ends_in_failed(tmp_path):
+    vault = tmp_path / "Engineering"
+    topic = vault / "Coaching"
+    broken = b"---\ntitle: [unclosed\n---\nBody\n"
+    put_in_inbox(vault, "broken.md", broken)
+
+    run_importer(vault)
+
+    assert (topic / "_inbox" / "_failed" / "broken.md").read_bytes() == broken
+    assert not (topic / "Source-Notes").exists()

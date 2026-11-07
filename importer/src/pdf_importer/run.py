@@ -115,15 +115,18 @@ def _import_file(file: Path, converter: Converter) -> None:
     topic = file.parent.parent
     converted = converter.convert(file)
     name = _free_name(file.stem, [(topic / "Source-Notes", ".md"), (topic / "_sources", file.suffix)])
-    frontmatter: dict[str, object] = {"type": "source", "title": converted.title}
-    if lang := detect_language(converted.markdown):
+    frontmatter: dict[str, object] = {"type": "source"}
+    frontmatter.update((key, value) for key, value in converted.frontmatter.items() if key != "type")
+    frontmatter.setdefault("title", converted.title)
+    if "lang" not in frontmatter and (lang := detect_language(converted.markdown)):
         frontmatter["lang"] = lang
-    frontmatter["source"] = f"[[_sources/{name}{file.suffix}]]"
-    frontmatter["imported"] = datetime.date.today()
+    frontmatter.setdefault("source", f"[[_sources/{name}{file.suffix}]]")
+    frontmatter.setdefault("imported", datetime.date.today())
 
     note = topic / "Source-Notes" / f"{name}.md"
     header = yaml.safe_dump(frontmatter, sort_keys=False, allow_unicode=True)
-    _write_atomically(note, f"---\n{header}---\n\n{converted.markdown}\n")
+    body = converted.markdown.rstrip("\n")
+    _write_atomically(note, f"---\n{header}---\n\n{body}\n")
     try:
         _move(file, topic / "_sources" / f"{name}{file.suffix}")
     except Exception:
