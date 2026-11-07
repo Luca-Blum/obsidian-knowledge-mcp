@@ -65,6 +65,8 @@ services:
       DATABASE_USER: knowledge
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       OLLAMA_BASE_URL: http://ollama:11434
+      # One chunk takes several seconds on the Pi's CPU, and longer while Ollama loads the model; the default is 10s
+      QUARKUS_LANGCHAIN4J_OLLAMA_TIMEOUT: ${OLLAMA_TIMEOUT:-120s}
       # Bounds the heap so that this instance fits next to Postgres and Ollama in 8 GB
       JAVA_OPTS_APPEND: -Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager ${ENGINEERING_HEAP:--Xmx512m}
     mem_limit: 900m
