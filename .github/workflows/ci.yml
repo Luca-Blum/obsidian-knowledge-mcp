@@ -33,7 +33,7 @@ jobs:
         working-directory: importer
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.3  # publishes no major tag
         with:
           enable-cache: true
           cache-dependency-glob: importer/uv.lock
