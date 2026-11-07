@@ -58,21 +58,32 @@ def _heading_title(file: Path, document: DoclingDocument) -> str:
 # LibreOffice reads any bytes as text, so Docling accepts garbage in these formats without complaint.
 _SIGNATURES = {
     ".doc": b"\xd0\xcf\x11\xe0",
+    ".ppt": b"\xd0\xcf\x11\xe0",
     ".rtf": b"{\\rtf",
 }
 
 
+# Docling's text parsers tolerate anything, so binary content has to be turned away first.
+_TEXT_FORMATS = frozenset({".html", ".mhtml", ".adoc", ".tex"})
+_BINARY_SNIFF_BYTES = 8192
+
+
 def _require_signature(source: Path) -> None:
-    signature = _SIGNATURES.get(source.suffix.lower())
-    if signature is None:
-        return
-    with source.open("rb") as file:
-        if file.read(len(signature)) != signature:
-            raise ValueError(f"{source.name} is not a valid {source.suffix.lower()} file")
+    extension = source.suffix.lower()
+    signature = _SIGNATURES.get(extension)
+    if signature is not None:
+        with source.open("rb") as file:
+            if file.read(len(signature)) != signature:
+                raise ValueError(f"{source.name} is not a valid {extension} file")
+    if extension in _TEXT_FORMATS:
+        with source.open("rb") as file:
+            if b"\x00" in file.read(_BINARY_SNIFF_BYTES):
+                raise ValueError(f"{source.name} is not a text file")
 
 
 # How each accepted format picks its Title. Adding a format is one line here plus a test,
-# and a signature in _SIGNATURES when the format has one and LibreOffice would otherwise read garbage as text.
+# and a signature in _SIGNATURES when the format has one and LibreOffice would otherwise read garbage as text,
+# or _TEXT_FORMATS when its parser accepts any bytes.
 _TITLE_RULES: dict[str, Callable[[Path, DoclingDocument], str]] = {
     ".pdf": _pdf_title,
     ".epub": _heading_title,
@@ -80,14 +91,22 @@ _TITLE_RULES: dict[str, Callable[[Path, DoclingDocument], str]] = {
     ".doc": _heading_title,
     ".odt": _heading_title,
     ".rtf": _heading_title,
+    ".pptx": _heading_title,
+    ".ppt": _heading_title,
+    ".odp": _heading_title,
+    ".html": _heading_title,
+    ".mhtml": _heading_title,
+    ".adoc": _heading_title,
+    ".tex": _heading_title,
+    ".xml": _heading_title,
 }
 
-_NEEDS_LIBREOFFICE = frozenset({".doc", ".rtf"})
+_NEEDS_LIBREOFFICE = frozenset({".doc", ".rtf", ".ppt"})
 
 
 def accepted_extensions() -> frozenset[str]:
     """The extensions a run imports. Without LibreOffice the legacy formats stay in the inbox."""
     if shutil.which("soffice"):
         return frozenset(_TITLE_RULES)
-    log.warning("LibreOffice (soffice) not found: leaving .doc and .rtf files in the inbox")
+    log.warning("LibreOffice (soffice) not found: leaving .doc, .rtf and .ppt files in the inbox")
     return frozenset(_TITLE_RULES) - _NEEDS_LIBREOFFICE

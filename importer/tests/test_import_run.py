@@ -17,6 +17,7 @@ import yaml
 FIXTURES = Path(__file__).parent / "fixtures"
 SAMPLE_PDF = FIXTURES / "sample.pdf"
 DOCUMENT_EXTENSIONS = ["epub", "docx", "doc", "odt", "rtf"]
+MARKUP_EXTENSIONS = ["pptx", "ppt", "odp", "html", "mhtml", "adoc", "tex", "xml"]
 
 
 def run_importer(*vaults: Path) -> None:
@@ -287,3 +288,50 @@ def test_a_corrupt_text_document_ends_in_failed_with_a_log_and_nothing_else_chan
     assert (topic / "_inbox" / "_failed" / f"broken.{extension}").read_bytes() == corrupt
     assert (topic / "_inbox" / "_failed" / "broken.log").read_text(encoding="utf-8").strip()
     assert sorted(f.name for f in vault.rglob("*") if f.is_file()) == sorted(["broken.log", f"broken.{extension}"])
+
+
+@pytest.mark.parametrize("extension", MARKUP_EXTENSIONS)
+def test_imports_a_slide_deck_or_markup_file_into_a_source_note_titled_by_its_first_heading(tmp_path, extension):
+    vault = tmp_path / "Engineering"
+    topic = vault / "Coaching"
+    sample = (FIXTURES / f"sample.{extension}").read_bytes()
+    put_in_inbox(vault, f"deck.{extension}", sample)
+
+    run_importer(vault)
+
+    note = topic / "Source-Notes" / "deck.md"
+    header = frontmatter(note)
+    assert header["type"] == "source"
+    assert header["title"] == "Notes on the Dependency Rule"
+    assert header["imported"] == datetime.date.today()
+    assert header["source"] == f"[[_sources/deck.{extension}]]"
+    assert "Source code dependencies must point only inward" in note.read_text(encoding="utf-8")
+    assert (topic / "_sources" / f"deck.{extension}").read_bytes() == sample
+    assert list((topic / "_inbox").iterdir()) == []
+
+
+@pytest.mark.parametrize("extension", MARKUP_EXTENSIONS)
+def test_a_corrupt_slide_deck_or_markup_file_ends_in_failed_with_a_log_and_nothing_else_changes(tmp_path, extension):
+    vault = tmp_path / "Engineering"
+    topic = vault / "Coaching"
+    corrupt = os.urandom(2048)
+    put_in_inbox(vault, f"broken.{extension}", corrupt)
+
+    run_importer(vault)
+
+    assert (topic / "_inbox" / "_failed" / f"broken.{extension}").read_bytes() == corrupt
+    assert (topic / "_inbox" / "_failed" / "broken.log").read_text(encoding="utf-8").strip()
+    assert sorted(f.name for f in vault.rglob("*") if f.is_file()) == sorted(["broken.log", f"broken.{extension}"])
+
+
+def test_an_xml_file_that_is_not_jats_ends_in_failed_with_a_log_and_nothing_else_changes(tmp_path):
+    vault = tmp_path / "Engineering"
+    topic = vault / "Coaching"
+    config = (FIXTURES / "not-jats.xml").read_bytes()
+    put_in_inbox(vault, "config.xml", config)
+
+    run_importer(vault)
+
+    assert (topic / "_inbox" / "_failed" / "config.xml").read_bytes() == config
+    assert (topic / "_inbox" / "_failed" / "config.log").read_text(encoding="utf-8").strip()
+    assert sorted(f.name for f in vault.rglob("*") if f.is_file()) == ["config.log", "config.xml"]
