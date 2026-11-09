@@ -12,4 +12,9 @@ record NegativeResult(NegativeQuestion question, List<SearchHit> hits) {
     NegativeResult {
         hits = List.copyOf(hits);
     }
+
+    /** A Negative Question passes when none of its hits reaches the Minimum Similarity. */
+    boolean passed(double minimumSimilarity) {
+        return hits.stream().noneMatch(hit -> hit.score() >= minimumSimilarity);
+    }
 }

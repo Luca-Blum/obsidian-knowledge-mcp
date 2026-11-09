@@ -53,7 +53,8 @@ class EvaluationRun {
 
         Report report = new Evaluation(search).run(set);
 
-        Run run = new Run(collection.name(), collection.embedding().model(), notes, LocalDate.now());
+        Run run = new Run(collection.name(), collection.embedding().model(),
+                collection.search().minimumSimilarity(), notes, LocalDate.now());
         Path folder = Files.createDirectories(Path.of(System.getProperty("evaluation.report", "target/evaluation")));
         Files.writeString(folder.resolve("summary.md"), report.summary(run));
         Files.writeString(folder.resolve("details.md"), report.details(run));

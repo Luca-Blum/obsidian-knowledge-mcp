@@ -12,9 +12,12 @@ import org.junit.jupiter.api.Test;
 
 class ReportTest {
 
-    private static final Run RUN = new Run("engineering", "bge-m3", 56, LocalDate.of(2026, 11, 7));
+    private static final Run RUN = new Run("engineering", "bge-m3", 0.4, 56, LocalDate.of(2026, 11, 7));
 
-    /** One Question answered at rank 2, one missed, and one Negative Question that still got a hit. */
+    /**
+     * One Question answered at rank 2, one missed, one Negative Question with a hit above the Minimum Similarity of
+     * 0.4 and one whose only hit stays below it.
+     */
     private final Report report = new Report(
             List.of(
                     new QuestionResult(
@@ -26,7 +29,9 @@ class ReportTest {
                             new Question("How do I run a kata?", null, Set.of(new NotePath("Coaching/Kata.md"))),
                             List.of(hit("Coaching/Dojo.md", 0.52)))),
             List.of(new NegativeResult(new NegativeQuestion("How should I taper before a marathon?", null),
-                    List.of(hit("Coaching/Habits.md", 0.43)))));
+                            List.of(hit("Coaching/Habits.md", 0.43))),
+                    new NegativeResult(new NegativeQuestion("Which bike fits me?", null),
+                            List.of(hit("Coaching/Gear.md", 0.38)))));
 
     @Test
     void whenRenderSummary_givenResults_thenShowRunAndMetricsWithoutQuestionsOrNotePaths() {
@@ -34,8 +39,9 @@ class ReportTest {
 
         assertThat(summary).contains("engineering", "bge-m3", "56", "2026-11-07",
                 "| Hit@5 | 0.50 |", "| Recall@5 | 0.50 |", "| MRR | 0.25 |",
-                "| Questions | 2 |", "| Negative Questions | 1 |", "| Highest similarity of a Negative Question | 0.430 |");
-        assertThat(summary).doesNotContain("Dependency Rule", "kata", "marathon", ".md");
+                "| Questions | 2 |", "| Minimum Similarity | 0.400 |", "| Negative Questions passed | 1 of 2 |",
+                "| Highest similarity of a Negative Question | 0.430 |");
+        assertThat(summary).doesNotContain("Dependency Rule", "kata", "marathon", "bike", ".md");
     }
 
     @Test
@@ -46,6 +52,15 @@ class ReportTest {
                 "What does the Dependency Rule say?", "rank 2",
                 "How do I run a kata?", "not in the top 5",
                 "How should I taper before a marathon?", "0.430 Coaching/Habits.md");
+    }
+
+    @Test
+    void whenRenderDetails_givenNegativeQuestions_thenMarkEachPassedOrFailedAgainstMinimumSimilarity() {
+        String details = report.details(RUN);
+
+        assertThat(details).contains(
+                "### How should I taper before a marathon?\n\nFailed: a hit reaches the Minimum Similarity of 0.400.",
+                "### Which bike fits me?\n\nPassed: no hit reaches the Minimum Similarity of 0.400.");
     }
 
     private static SearchHit hit(String notePath, double score) {

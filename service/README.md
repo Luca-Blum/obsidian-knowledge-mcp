@@ -84,7 +84,7 @@ takes as long as a Re-Index. It asks each question for the top 5 Search Hits and
 
 - `summary.md`: only the run and the numbers, safe to commit.
 - `details.md`: every question with the rank of its first expected Note and the Search Hits it got, and every
-  Negative Question with its hits and their similarity. It stays local.
+  Negative Question, marked passed or failed, with its hits and their similarity. It stays local.
 
 The metrics are counted on the Notes of the top 5 Search Hits as returned. A Note that fills several slots counts once
 and leaves fewer slots for the others.
@@ -93,7 +93,11 @@ and leaves fewer slots for the others.
 - **Recall@5**: mean share of a question's expected Notes found in the top 5.
 - **MRR**: mean of 1 / rank of the first expected Note, 0 when none is in the top 5.
 
-The highest similarity any Negative Question reached is where a Minimum Similarity would have to start.
+A Negative Question passes when none of its hits reaches the configured Minimum Similarity
+(`COLLECTION_SEARCH_MINIMUM_SIMILARITY`), and the summary counts how many passed. The search already drops every hit
+below that value, so to see how close the Negative Questions come, run once with
+`COLLECTION_SEARCH_MINIMUM_SIMILARITY=0`: the highest similarity any of them reached is where the Minimum Similarity
+would have to start. Run again with that value to see in Hit@5 what it costs the real questions.
 
 Measure a baseline first, then change exactly one lever and measure again. Commit each `summary.md` as
 `docs/evaluation/<collection>-<what changed>.md`, starting with `docs/evaluation/engineering-baseline.md`.

@@ -39,6 +39,10 @@ record Report(List<QuestionResult> questions, List<NegativeResult> negativeQuest
                 .orElse(Double.NaN);
     }
 
+    long negativeQuestionsPassed(double minimumSimilarity) {
+        return negativeQuestions.stream().filter(result -> result.passed(minimumSimilarity)).count();
+    }
+
     String summary(Run run) {
         return """
                 # Evaluation of Collection %s
@@ -51,11 +55,13 @@ record Report(List<QuestionResult> questions, List<NegativeResult> negativeQuest
                 | Recall@5 | %s |
                 | MRR | %s |
                 | Questions | %d |
-                | Negative Questions | %d |
+                | Minimum Similarity | %s |
+                | Negative Questions passed | %d of %d |
                 | Highest similarity of a Negative Question | %s |
                 """.formatted(run.collection(), run.embeddingModel(), run.notes(), run.date(),
                 twoDecimals(hitAt5()), twoDecimals(recallAt5()), twoDecimals(meanReciprocalRank()),
-                questions.size(), negativeQuestions.size(), similarity(highestNegativeSimilarity()));
+                questions.size(), similarity(run.minimumSimilarity()), negativeQuestionsPassed(run.minimumSimilarity()),
+                negativeQuestions.size(), similarity(highestNegativeSimilarity()));
     }
 
     String details(Run run) {
@@ -69,7 +75,9 @@ record Report(List<QuestionResult> questions, List<NegativeResult> negativeQuest
         }
         details.append("\n## Negative Questions\n");
         for (NegativeResult result : negativeQuestions) {
-            details.append("\n### ").append(result.question().text()).append("\n\n");
+            details.append("\n### ").append(result.question().text()).append("\n\n")
+                    .append(result.passed(run.minimumSimilarity()) ? "Passed: no hit reaches" : "Failed: a hit reaches")
+                    .append(" the Minimum Similarity of ").append(similarity(run.minimumSimilarity())).append(".\n\n");
             appendHits(details, result.hits());
         }
         return details.toString();
