@@ -5,11 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
-import io.github.lucablum.knowledge.application.IndexVault;
-import io.github.lucablum.knowledge.application.SearchChunks;
-import io.github.lucablum.knowledge.application.SearchRequest;
-import io.github.lucablum.knowledge.domain.SearchHit;
-import io.github.lucablum.knowledge.domain.Topic;
+import io.github.lucablum.knowledge.application.indexing.IndexVault;
+import io.github.lucablum.knowledge.application.search.SearchChunks;
+import io.github.lucablum.knowledge.application.search.SearchRequest;
+import io.github.lucablum.knowledge.domain.note.NoteKind;
+import io.github.lucablum.knowledge.domain.note.Topic;
+import io.github.lucablum.knowledge.domain.search.SearchHit;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.util.List;
@@ -199,6 +200,46 @@ class SearchTest {
         List<SearchHit> hits = search.search(SearchRequest.of("tempo run"));
 
         assertThat(hits).hasSize(defaultK);
+    }
+
+    @Test
+    void whenSearch_givenTypeInFrontmatter_thenOnlyTypeSourceMakesASourceNote() {
+        vault.write("Running/Source-Notes/Daniels.md", """
+                ---
+                type: source
+                ---
+                Interval training by Daniels
+                """);
+        vault.write("Running/Idea.md", """
+                ---
+                type: idea
+                ---
+                Interval training idea
+                """);
+        vault.write("Running/Plain.md", "Interval training plain");
+        indexVault.run();
+
+        List<SearchHit> hits = search.search(SearchRequest.of("interval training").withK(10));
+
+        assertThat(hits).extracting(SearchHit::notePath, SearchHit::noteKind).containsExactlyInAnyOrder(
+                tuple("Running/Source-Notes/Daniels.md", NoteKind.SOURCE),
+                tuple("Running/Idea.md", NoteKind.OWN),
+                tuple("Running/Plain.md", NoteKind.OWN));
+    }
+
+    @Test
+    void whenSearch_givenTopicInFrontmatter_thenTopicStillComesFromTheFolder() {
+        vault.write("Running/Intervals.md", """
+                ---
+                topic: Cycling
+                ---
+                Interval training improves speed
+                """);
+        indexVault.run();
+
+        List<SearchHit> hits = search.search(SearchRequest.of("interval training").inTopic(new Topic("Cycling")));
+
+        assertThat(hits).isEmpty();
     }
 
     @Test

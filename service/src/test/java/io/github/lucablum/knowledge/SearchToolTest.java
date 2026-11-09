@@ -2,7 +2,7 @@ package io.github.lucablum.knowledge;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.lucablum.knowledge.application.IndexVault;
+import io.github.lucablum.knowledge.application.indexing.IndexVault;
 import io.quarkiverse.mcp.server.TextContent;
 import io.quarkiverse.mcp.server.test.McpAssured;
 import io.quarkiverse.mcp.server.test.McpAssured.McpStreamableTestClient;
@@ -57,6 +57,7 @@ class SearchToolTest {
                     assertThat(hit.getString("content")).isEqualTo("Interval training improves speed");
                     assertThat(hit.getString("notePath")).isEqualTo("Running/Intervals.md");
                     assertThat(hit.getJsonArray("headingPath")).containsExactly("Workouts");
+                    assertThat(hit.getString("noteKind")).isEqualTo("own");
                     assertThat(hit.getDouble("score")).isBetween(-1.0, 1.0);
                     assertThat(hit.getInteger("moreInNote")).isZero();
                 })
