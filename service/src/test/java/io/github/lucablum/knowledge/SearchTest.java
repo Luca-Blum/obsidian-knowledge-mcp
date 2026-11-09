@@ -5,12 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
-import io.github.lucablum.knowledge.application.IndexVault;
-import io.github.lucablum.knowledge.application.SearchChunks;
-import io.github.lucablum.knowledge.application.SearchRequest;
-import io.github.lucablum.knowledge.domain.NoteKind;
-import io.github.lucablum.knowledge.domain.SearchHit;
-import io.github.lucablum.knowledge.domain.Topic;
+import io.github.lucablum.knowledge.application.indexing.IndexVault;
+import io.github.lucablum.knowledge.application.search.SearchChunks;
+import io.github.lucablum.knowledge.application.search.SearchRequest;
+import io.github.lucablum.knowledge.domain.note.NoteKind;
+import io.github.lucablum.knowledge.domain.note.Topic;
+import io.github.lucablum.knowledge.domain.search.SearchHit;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.util.List;

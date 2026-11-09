@@ -4,12 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assertions.within;
 
-import io.github.lucablum.knowledge.application.SearchChunks;
-import io.github.lucablum.knowledge.application.SearchRequest;
-import io.github.lucablum.knowledge.domain.NoteKind;
-import io.github.lucablum.knowledge.domain.NotePath;
-import io.github.lucablum.knowledge.domain.SearchHit;
-import io.github.lucablum.knowledge.domain.Topic;
+import io.github.lucablum.knowledge.application.search.SearchChunks;
+import io.github.lucablum.knowledge.application.search.SearchRequest;
+import io.github.lucablum.knowledge.domain.note.NoteKind;
+import io.github.lucablum.knowledge.domain.note.NotePath;
+import io.github.lucablum.knowledge.domain.note.Topic;
+import io.github.lucablum.knowledge.domain.search.SearchHit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;

@@ -2,6 +2,7 @@ package io.github.lucablum.knowledge;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
@@ -57,7 +58,7 @@ class ArchitectureTest {
 
     @ArchTest
     static final ArchRule everyInterfaceOfTheApplicationIsAPort = classes()
-            .that().resideInAPackage("..knowledge.application")
+            .that().resideInAPackage("..knowledge.application..")
             .and().areInterfaces()
             .should().beAnnotatedWith(PrimaryPort.class)
             .orShould().beAnnotatedWith(SecondaryPort.class);
@@ -70,7 +71,7 @@ class ArchitectureTest {
 
     @ArchTest
     static final ArchRule everyConcreteClassOfTheApplicationImplementsAPrimaryPort = classes()
-            .that().resideInAPackage("..knowledge.application")
+            .that().resideInAPackage("..knowledge.application..")
             .and().areNotInterfaces()
             .and().areNotAnnotatedWith(ValueObject.class)
             .should().beAnnotatedWith(Application.class)
@@ -90,10 +91,22 @@ class ArchitectureTest {
             .that().resideInAPackage("..knowledge.domain..")
             .should().dependOnClassesThat().resideInAPackage("..knowledge.application..");
 
+    /** What a Note is underlies every other concept, so it may depend on none of them. */
     @ArchTest
-    static final ArchRule domainModelDependsOnNoSplitting = noClasses()
-            .that().resideInAPackage("..knowledge.domain")
-            .should().dependOnClassesThat().resideInAPackage("..knowledge.domain.splitting..");
+    static final ArchRule noteDependsOnNoOtherDomainConcept = noClasses()
+            .that().resideInAPackage("..knowledge.domain.note..")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "..knowledge.domain.chunk..", "..knowledge.domain.search..", "..knowledge.domain.catalog..");
+
+    @ArchTest
+    static final ArchRule domainConceptsAreFreeOfCycles = slices()
+            .matching("..knowledge.domain.(*)..")
+            .should().beFreeOfCycles();
+
+    @ArchTest
+    static final ArchRule useCasesAreFreeOfCycles = slices()
+            .matching("..knowledge.application.(*)..")
+            .should().beFreeOfCycles();
 
     /** A class nobody can instantiate: statics only, such as {@code VaultRules}. */
     private static DescribedPredicate<JavaClass> utilityClasses() {

@@ -3,8 +3,8 @@ package io.github.lucablum.knowledge.evaluation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.github.lucablum.knowledge.domain.NotePath;
-import io.github.lucablum.knowledge.domain.Topic;
+import io.github.lucablum.knowledge.domain.note.NotePath;
+import io.github.lucablum.knowledge.domain.note.Topic;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
