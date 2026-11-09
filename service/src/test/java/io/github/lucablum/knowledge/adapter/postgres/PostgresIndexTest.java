@@ -6,7 +6,7 @@ import io.agroal.api.AgroalDataSource;
 import io.github.lucablum.knowledge.FakeEmbedding;
 import io.github.lucablum.knowledge.TestVault;
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
-import io.github.lucablum.knowledge.application.IndexVault;
+import io.github.lucablum.knowledge.application.indexing.IndexVault;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.sql.Connection;

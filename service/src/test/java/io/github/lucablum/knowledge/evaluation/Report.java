@@ -1,6 +1,6 @@
 package io.github.lucablum.knowledge.evaluation;
 
-import io.github.lucablum.knowledge.domain.SearchHit;
+import io.github.lucablum.knowledge.domain.search.SearchHit;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.ToDoubleFunction;

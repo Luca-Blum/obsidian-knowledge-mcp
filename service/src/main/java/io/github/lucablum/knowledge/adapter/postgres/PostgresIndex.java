@@ -2,17 +2,19 @@ package io.github.lucablum.knowledge.adapter.postgres;
 
 import io.agroal.api.AgroalDataSource;
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
-import io.github.lucablum.knowledge.application.EmbeddedChunk;
-import io.github.lucablum.knowledge.application.Index;
-import io.github.lucablum.knowledge.domain.Chunk;
-import io.github.lucablum.knowledge.domain.Note;
-import io.github.lucablum.knowledge.domain.NoteKind;
-import io.github.lucablum.knowledge.domain.NotePath;
-import io.github.lucablum.knowledge.domain.PublishedDate;
-import io.github.lucablum.knowledge.domain.SearchHit;
-import io.github.lucablum.knowledge.domain.SourceNoteListing;
-import io.github.lucablum.knowledge.domain.Topic;
-import io.github.lucablum.knowledge.domain.TopicCount;
+import io.github.lucablum.knowledge.application.catalog.Catalog;
+import io.github.lucablum.knowledge.application.indexing.EmbeddedChunk;
+import io.github.lucablum.knowledge.application.indexing.IndexedNotes;
+import io.github.lucablum.knowledge.application.search.ChunkVectors;
+import io.github.lucablum.knowledge.domain.catalog.SourceNoteListing;
+import io.github.lucablum.knowledge.domain.catalog.TopicCount;
+import io.github.lucablum.knowledge.domain.chunk.Chunk;
+import io.github.lucablum.knowledge.domain.note.Note;
+import io.github.lucablum.knowledge.domain.note.NoteKind;
+import io.github.lucablum.knowledge.domain.note.NotePath;
+import io.github.lucablum.knowledge.domain.note.PublishedDate;
+import io.github.lucablum.knowledge.domain.note.Topic;
+import io.github.lucablum.knowledge.domain.search.SearchHit;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.sql.Array;
 import java.sql.Connection;
@@ -31,7 +33,7 @@ import org.jmolecules.architecture.hexagonal.SecondaryAdapter;
 /** Stores Notes and Chunks in the Collection's own schema; vectors live in pgvector columns. */
 @ApplicationScoped
 @SecondaryAdapter
-public class PostgresIndex implements Index {
+public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog {
 
     private final AgroalDataSource dataSource;
     private final Statements sql;

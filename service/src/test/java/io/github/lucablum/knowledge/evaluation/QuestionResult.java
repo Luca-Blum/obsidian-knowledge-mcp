@@ -1,7 +1,7 @@
 package io.github.lucablum.knowledge.evaluation;
 
-import io.github.lucablum.knowledge.domain.NotePath;
-import io.github.lucablum.knowledge.domain.SearchHit;
+import io.github.lucablum.knowledge.domain.note.NotePath;
+import io.github.lucablum.knowledge.domain.search.SearchHit;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;

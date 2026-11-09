@@ -4,10 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.lucablum.knowledge.FakeEmbedding;
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
-import io.github.lucablum.knowledge.application.IndexVault;
-import io.github.lucablum.knowledge.application.SearchChunks;
-import io.github.lucablum.knowledge.application.Vault;
-import io.github.lucablum.knowledge.application.VaultNote;
+import io.github.lucablum.knowledge.application.indexing.IndexVault;
+import io.github.lucablum.knowledge.application.indexing.Vault;
+import io.github.lucablum.knowledge.application.indexing.VaultNote;
+import io.github.lucablum.knowledge.application.search.SearchChunks;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;

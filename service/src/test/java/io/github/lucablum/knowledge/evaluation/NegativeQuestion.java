@@ -1,7 +1,7 @@
 package io.github.lucablum.knowledge.evaluation;
 
-import io.github.lucablum.knowledge.application.SearchRequest;
-import io.github.lucablum.knowledge.domain.Topic;
+import io.github.lucablum.knowledge.application.search.SearchRequest;
+import io.github.lucablum.knowledge.domain.note.Topic;
 
 /** A question the Collection must not answer; the Topic is optional. */
 record NegativeQuestion(String text, Topic topic) {

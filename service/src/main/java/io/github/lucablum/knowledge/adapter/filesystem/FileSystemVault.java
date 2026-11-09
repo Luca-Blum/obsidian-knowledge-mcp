@@ -1,10 +1,10 @@
 package io.github.lucablum.knowledge.adapter.filesystem;
 
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
-import io.github.lucablum.knowledge.application.Vault;
-import io.github.lucablum.knowledge.application.VaultNote;
-import io.github.lucablum.knowledge.domain.NotePath;
-import io.github.lucablum.knowledge.domain.VaultRules;
+import io.github.lucablum.knowledge.application.indexing.Vault;
+import io.github.lucablum.knowledge.application.indexing.VaultNote;
+import io.github.lucablum.knowledge.domain.note.NotePath;
+import io.github.lucablum.knowledge.domain.note.VaultRules;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.io.IOException;
 import java.io.UncheckedIOException;
