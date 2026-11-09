@@ -3,11 +3,11 @@ package io.github.lucablum.knowledge;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
-import io.github.lucablum.knowledge.application.BrowseCollection;
-import io.github.lucablum.knowledge.application.IndexVault;
-import io.github.lucablum.knowledge.domain.SourceNoteListing;
-import io.github.lucablum.knowledge.domain.Topic;
-import io.github.lucablum.knowledge.domain.TopicCount;
+import io.github.lucablum.knowledge.application.catalog.BrowseCollection;
+import io.github.lucablum.knowledge.application.indexing.IndexVault;
+import io.github.lucablum.knowledge.domain.catalog.SourceNoteListing;
+import io.github.lucablum.knowledge.domain.catalog.TopicCount;
+import io.github.lucablum.knowledge.domain.note.Topic;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.util.Optional;

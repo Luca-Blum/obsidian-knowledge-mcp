@@ -2,9 +2,9 @@ package io.github.lucablum.knowledge.evaluation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.lucablum.knowledge.domain.NoteKind;
-import io.github.lucablum.knowledge.domain.NotePath;
-import io.github.lucablum.knowledge.domain.SearchHit;
+import io.github.lucablum.knowledge.domain.note.NoteKind;
+import io.github.lucablum.knowledge.domain.note.NotePath;
+import io.github.lucablum.knowledge.domain.search.SearchHit;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;

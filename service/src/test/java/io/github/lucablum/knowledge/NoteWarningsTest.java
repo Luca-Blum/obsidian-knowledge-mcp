@@ -2,8 +2,8 @@ package io.github.lucablum.knowledge;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.lucablum.knowledge.application.IndexVault;
-import io.github.lucablum.knowledge.application.VaultIndexer;
+import io.github.lucablum.knowledge.application.indexing.IndexVault;
+import io.github.lucablum.knowledge.application.indexing.VaultIndexer;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.util.List;

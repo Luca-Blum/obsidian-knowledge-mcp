@@ -1,7 +1,7 @@
 package io.github.lucablum.knowledge.adapter.startup;
 
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
-import io.github.lucablum.knowledge.application.IndexVault;
+import io.github.lucablum.knowledge.application.indexing.IndexVault;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;

@@ -1,6 +1,6 @@
 package io.github.lucablum.knowledge.evaluation;
 
-import io.github.lucablum.knowledge.application.SearchChunks;
+import io.github.lucablum.knowledge.application.search.SearchChunks;
 
 /** Asks the search every question of an Evaluation Set and judges what it returns. */
 final class Evaluation {
