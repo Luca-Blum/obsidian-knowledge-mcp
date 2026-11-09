@@ -81,8 +81,11 @@ COLLECTION_VAULT_PATH=/path/to/Engineering \
 ```
 
 `COLLECTION_EMBEDDING_MODEL` and `COLLECTION_EMBEDDING_DIMENSION` select another model, and `COLLECTION_NAME`
-another Collection (default `engineering`). The run indexes the whole Vault into a fresh Dev Services database, so it
-takes as long as a Re-Index. It asks each question for the top 5 Search Hits and writes two files to
+another Collection (default `engineering`). The run indexes the whole Vault into a Dev Services database, so the first
+run takes as long as a Re-Index (about two hours for the engineering Vault on the Mac). Testcontainers removes that
+database after the run unless you allow reuse with `testcontainers.reuse.enable=true` in
+`~/.testcontainers.properties`; then the container stays up, later runs skip every unchanged Note and take seconds,
+and `docker rm -f` removes it. The run asks each question for the top 5 Search Hits and writes two files to
 `target/evaluation/`, or to `-Devaluation.report=<folder>`:
 
 - `summary.md`: only the run and the numbers, safe to commit.
@@ -103,4 +106,6 @@ below that value, so to see how close the Negative Questions come, run once with
 would have to start. Run again with that value to see in Hit@5 what it costs the real questions.
 
 Measure a baseline first, then change exactly one lever and measure again. Commit each `summary.md` as
-`docs/evaluation/<collection>-<what changed>.md`, starting with `docs/evaluation/engineering-baseline.md`.
+`docs/evaluation/<collection>-<what changed>.md`. The baseline,
+[`docs/evaluation/engineering-baseline.md`](../docs/evaluation/engineering-baseline.md), is plain vector search
+without a Minimum Similarity; reproduce it with the command above and `COLLECTION_SEARCH_MINIMUM_SIMILARITY=0`.
