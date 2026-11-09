@@ -54,7 +54,9 @@ public class SearchTool {
         Map<String, Object> args = arguments.args();
         String topic = (String) args.get("topic");
         try {
-            List<SearchHit> hits = search.search(request((String) args.get("query"), topic, args.get("k")));
+            List<Hit> hits = search.search(request((String) args.get("query"), topic, args.get("k"))).stream()
+                    .map(Hit::of)
+                    .toList();
             return ToolResponse.success(json.writeValueAsString(Map.of("hits", hits)));
         } catch (IllegalArgumentException e) {
             return ToolResponse.error(e.getMessage());
@@ -69,6 +71,14 @@ public class SearchTool {
             request = request.inTopic(new Topic(topic));
         }
         return k == null ? request : request.withK(wholeNumber(k));
+    }
+
+    /** A Search Hit as Claude reads it, with the Note Kind as {@code source} or {@code own}. */
+    private record Hit(String content, String notePath, List<String> headingPath, String noteKind, double score) {
+
+        static Hit of(SearchHit hit) {
+            return new Hit(hit.content(), hit.notePath(), hit.headingPath(), hit.noteKind().label(), hit.score());
+        }
     }
 
     /** A wrong {@code k} is an error rather than the default, so Claude sees it and can correct the call. */

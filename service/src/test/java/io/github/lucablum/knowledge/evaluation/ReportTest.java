@@ -2,6 +2,7 @@ package io.github.lucablum.knowledge.evaluation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.lucablum.knowledge.domain.NoteKind;
 import io.github.lucablum.knowledge.domain.NotePath;
 import io.github.lucablum.knowledge.domain.SearchHit;
 import java.time.LocalDate;
@@ -48,6 +49,6 @@ class ReportTest {
     }
 
     private static SearchHit hit(String notePath, double score) {
-        return new SearchHit("content", notePath, List.of(), score);
+        return new SearchHit("content", notePath, List.of(), NoteKind.OWN, score);
     }
 }

@@ -57,6 +57,7 @@ class SearchToolTest {
                     assertThat(hit.getString("content")).isEqualTo("Interval training improves speed");
                     assertThat(hit.getString("notePath")).isEqualTo("Running/Intervals.md");
                     assertThat(hit.getJsonArray("headingPath")).containsExactly("Workouts");
+                    assertThat(hit.getString("noteKind")).isEqualTo("own");
                     assertThat(hit.getDouble("score")).isBetween(-1.0, 1.0);
                 })
                 .thenAssertResults();

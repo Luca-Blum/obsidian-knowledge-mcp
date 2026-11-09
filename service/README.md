@@ -1,7 +1,7 @@
 # Knowledge service
 
 One instance serves one Collection. It indexes the Collection's Vault into its own Postgres schema and offers
-`search` over MCP (Streamable HTTP, `/mcp`). See [`docs/architecture.md`](../docs/architecture.md).
+`search`, `list_topics` and `list_sources` over MCP (Streamable HTTP, `/mcp`). See [`docs/architecture.md`](../docs/architecture.md).
 
 Requires Java 25+ and Docker (Dev Services start Postgres with pgvector).
 
@@ -15,6 +15,7 @@ A Collection is defined only by configuration:
 | `collection.vault-path` | `COLLECTION_VAULT_PATH` | Vault root, read only |
 | `collection.schema` | `COLLECTION_SCHEMA` | Postgres schema of the index |
 | `collection.mcp-port` | `COLLECTION_MCP_PORT` | HTTP port of the MCP endpoint (default `8081`) |
+| `collection.default-language` | `COLLECTION_DEFAULT_LANGUAGE` | Note Language when a Note's `lang` is missing or unknown: `de` or `en` (default `en`) |
 | `collection.embedding.model` | `COLLECTION_EMBEDDING_MODEL` | Ollama embedding model (default `bge-m3`) |
 | `collection.embedding.dimension` | `COLLECTION_EMBEDDING_DIMENSION` | Vector dimension of that model (default `1024`) |
 | `collection.search.tool-description` | `COLLECTION_SEARCH_TOOL_DESCRIPTION` | Description Claude reads for `search` |

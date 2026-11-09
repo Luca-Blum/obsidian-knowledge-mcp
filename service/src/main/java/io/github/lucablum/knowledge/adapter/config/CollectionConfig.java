@@ -21,6 +21,9 @@ public interface CollectionConfig {
     @WithDefault("true")
     boolean indexOnStartup();
 
+    /** The Note Language of every Note whose frontmatter has no known {@code lang}. */
+    String defaultLanguage();
+
     Embedding embedding();
 
     Search search();
