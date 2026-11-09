@@ -29,7 +29,9 @@ record Statements(
             INSERT INTO {chunk} (note_path, ordinal, heading_path, content, embedding, embedding_model)
             VALUES (?, ?, ?, ?, ?::vector, ?)""";
 
-    private static final String CONTENT_HASHES_TEMPLATE = "SELECT path, content_hash FROM {note}";
+    /** A Note indexed before content hashes were stored has none, so it is left out and indexed again. */
+    private static final String CONTENT_HASHES_TEMPLATE =
+            "SELECT path, content_hash FROM {note} WHERE content_hash IS NOT NULL";
 
     private static final String REMOVE_NOTES_TEMPLATE = "DELETE FROM {note} WHERE path = ANY (?)";
 

@@ -8,7 +8,6 @@ import io.github.lucablum.knowledge.domain.note.NotePath;
 import io.github.lucablum.knowledge.domain.note.ParsedNote;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,27 +45,28 @@ public class ContentHashReconciliation implements IndexVault {
     @Override
     public synchronized Reconciled run() {
         Map<NotePath, ContentHash> notInVault = new HashMap<>(indexedNotes.contentHashes());
-        int indexed = 0;
-        int unchanged = 0;
-        List<NotePath> failed = new ArrayList<>();
+        Reconciled reconciled = Reconciled.NOTHING;
         for (VaultNote note : vault.notes()) {
-            ContentHash indexedHash = notInVault.remove(note.path());
-            try {
-                String text = note.text();
-                ContentHash hash = ContentHash.of(text);
-                if (hash.equals(indexedHash)) {
-                    unchanged++;
-                } else {
-                    index(note.path(), text, hash);
-                    indexed++;
-                }
-            } catch (RuntimeException e) {
-                LOG.log(Level.WARNING, "Cannot index Note " + note.path(), e);
-                failed.add(note.path());
-            }
+            reconciled = reconciled.plus(reconcile(note, notInVault.remove(note.path())));
         }
         indexedNotes.remove(notInVault.keySet());
-        return new Reconciled(indexed, notInVault.size(), unchanged, failed);
+        return reconciled.plus(Reconciled.ofRemovedNotes(notInVault.size()));
+    }
+
+    /** Indexes the Note unless its text still has {@code indexedHash}, which is {@code null} for a new Note. */
+    private Reconciled reconcile(VaultNote note, ContentHash indexedHash) {
+        try {
+            String text = note.text();
+            ContentHash hash = ContentHash.of(text);
+            if (hash.equals(indexedHash)) {
+                return Reconciled.ofUnchangedNote();
+            }
+            index(note.path(), text, hash);
+            return Reconciled.ofIndexedNote();
+        } catch (RuntimeException e) {
+            LOG.log(Level.WARNING, "Cannot index Note " + note.path(), e);
+            return Reconciled.ofFailedNote(note.path());
+        }
     }
 
     private void index(NotePath path, String text, ContentHash hash) {

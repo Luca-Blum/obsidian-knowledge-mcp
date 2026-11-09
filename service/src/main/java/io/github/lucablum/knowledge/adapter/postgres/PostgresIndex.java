@@ -27,10 +27,10 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.jmolecules.architecture.hexagonal.SecondaryAdapter;
 
 /** Stores Notes and Chunks in the Collection's own schema; vectors live in pgvector columns. */
@@ -46,23 +46,10 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog {
         this.sql = Statements.forSchema(collection.schema());
     }
 
-    /** A Note indexed before content hashes were stored has none, so it is left out and indexed again. */
     @Override
     public Map<NotePath, ContentHash> contentHashes() {
-        Map<NotePath, ContentHash> hashes = new HashMap<>();
-        try (Connection connection = dataSource.getConnection();
-                PreparedStatement select = connection.prepareStatement(sql.contentHashes());
-                ResultSet rows = select.executeQuery()) {
-            while (rows.next()) {
-                String hash = rows.getString("content_hash");
-                if (hash != null) {
-                    hashes.put(new NotePath(rows.getString("path")), new ContentHash(hash));
-                }
-            }
-        } catch (SQLException e) {
-            throw new IllegalStateException("Reading the content hashes failed", e);
-        }
-        return hashes;
+        return query(sql.contentHashes(), select -> {}, PostgresIndex::toContentHash).stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     @Override
@@ -186,6 +173,10 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog {
                 NoteKind.ofLabel(row.getString("kind")),
                 row.getDouble("score"),
                 0);
+    }
+
+    private static Map.Entry<NotePath, ContentHash> toContentHash(ResultSet row) throws SQLException {
+        return Map.entry(new NotePath(row.getString("path")), new ContentHash(row.getString("content_hash")));
     }
 
     private static SourceNoteListing toSourceNoteListing(ResultSet row) throws SQLException {
