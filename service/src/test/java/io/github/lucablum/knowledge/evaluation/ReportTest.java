@@ -12,7 +12,8 @@ import org.junit.jupiter.api.Test;
 
 class ReportTest {
 
-    private static final Run RUN = new Run("engineering", "bge-m3", 0.4, 56, LocalDate.of(2026, 11, 7));
+    private static final Run RUN = new Run("engineering", "bge-m3", 0.4, new Run.Fusion(60, 1.0, 0.5), 56,
+            LocalDate.of(2026, 11, 7));
 
     /**
      * One Question answered at rank 2, one missed, one Negative Question with a hit above the Minimum Similarity of
@@ -40,7 +41,8 @@ class ReportTest {
         assertThat(summary).contains("engineering", "bge-m3", "56", "2026-11-07",
                 "| Hit@5 | 0.50 |", "| Recall@5 | 0.50 |", "| MRR | 0.25 |",
                 "| Questions | 2 |", "| Minimum Similarity | 0.400 |", "| Negative Questions passed | 1 of 2 |",
-                "| Highest similarity of a Negative Question | 0.430 |");
+                "| Highest similarity of a Negative Question | 0.430 |",
+                "| Fusion | k 60, vector weight 1.00, full-text weight 0.50 |");
         assertThat(summary).doesNotContain("Dependency Rule", "kata", "marathon", "bike", ".md");
     }
 
@@ -63,7 +65,45 @@ class ReportTest {
                 "### Which bike fits me?\n\nPassed: no hit reaches the Minimum Similarity of 0.400.");
     }
 
+    @Test
+    void whenRenderSummary_givenNegativeQuestionWithOnlyFullTextHits_thenPassItAndCountItsFullTextHitsApart() {
+        Report withFullText = new Report(List.of(), List.of(
+                new NegativeResult(new NegativeQuestion("How should I taper before a marathon?", null),
+                        List.of(fullTextHit("Coaching/Marathon.md", 0.2).withScore(0.016))),
+                new NegativeResult(new NegativeQuestion("Which bike fits me?", null), List.of())));
+
+        String summary = withFullText.summary(RUN);
+
+        assertThat(summary).contains("| Negative Questions passed | 2 of 2 |",
+                "| Highest similarity of a Negative Question | – |",
+                "| Negative Questions with full-text hits (information only) | 1 of 2 |");
+    }
+
+    @Test
+    void whenRenderDetails_givenNegativeQuestionWithVectorAndFullTextHits_thenListFullTextHitsSeparately() {
+        Report withFullText = new Report(List.of(), List.of(
+                new NegativeResult(new NegativeQuestion("How should I taper before a marathon?", null), List.of(
+                        hit("Coaching/Habits.md", 0.43),
+                        fullTextHit("Coaching/Marathon.md", 0.2)))));
+
+        String details = withFullText.details(RUN);
+
+        assertThat(details).contains("""
+                Failed: a hit reaches the Minimum Similarity of 0.400.
+
+                - 0.430 Coaching/Habits.md
+
+                Full-text hits, for information only:
+
+                - Coaching/Marathon.md
+                """);
+    }
+
     private static SearchHit hit(String notePath, double score) {
-        return new SearchHit("content", notePath, List.of(), NoteKind.OWN, score, 0);
+        return SearchHit.bySimilarity("content", notePath, 0, List.of(), NoteKind.OWN, score);
+    }
+
+    private static SearchHit fullTextHit(String notePath, double rank) {
+        return SearchHit.byFullTextRank("content", notePath, 0, List.of(), NoteKind.OWN, rank);
     }
 }

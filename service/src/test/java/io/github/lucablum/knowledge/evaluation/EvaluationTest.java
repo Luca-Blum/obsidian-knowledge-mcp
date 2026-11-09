@@ -58,8 +58,8 @@ class EvaluationTest {
     @Test
     void whenRun_givenNegativeQuestion_thenReportItsHitsWithSimilarity() {
         Evaluation evaluation = new Evaluation(returning(Map.of("marathon taper", List.of(
-                new SearchHit("Tapering a release", "Software-Engineering/Releases.md", List.of(), NoteKind.OWN, 0.41, 0),
-                new SearchHit("Long runs", "Coaching/Habits.md", List.of(), NoteKind.OWN, 0.38, 0)))));
+                SearchHit.bySimilarity("Tapering a release", "Software-Engineering/Releases.md", 0, List.of(), NoteKind.OWN, 0.41),
+                SearchHit.bySimilarity("Long runs", "Coaching/Habits.md", 0, List.of(), NoteKind.OWN, 0.38)))));
 
         Report report = evaluation.run(
                 new EvaluationSet(List.of(), List.of(new NegativeQuestion("marathon taper", null))));
@@ -83,7 +83,7 @@ class EvaluationTest {
     private static List<SearchHit> hits(String... notePaths) {
         List<SearchHit> hits = new ArrayList<>();
         for (int i = 0; i < notePaths.length; i++) {
-            hits.add(new SearchHit("content " + i, notePaths[i], List.of(), NoteKind.OWN, 0.9 - i * 0.1, 0));
+            hits.add(SearchHit.bySimilarity("content " + i, notePaths[i], i, List.of(), NoteKind.OWN, 0.9 - i * 0.1));
         }
         return hits;
     }

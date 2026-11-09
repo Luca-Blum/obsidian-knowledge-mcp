@@ -33,14 +33,19 @@ record Report(List<QuestionResult> questions, List<NegativeResult> negativeQuest
     /** The similarity a Minimum Similarity would have to exceed so that no Negative Question gets a hit. */
     double highestNegativeSimilarity() {
         return negativeQuestions.stream()
-                .flatMap(result -> result.hits().stream())
-                .mapToDouble(SearchHit::score)
+                .flatMap(result -> result.vectorHits().stream())
+                .mapToDouble(hit -> hit.similarity().getAsDouble())
                 .max()
                 .orElse(Double.NaN);
     }
 
     long negativeQuestionsPassed(double minimumSimilarity) {
         return negativeQuestions.stream().filter(result -> result.passed(minimumSimilarity)).count();
+    }
+
+    /** For information only: a full-text hit never fails a Negative Question. */
+    long negativeQuestionsWithFullTextHits() {
+        return negativeQuestions.stream().filter(result -> !result.fullTextHits().isEmpty()).count();
     }
 
     String summary(Run run) {
@@ -58,10 +63,14 @@ record Report(List<QuestionResult> questions, List<NegativeResult> negativeQuest
                 | Minimum Similarity | %s |
                 | Negative Questions passed | %d of %d |
                 | Highest similarity of a Negative Question | %s |
+                | Negative Questions with full-text hits (information only) | %d of %d |
+                | Fusion | k %d, vector weight %s, full-text weight %s |
                 """.formatted(run.collection(), run.embeddingModel(), run.notes(), run.date(),
                 twoDecimals(hitAt5()), twoDecimals(recallAt5()), twoDecimals(meanReciprocalRank()),
                 questions.size(), similarity(run.minimumSimilarity()), negativeQuestionsPassed(run.minimumSimilarity()),
-                negativeQuestions.size(), similarity(highestNegativeSimilarity()));
+                negativeQuestions.size(), similarity(highestNegativeSimilarity()),
+                negativeQuestionsWithFullTextHits(), negativeQuestions.size(),
+                run.fusion().k(), twoDecimals(run.fusion().vectorWeight()), twoDecimals(run.fusion().fullTextWeight()));
     }
 
     String details(Run run) {
@@ -78,17 +87,29 @@ record Report(List<QuestionResult> questions, List<NegativeResult> negativeQuest
             details.append("\n### ").append(result.question().text()).append("\n\n")
                     .append(result.passed(run.minimumSimilarity()) ? "Passed: no hit reaches" : "Failed: a hit reaches")
                     .append(" the Minimum Similarity of ").append(similarity(run.minimumSimilarity())).append(".\n\n");
-            appendHits(details, result.hits());
+            appendHits(details, result.vectorHits());
+            appendFullTextHits(details, result.fullTextHits());
         }
         return details.toString();
     }
 
+    /** Each hit with its similarity, "–" if only the full-text search found it, and marked if that matched it too. */
     private static void appendHits(StringBuilder details, List<SearchHit> hits) {
         if (hits.isEmpty()) {
             details.append("No hits.\n");
         }
         for (SearchHit hit : hits) {
-            details.append("- ").append(similarity(hit.score())).append(' ').append(hit.notePath()).append('\n');
+            details.append("- ").append(similarity(hit.similarity().orElse(Double.NaN))).append(' ')
+                    .append(hit.notePath())
+                    .append(hit.similarity().isPresent() && hit.fullTextRank().isPresent() ? " (also full text)" : "")
+                    .append('\n');
+        }
+    }
+
+    private static void appendFullTextHits(StringBuilder details, List<SearchHit> hits) {
+        if (!hits.isEmpty()) {
+            details.append("\nFull-text hits, for information only:\n\n");
+            hits.forEach(hit -> details.append("- ").append(hit.notePath()).append('\n'));
         }
     }
 

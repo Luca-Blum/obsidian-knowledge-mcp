@@ -25,9 +25,12 @@ A Collection is defined only by configuration:
 | `collection.search.tool-description` | `COLLECTION_SEARCH_TOOL_DESCRIPTION` | Description Claude reads for `search` |
 | `collection.search.default-k` | `COLLECTION_SEARCH_DEFAULT_K` | Search Hits when `k` is not given (default `5`) |
 | `collection.search.max-k` | `COLLECTION_SEARCH_MAX_K` | Largest `k` a caller may ask for (default `20`) |
-| `collection.search.minimum-similarity` | `COLLECTION_SEARCH_MINIMUM_SIMILARITY` | Cosine similarity a Chunk must reach to be a Search Hit at all (default `0.5`, uncalibrated, belongs to the embedding model) |
+| `collection.search.minimum-similarity` | `COLLECTION_SEARCH_MINIMUM_SIMILARITY` | Cosine similarity a vector candidate must reach before the fusion; full-text candidates are not thresholded (default `0.5`, uncalibrated, belongs to the embedding model) |
 | `collection.search.max-hits-per-note` | `COLLECTION_SEARCH_MAX_HITS_PER_NOTE` | Search Hits one Note may take; each hit's `moreInNote` counts the rest (default `2`) |
-| `collection.search.candidates` | `COLLECTION_SEARCH_CANDIDATES` | Closest Chunks a search looks at before the cap and `k` (default `50`) |
+| `collection.search.candidates` | `COLLECTION_SEARCH_CANDIDATES` | Candidates each list contributes to the fusion, the closest Chunks of the vector search and the best ranked of the full-text search, before the cap and `k` (default `50`) |
+| `collection.search.fusion.k` | `COLLECTION_SEARCH_FUSION_K` | The `k` of Reciprocal Rank Fusion, `weight / (k + rank)`; larger flattens the top ranks (default `60`) |
+| `collection.search.fusion.vector-weight` | `COLLECTION_SEARCH_FUSION_VECTOR_WEIGHT` | Weight of the vector list in the fusion (default `1.0`) |
+| `collection.search.fusion.full-text-weight` | `COLLECTION_SEARCH_FUSION_FULL_TEXT_WEIGHT` | Weight of the full-text list in the fusion; `0` leaves it out, which is plain vector search (default `1.0`) |
 | `collection.reconciliation.interval` | `COLLECTION_RECONCILIATION_INTERVAL` | How often the Vault is compared with the index (default `5m`) |
 | `collection.reconciliation.quiet-period` | `COLLECTION_RECONCILIATION_QUIET_PERIOD` | How long the Vault must stay quiet after a file change before it is reconciled (default `2s`) |
 
@@ -103,8 +106,9 @@ and leaves fewer slots for the others.
 - **Recall@5**: mean share of a question's expected Notes found in the top 5.
 - **MRR**: mean of 1 / rank of the first expected Note, 0 when none is in the top 5.
 
-A Negative Question passes when none of its hits reaches the configured Minimum Similarity
-(`COLLECTION_SEARCH_MINIMUM_SIMILARITY`), and the summary counts how many passed. The search already drops every hit
+A Negative Question passes when none of its vector hits reaches the configured Minimum Similarity
+(`COLLECTION_SEARCH_MINIMUM_SIMILARITY`), and the summary counts how many passed. Its full-text hits never fail it; the
+summary counts the Negative Questions that got any, and the details list them apart, for information only. The search already drops every hit
 below that value, so to see how close the Negative Questions come, run once with
 `COLLECTION_SEARCH_MINIMUM_SIMILARITY=0`: the highest similarity any of them reached is where the Minimum Similarity
 would have to start. Run again with that value to see in Hit@5 what it costs the real questions.
@@ -112,4 +116,5 @@ would have to start. Run again with that value to see in Hit@5 what it costs the
 Measure a baseline first, then change exactly one lever and measure again. Commit each `summary.md` as
 `docs/evaluation/<collection>-<what changed>.md`. The baseline,
 [`docs/evaluation/engineering-baseline.md`](../docs/evaluation/engineering-baseline.md), is plain vector search
-without a Minimum Similarity; reproduce it with the command above and `COLLECTION_SEARCH_MINIMUM_SIMILARITY=0`.
+without a Minimum Similarity; reproduce it with the command above, `COLLECTION_SEARCH_MINIMUM_SIMILARITY=0` and
+`COLLECTION_SEARCH_FUSION_FULL_TEXT_WEIGHT=0`.
