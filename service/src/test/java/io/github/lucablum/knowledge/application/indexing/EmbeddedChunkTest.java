@@ -4,13 +4,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.lucablum.knowledge.domain.chunk.Chunk;
 import io.github.lucablum.knowledge.domain.chunk.HeadingPath;
+import io.github.lucablum.knowledge.domain.note.Note;
+import io.github.lucablum.knowledge.domain.note.NoteKind;
+import io.github.lucablum.knowledge.domain.note.NoteLanguage;
 import io.github.lucablum.knowledge.domain.note.NotePath;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class EmbeddedChunkTest {
 
-    private static final Chunk CHUNK = new Chunk(new NotePath("Running/Intervals.md"), 0, new HeadingPath(List.of()), "body");
+    private static final Note NOTE = new Note(new NotePath("Running/Intervals.md"), NoteKind.OWN, "Intervals",
+            Optional.empty(), Optional.empty(), Optional.empty(), new NoteLanguage("en"));
+    private static final Chunk CHUNK = new Chunk(NOTE, 0, new HeadingPath(List.of()), "body");
 
     @Test
     void whenChangeVector_givenArrayPassedToConstructor_thenEmbeddedChunkIsUnchanged() {

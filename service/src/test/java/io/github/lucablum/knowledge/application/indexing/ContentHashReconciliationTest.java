@@ -3,6 +3,7 @@ package io.github.lucablum.knowledge.application.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.lucablum.knowledge.application.Embedding;
+import io.github.lucablum.knowledge.domain.chunk.ChunkingRules;
 import io.github.lucablum.knowledge.domain.chunk.Splitter;
 import io.github.lucablum.knowledge.domain.note.ContentHash;
 import io.github.lucablum.knowledge.domain.note.Note;
@@ -32,7 +33,7 @@ class ContentHashReconciliationTest {
 
     private static IndexVault reconciliation(Vault vault, Embedding embedding, IndexedNotes index) {
         return new ContentHashReconciliation(
-                vault, new NoteParser(new NoteLanguage("en")), new Splitter(), embedding, index);
+                vault, new NoteParser(new NoteLanguage("en")), new Splitter(new ChunkingRules(3, 0, 2000, 0)), embedding, index);
     }
 
     @Test

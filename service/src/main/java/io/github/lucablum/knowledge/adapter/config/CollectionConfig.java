@@ -26,6 +26,8 @@ public interface CollectionConfig {
 
     Embedding embedding();
 
+    Chunking chunking();
+
     Search search();
 
     interface Reconciliation {
@@ -48,6 +50,26 @@ public interface CollectionConfig {
         String model();
 
         int dimension();
+    }
+
+    /** How Notes become Chunks; sizes are in characters, so comparing models never changes the Chunks. */
+    interface Chunking {
+
+        /** The deepest heading level that starts a new Chunk: H2 and H3 by default, as H1 is usually the Title. */
+        @WithDefault("3")
+        int headingLevel();
+
+        /** A section shorter than this is merged with a neighbour. */
+        @WithDefault("200")
+        int minimumCharacters();
+
+        /** A section longer than this is split at paragraphs; code blocks and tables never are. */
+        @WithDefault("2000")
+        int maximumCharacters();
+
+        /** How much of the end of a split piece the next piece repeats. */
+        @WithDefault("100")
+        int overlapCharacters();
     }
 
     interface Search {

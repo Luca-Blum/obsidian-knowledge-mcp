@@ -18,6 +18,10 @@ A Collection is defined only by configuration:
 | `collection.default-language` | `COLLECTION_DEFAULT_LANGUAGE` | Note Language when a Note's `lang` is missing or unknown: `de` or `en` (default `en`) |
 | `collection.embedding.model` | `COLLECTION_EMBEDDING_MODEL` | Ollama embedding model (default `bge-m3`) |
 | `collection.embedding.dimension` | `COLLECTION_EMBEDDING_DIMENSION` | Vector dimension of that model (default `1024`) |
+| `collection.chunking.heading-level` | `COLLECTION_CHUNKING_HEADING_LEVEL` | Deepest heading level that starts a new Chunk; deeper headings stay inside it (default `3`, so H2 and H3) |
+| `collection.chunking.minimum-characters` | `COLLECTION_CHUNKING_MINIMUM_CHARACTERS` | A section shorter than this is merged with a neighbour (default `200`) |
+| `collection.chunking.maximum-characters` | `COLLECTION_CHUNKING_MAXIMUM_CHARACTERS` | A section longer than this is split at paragraphs; code blocks and tables never are (default `2000`) |
+| `collection.chunking.overlap-characters` | `COLLECTION_CHUNKING_OVERLAP_CHARACTERS` | End of a split piece the next piece repeats, in whole words (default `100`) |
 | `collection.search.tool-description` | `COLLECTION_SEARCH_TOOL_DESCRIPTION` | Description Claude reads for `search` |
 | `collection.search.default-k` | `COLLECTION_SEARCH_DEFAULT_K` | Search Hits when `k` is not given (default `5`) |
 | `collection.search.max-k` | `COLLECTION_SEARCH_MAX_K` | Largest `k` a caller may ask for (default `20`) |

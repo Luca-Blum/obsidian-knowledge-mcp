@@ -6,10 +6,11 @@ import java.util.regex.Pattern;
 import org.jmolecules.ddd.annotation.ValueObject;
 
 /**
- * A heading line; it ends the current section and opens the next one.
+ * A heading line, as written in {@code line}; down to the configured level it ends the current section and opens the
+ * next one, deeper ones stay inside the section.
  */
 @ValueObject
-record HeadingLine(int level, String text) implements MarkdownLine {
+record HeadingLine(int level, String text, String line) implements MarkdownLine {
 
     private static final Pattern HEADING = Pattern.compile("(?<marks>#{1,6})\\s+(?<text>(?:\\S.*)?)");
 
@@ -21,7 +22,7 @@ record HeadingLine(int level, String text) implements MarkdownLine {
         if (!heading.matches()) {
             return Optional.empty();
         }
-        return Optional.of(new HeadingLine(heading.group("marks").length(), withoutClosingHashes(heading.group("text"))));
+        return Optional.of(new HeadingLine(heading.group("marks").length(), withoutClosingHashes(heading.group("text")), line));
     }
 
     /**

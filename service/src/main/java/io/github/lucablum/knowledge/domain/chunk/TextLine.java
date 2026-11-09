@@ -2,6 +2,6 @@ package io.github.lucablum.knowledge.domain.chunk;
 
 import org.jmolecules.ddd.annotation.ValueObject;
 
-/** Any line that is not a heading, including lines inside a code fence and the fence lines themselves. */
+/** Any line that is neither a heading nor part of a code block. */
 @ValueObject
 record TextLine(String value) implements MarkdownLine {}

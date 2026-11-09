@@ -22,7 +22,7 @@ final class MarkdownLines {
         while (lines.hasNext()) {
             String line = lines.next();
             if (isCodeFence(line)) {
-                result.addAll(codeBlock(line, lines));
+                result.add(codeBlock(line, lines));
             } else {
                 result.add(headingOrText(line));
             }
@@ -34,17 +34,17 @@ final class MarkdownLines {
      * The code block from its opening fence up to and including the closing fence, which consumes {@code lines};
      * an unclosed block runs to the end.
      */
-    private static List<MarkdownLine> codeBlock(String openingFence, Iterator<String> lines) {
-        List<MarkdownLine> block = new ArrayList<>();
-        block.add(new TextLine(openingFence));
+    private static CodeBlock codeBlock(String openingFence, Iterator<String> lines) {
+        List<String> block = new ArrayList<>();
+        block.add(openingFence);
         while (lines.hasNext()) {
             String line = lines.next();
-            block.add(new TextLine(line));
+            block.add(line);
             if (isCodeFence(line)) {
                 break;
             }
         }
-        return block;
+        return new CodeBlock(block);
     }
 
     private static MarkdownLine headingOrText(String line) {
