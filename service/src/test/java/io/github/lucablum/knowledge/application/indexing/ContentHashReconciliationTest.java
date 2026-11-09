@@ -32,8 +32,8 @@ class ContentHashReconciliationTest {
     }
 
     private static IndexVault reconciliation(Vault vault, Embedding embedding, IndexedNotes index) {
-        return new ContentHashReconciliation(
-                vault, new NoteParser(new NoteLanguage("en")), new Splitter(new ChunkingRules(3, 0, 2000, 0)), embedding, index);
+        Splitter splitter = new Splitter(new ChunkingRules(3, 0, 2000, 0));
+        return new ContentHashReconciliation(vault, new NoteParser(new NoteLanguage("en")), splitter, embedding, index);
     }
 
     @Test

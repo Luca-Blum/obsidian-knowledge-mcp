@@ -50,7 +50,7 @@ The language a Note is written in, taken from its frontmatter `lang` or else fro
 ### Retrieval
 
 **Chunk**:
-A contiguous section of a Note's content that can be searched on its own, with its heading path as context. Its identity is only its position in the current version of the Note.
+A section of a Note's content that can be searched on its own, with its heading path as context. Small neighbouring sections are merged into one Chunk and a large section is split into several, which repeat a little of each other's text. Its identity is only its position in the current version of the Note.
 _Avoid_: Passage, snippet, segment
 
 **Search Hit**:

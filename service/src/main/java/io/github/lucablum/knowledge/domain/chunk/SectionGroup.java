@@ -6,7 +6,8 @@ import org.jmolecules.ddd.annotation.ValueObject;
 
 /**
  * Neighbouring sections that become one Chunk. Its heading path is the one all of them share, so reading that section
- * of the Note returns everything in the Chunk; a section deeper than that path shows its heading in the content.
+ * of the Note returns everything in the Chunk. Every later section shows its heading in the content, and so does the
+ * first if it is deeper than that path.
  */
 @ValueObject
 record SectionGroup(List<Section> sections) {
@@ -37,10 +38,12 @@ record SectionGroup(List<Section> sections) {
         int shared = headings().segments().size();
         List<String> parts = new ArrayList<>();
         for (Section section : sections) {
-            boolean deeper = section.headings().segments().size() > shared;
-            parts.add(section.heading().filter(heading -> deeper)
-                    .map(heading -> heading.line().strip() + "\n" + section.body())
-                    .orElse(section.body()));
+            boolean showsHeading = section != sections.getFirst() || section.headings().segments().size() > shared;
+            if (showsHeading && section.heading().isPresent()) {
+                parts.add(section.heading().get().line().strip() + "\n" + section.body());
+            } else {
+                parts.add(section.body());
+            }
         }
         return String.join("\n\n", parts);
     }

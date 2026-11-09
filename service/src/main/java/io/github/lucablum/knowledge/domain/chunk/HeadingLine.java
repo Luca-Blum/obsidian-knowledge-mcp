@@ -22,7 +22,8 @@ record HeadingLine(int level, String text, String line) implements MarkdownLine 
         if (!heading.matches()) {
             return Optional.empty();
         }
-        return Optional.of(new HeadingLine(heading.group("marks").length(), withoutClosingHashes(heading.group("text")), line));
+        String text = withoutClosingHashes(heading.group("text"));
+        return Optional.of(new HeadingLine(heading.group("marks").length(), text, line));
     }
 
     /**

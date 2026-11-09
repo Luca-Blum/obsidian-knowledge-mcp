@@ -6,7 +6,10 @@ import java.util.ArrayList;
 import java.util.List;
 import org.jmolecules.ddd.annotation.ValueObject;
 
-/** A contiguous section of a Note's content; its ordinal is its position in the current version of the Note. */
+/**
+ * A section of a Note's content, small neighbouring sections merged or a large one split; its ordinal is its position
+ * in the current version of the Note.
+ */
 @ValueObject
 public record Chunk(Note note, int ordinal, HeadingPath headings, String content) {
 

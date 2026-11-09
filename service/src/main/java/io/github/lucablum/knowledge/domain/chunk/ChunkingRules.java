@@ -12,4 +12,14 @@ import org.jmolecules.ddd.annotation.ValueObject;
  */
 @ValueObject
 public record ChunkingRules(int headingLevel, int minimumCharacters, int maximumCharacters, int overlapCharacters) {
+
+    public ChunkingRules {
+        if (headingLevel < 1 || headingLevel > 6) {
+            throw new IllegalArgumentException("heading level must be 1 to 6: " + headingLevel);
+        }
+        if (minimumCharacters < 0 || overlapCharacters < 0 || maximumCharacters < minimumCharacters) {
+            throw new IllegalArgumentException("chunk sizes need 0 <= minimum <= maximum and overlap >= 0: %d / %d / %d"
+                    .formatted(minimumCharacters, maximumCharacters, overlapCharacters));
+        }
+    }
 }

@@ -1,6 +1,7 @@
 package io.github.lucablum.knowledge.domain.chunk;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import io.github.lucablum.knowledge.domain.note.Note;
@@ -204,6 +205,50 @@ class SplitterTest {
                     + "see CA, Dependency Rule, Entities > Rules and diagram.png");
             assertThat(chunk.content()).isEqualTo(content);
         });
+    }
+
+    @Test
+    void whenSplit_givenSmallSectionsWithTheSameHeading_thenKeepTheSecondHeadingInTheMergedContent() {
+        Splitter merging = new Splitter(new ChunkingRules(6, 20, 2000, 0));
+
+        List<Chunk> chunks = merging.split(NOTE, """
+                ## Notes
+                first
+                ## Notes
+                second
+                """);
+
+        assertThat(chunks).singleElement().satisfies(chunk -> {
+            assertThat(chunk.content()).isEqualTo("first\n\n## Notes\nsecond");
+            assertThat(chunk.headings().segments()).containsExactly("Notes");
+        });
+    }
+
+    @Test
+    void whenSplit_givenOtherFenceInsideCodeBlock_thenKeepTheCodeBlockWhole() {
+        Splitter splitting = new Splitter(new ChunkingRules(6, 0, 20, 0));
+
+        List<Chunk> chunks = splitting.split(NOTE, """
+                ````
+                ```
+                # not a heading
+
+                ~~~
+                ````
+                """);
+
+        assertThat(chunks).singleElement().extracting(Chunk::content)
+                .isEqualTo("````\n```\n# not a heading\n\n~~~\n````");
+    }
+
+    @Test
+    void whenCreateRules_givenNegativeOverlap_thenReject() {
+        assertThatThrownBy(() -> new ChunkingRules(3, 200, 2000, -1)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void whenCreateRules_givenMinimumAboveMaximum_thenReject() {
+        assertThatThrownBy(() -> new ChunkingRules(3, 2000, 200, 0)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
