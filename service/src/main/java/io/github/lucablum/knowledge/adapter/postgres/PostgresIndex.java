@@ -96,8 +96,7 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, ChunkFullText,
             select.setDouble(5, minimumSimilarity);
             select.setString(6, vector);
             select.setInt(7, limit);
-        }, row -> SearchHit.bySimilarity(row.getString("content"), row.getString("note_path"), row.getInt("ordinal"),
-                headingPath(row), NoteKind.ofLabel(row.getString("kind")), row.getDouble("score")));
+        }, searchHit(SearchHit::bySimilarity));
     }
 
     @Override
@@ -117,8 +116,7 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, ChunkFullText,
             select.setString(2, topicName);
             select.setString(3, topicName);
             select.setInt(4, limit);
-        }, row -> SearchHit.byFullTextRank(row.getString("content"), row.getString("note_path"), row.getInt("ordinal"),
-                headingPath(row), NoteKind.ofLabel(row.getString("kind")), row.getDouble("score")));
+        }, searchHit(SearchHit::byFullTextScore));
     }
 
     @Override
@@ -196,8 +194,15 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, ChunkFullText,
         return results;
     }
 
-    private static List<String> headingPath(ResultSet row) throws SQLException {
-        return List.of((String[]) row.getArray("heading_path").getArray());
+    /** Reads a candidate row of either search; {@code score} is that search's own. */
+    private static Row<SearchHit> searchHit(Candidate candidate) {
+        return row -> candidate.of(
+                row.getString("content"),
+                row.getString("note_path"),
+                row.getInt("ordinal"),
+                List.of((String[]) row.getArray("heading_path").getArray()),
+                NoteKind.ofLabel(row.getString("kind")),
+                row.getDouble("score"));
     }
 
     private static Map.Entry<NotePath, ContentHash> toContentHash(ResultSet row) throws SQLException {
@@ -223,5 +228,10 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, ChunkFullText,
 
     private interface Row<T> {
         T read(ResultSet row) throws SQLException;
+    }
+
+    private interface Candidate {
+        SearchHit of(String content, String notePath, int ordinal, List<String> headingPath, NoteKind noteKind,
+                double score);
     }
 }

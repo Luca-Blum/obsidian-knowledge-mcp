@@ -104,6 +104,6 @@ class ReportTest {
     }
 
     private static SearchHit fullTextHit(String notePath, double rank) {
-        return SearchHit.byFullTextRank("content", notePath, 0, List.of(), NoteKind.OWN, rank);
+        return SearchHit.byFullTextScore("content", notePath, 0, List.of(), NoteKind.OWN, score);
     }
 }

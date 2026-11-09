@@ -25,12 +25,12 @@ class ReciprocalRankFusionTest {
     }
 
     @Test
-    void whenFuse_givenChunkInBothRankings_thenKeepItsSimilarityAndItsFullTextRank() {
+    void whenFuse_givenChunkInBothRankings_thenKeepItsSimilarityAndItsFullTextScore() {
         ReciprocalRankFusion fusion = new ReciprocalRankFusion(60, 1.0, 1.0);
 
         List<SearchHit> fused = fusion.fuse(List.of(vector("Both.md", 0.7)), List.of(fullText("Both.md", 0.3)));
 
-        assertThat(fused).extracting(SearchHit::similarity, SearchHit::fullTextRank)
+        assertThat(fused).extracting(SearchHit::similarity, SearchHit::fullTextScore)
                 .containsExactly(tuple(OptionalDouble.of(0.7), OptionalDouble.of(0.3)));
     }
 
@@ -73,7 +73,7 @@ class ReciprocalRankFusionTest {
         return SearchHit.bySimilarity("content", notePath, 0, List.of(), NoteKind.OWN, similarity);
     }
 
-    private static SearchHit fullText(String notePath, double rank) {
-        return SearchHit.byFullTextRank("content", notePath, 0, List.of(), NoteKind.OWN, rank);
+    private static SearchHit fullText(String notePath, double score) {
+        return SearchHit.byFullTextScore("content", notePath, 0, List.of(), NoteKind.OWN, score);
     }
 }

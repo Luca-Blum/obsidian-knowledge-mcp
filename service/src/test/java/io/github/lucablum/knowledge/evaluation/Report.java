@@ -101,7 +101,7 @@ record Report(List<QuestionResult> questions, List<NegativeResult> negativeQuest
         for (SearchHit hit : hits) {
             details.append("- ").append(similarity(hit.similarity().orElse(Double.NaN))).append(' ')
                     .append(hit.notePath())
-                    .append(hit.similarity().isPresent() && hit.fullTextRank().isPresent() ? " (also full text)" : "")
+                    .append(hit.similarity().isPresent() && hit.fullTextScore().isPresent() ? " (also full text)" : "")
                     .append('\n');
         }
     }

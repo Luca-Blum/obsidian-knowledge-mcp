@@ -8,7 +8,7 @@ import org.jmolecules.ddd.annotation.ValueObject;
 /**
  * A Chunk returned for one query; the score only orders the Search Hits of that query. The Chunk is identified by its
  * Note and its ordinal. {@code similarity} is the cosine similarity between the query and the Chunk, from -1 to 1, if
- * the vector search found it, and {@code fullTextRank} its rank by the full-text search, if that matched it.
+ * the vector search found it, and {@code fullTextScore} its score from the full-text search, if that matched it.
  * {@code moreInNote} counts the further Chunks of the same Note among the query's candidates that are not among the
  * Search Hits.
  */
@@ -21,7 +21,7 @@ public record SearchHit(
         NoteKind noteKind,
         double score,
         OptionalDouble similarity,
-        OptionalDouble fullTextRank,
+        OptionalDouble fullTextScore,
         int moreInNote) {
 
     public SearchHit {
@@ -36,11 +36,12 @@ public record SearchHit(
                 OptionalDouble.of(similarity), OptionalDouble.empty(), 0);
     }
 
-    /** A candidate of the full-text search, scored by its rank there. */
-    public static SearchHit byFullTextRank(
-            String content, String notePath, int ordinal, List<String> headingPath, NoteKind noteKind, double rank) {
-        return new SearchHit(content, notePath, ordinal, headingPath, noteKind, rank,
-                OptionalDouble.empty(), OptionalDouble.of(rank), 0);
+    /** A candidate of the full-text search, scored by how well its full text matches. */
+    public static SearchHit byFullTextScore(
+            String content, String notePath, int ordinal, List<String> headingPath, NoteKind noteKind,
+            double fullTextScore) {
+        return new SearchHit(content, notePath, ordinal, headingPath, noteKind, fullTextScore,
+                OptionalDouble.empty(), OptionalDouble.of(fullTextScore), 0);
     }
 
     public boolean isSameChunk(SearchHit other) {
@@ -54,16 +55,16 @@ public record SearchHit(
         }
         return new SearchHit(content, notePath, ordinal, headingPath, noteKind, score,
                 similarity.isPresent() ? similarity : sameChunk.similarity,
-                fullTextRank.isPresent() ? fullTextRank : sameChunk.fullTextRank, moreInNote);
+                fullTextScore.isPresent() ? fullTextScore : sameChunk.fullTextScore, moreInNote);
     }
 
     public SearchHit withScore(double score) {
-        return new SearchHit(content, notePath, ordinal, headingPath, noteKind, score, similarity, fullTextRank,
+        return new SearchHit(content, notePath, ordinal, headingPath, noteKind, score, similarity, fullTextScore,
                 moreInNote);
     }
 
     public SearchHit withMoreInNote(int moreInNote) {
-        return new SearchHit(content, notePath, ordinal, headingPath, noteKind, score, similarity, fullTextRank,
+        return new SearchHit(content, notePath, ordinal, headingPath, noteKind, score, similarity, fullTextScore,
                 moreInNote);
     }
 }

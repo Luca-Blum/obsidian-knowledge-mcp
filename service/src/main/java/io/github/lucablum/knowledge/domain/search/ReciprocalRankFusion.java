@@ -32,8 +32,8 @@ public class ReciprocalRankFusion {
 
     /** Both rankings' Search Hits, each Chunk once, highest fused score first. */
     public List<SearchHit> fuse(List<SearchHit> vector, List<SearchHit> fullText) {
-        Map<String, SearchHit> chunks = new LinkedHashMap<>();
-        Map<String, Double> scores = new LinkedHashMap<>();
+        Map<ChunkKey, SearchHit> chunks = new LinkedHashMap<>();
+        Map<ChunkKey, Double> scores = new LinkedHashMap<>();
         add(vector, vectorWeight, chunks, scores);
         add(fullText, fullTextWeight, chunks, scores);
         List<SearchHit> fused = new ArrayList<>();
@@ -42,15 +42,18 @@ public class ReciprocalRankFusion {
         return fused;
     }
 
-    private void add(List<SearchHit> ranking, double weight, Map<String, SearchHit> chunks, Map<String, Double> scores) {
+    private void add(List<SearchHit> ranking, double weight, Map<ChunkKey, SearchHit> chunks, Map<ChunkKey, Double> scores) {
         if (weight == 0) {
             return;
         }
         for (int i = 0; i < ranking.size(); i++) {
             SearchHit hit = ranking.get(i);
-            String chunk = hit.notePath() + "#" + hit.ordinal();
+            ChunkKey chunk = new ChunkKey(hit.notePath(), hit.ordinal());
             chunks.merge(chunk, hit, SearchHit::mergedWith);
             scores.merge(chunk, weight / (k + i + 1), Double::sum);
         }
     }
+
+    /** A Chunk is its Note and its position there, so the same Chunk from both searches is fused into one. */
+    private record ChunkKey(String notePath, int ordinal) {}
 }
