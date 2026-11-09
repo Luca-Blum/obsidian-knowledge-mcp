@@ -5,9 +5,9 @@ The service is a hexagon with the packages `domain`, `application` and `adapter`
 | Role | Annotation | Form | Example |
 |---|---|---|---|
 | Primary port: what the outside may ask of the core | `@PrimaryPort` | interface in `application` | `SearchChunks`, `IndexVault` |
-| Application: the use case behind a primary port | `@Application` | class in `application`, named after how it works | `VectorSearch`, `VaultIndexer` |
+| Application: the use case behind a primary port | `@Application` | class in `application`, named after how it works | `VectorSearch`, `ContentHashReconciliation` |
 | Secondary port: what the core needs from the outside | `@SecondaryPort` | interface in `application` | `IndexedNotes`, `ChunkVectors`, `Catalog`, `Embedding`, `Vault` |
-| Primary adapter: turns an outside event into a call of a primary port | `@PrimaryAdapter` | class in `adapter` | `SearchTool`, `IndexOnStartup` |
+| Primary adapter: turns an outside event into a call of a primary port | `@PrimaryAdapter` | class in `adapter` | `SearchTool`, `ScheduledReconciliation` |
 | Secondary adapter: implements a secondary port with a technology | `@SecondaryAdapter` | class in `adapter`, named after the technology | `PostgresIndex`, `OllamaEmbedding`, `FileSystemVault` |
 | Value object | `@ValueObject` | record in `domain` (or `EmbeddedChunk`) | `NotePath`, `Chunk`, `HeadingLine` |
 | Domain service | `@Service` | stateless public class in `domain` | `Splitter` |

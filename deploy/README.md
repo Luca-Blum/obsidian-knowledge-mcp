@@ -127,12 +127,14 @@ a few minutes longer, because `ollama-pull` downloads the embedding model (about
 
 ## Indexing
 
-For now the service indexes the whole Vault **once, when it starts**. It does not notice later changes yet
-(Reconciliation, issue #11). It embeds Notes one chunk at a time on the Pi's CPU, which takes several seconds per
-chunk: roughly an hour per 4 MB of Markdown. Every deploy restarts the service, so it indexes everything again. Search
-works during indexing, but only finds the Notes indexed so far.
+The service keeps the index in line with the Vault on its own (Reconciliation). Right after it starts, every five
+minutes (`COLLECTION_RECONCILIATION_INTERVAL`) and a few seconds after Syncthing changes a file, it compares every Note's
+content hash with the one in the index. It embeds only new and changed Notes and removes deleted ones; a rename is a
+removal plus a new Note. A restart or deploy therefore re-embeds only what changed while the service was down.
 
-To pick up new Notes now, restart the service: `docker restart knowledgebase-knowledgebase-engineering-1`.
+Embedding runs one chunk at a time on the Pi's CPU and takes several seconds per chunk, so the very first run, or a
+large batch of new Notes, takes roughly an hour per 4 MB of Markdown. Search works meanwhile, and a Note always shows
+either its old or its new version, never a mix.
 
 Progress, as the number of chunks in the index:
 

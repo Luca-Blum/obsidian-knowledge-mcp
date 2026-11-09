@@ -3,6 +3,7 @@ package io.github.lucablum.knowledge.adapter.config;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import java.nio.file.Path;
+import java.time.Duration;
 
 /** Everything that makes this instance serve one particular Collection. */
 @ConfigMapping(prefix = "collection")
@@ -18,8 +19,7 @@ public interface CollectionConfig {
     /** The HTTP port of this Collection's MCP endpoint. */
     int mcpPort();
 
-    @WithDefault("true")
-    boolean indexOnStartup();
+    Reconciliation reconciliation();
 
     /** The Note Language of every Note whose frontmatter has no known {@code lang}. */
     String defaultLanguage();
@@ -27,6 +27,21 @@ public interface CollectionConfig {
     Embedding embedding();
 
     Search search();
+
+    interface Reconciliation {
+
+        /** Off only in tests that run Reconciliation themselves. */
+        @WithDefault("true")
+        boolean enabled();
+
+        /** How often the Vault is compared with the index, whether or not a file change was noticed. */
+        @WithDefault("5m")
+        Duration interval();
+
+        /** How long the Vault must stay quiet after a file change, so a sync in progress is picked up in one run. */
+        @WithDefault("2s")
+        Duration quietPeriod();
+    }
 
     interface Embedding {
 

@@ -9,6 +9,7 @@ import io.github.lucablum.knowledge.application.search.ChunkVectors;
 import io.github.lucablum.knowledge.domain.catalog.SourceNoteListing;
 import io.github.lucablum.knowledge.domain.catalog.TopicCount;
 import io.github.lucablum.knowledge.domain.chunk.Chunk;
+import io.github.lucablum.knowledge.domain.note.ContentHash;
 import io.github.lucablum.knowledge.domain.note.Note;
 import io.github.lucablum.knowledge.domain.note.NoteKind;
 import io.github.lucablum.knowledge.domain.note.NotePath;
@@ -27,7 +28,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.jmolecules.architecture.hexagonal.SecondaryAdapter;
 
 /** Stores Notes and Chunks in the Collection's own schema; vectors live in pgvector columns. */
@@ -44,18 +47,24 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog {
     }
 
     @Override
-    public void replace(Note note, List<EmbeddedChunk> chunks, String embeddingModel) {
+    public Map<NotePath, ContentHash> contentHashes() {
+        return query(sql.contentHashes(), select -> {}, PostgresIndex::toContentHash).stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
+    @Override
+    public void replace(Note note, ContentHash hash, List<EmbeddedChunk> chunks, String embeddingModel) {
         Transaction.run(dataSource, connection -> {
             deleteNote(connection, note.path());
-            insertNote(connection, note);
+            insertNote(connection, note, hash);
             insertChunks(connection, note.path(), chunks, embeddingModel);
         });
     }
 
     @Override
-    public void retainOnly(Collection<NotePath> notes) {
+    public void remove(Collection<NotePath> notes) {
         Transaction.run(dataSource, connection -> {
-            try (PreparedStatement delete = connection.prepareStatement(sql.retainOnly())) {
+            try (PreparedStatement delete = connection.prepareStatement(sql.removeNotes())) {
                 delete.setArray(1, textArray(connection, notes.stream().map(NotePath::value).toList()));
                 delete.executeUpdate();
             }
@@ -104,7 +113,7 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog {
         }
     }
 
-    private void insertNote(Connection connection, Note note) throws SQLException {
+    private void insertNote(Connection connection, Note note, ContentHash hash) throws SQLException {
         try (PreparedStatement insert = connection.prepareStatement(sql.insertNote())) {
             insert.setString(1, note.path().value());
             insert.setString(2, note.path().topic().map(Topic::name).orElse(null));
@@ -114,6 +123,7 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog {
             insert.setString(6, note.published().map(PublishedDate::value).orElse(null));
             insert.setString(7, note.author().orElse(null));
             insert.setString(8, note.language().code());
+            insert.setString(9, hash.value());
             insert.executeUpdate();
         }
     }
@@ -163,6 +173,10 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog {
                 NoteKind.ofLabel(row.getString("kind")),
                 row.getDouble("score"),
                 0);
+    }
+
+    private static Map.Entry<NotePath, ContentHash> toContentHash(ResultSet row) throws SQLException {
+        return Map.entry(new NotePath(row.getString("path")), new ContentHash(row.getString("content_hash")));
     }
 
     private static SourceNoteListing toSourceNoteListing(ResultSet row) throws SQLException {

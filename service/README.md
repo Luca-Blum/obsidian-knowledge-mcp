@@ -24,6 +24,8 @@ A Collection is defined only by configuration:
 | `collection.search.minimum-similarity` | `COLLECTION_SEARCH_MINIMUM_SIMILARITY` | Cosine similarity a Chunk must reach to be a Search Hit at all (default `0.5`, uncalibrated, belongs to the embedding model) |
 | `collection.search.max-hits-per-note` | `COLLECTION_SEARCH_MAX_HITS_PER_NOTE` | Search Hits one Note may take; each hit's `moreInNote` counts the rest (default `2`) |
 | `collection.search.candidates` | `COLLECTION_SEARCH_CANDIDATES` | Closest Chunks a search looks at before the cap and `k` (default `50`) |
+| `collection.reconciliation.interval` | `COLLECTION_RECONCILIATION_INTERVAL` | How often the Vault is compared with the index (default `5m`) |
+| `collection.reconciliation.quiet-period` | `COLLECTION_RECONCILIATION_QUIET_PERIOD` | How long the Vault must stay quiet after a file change before it is reconciled (default `2s`) |
 
 In the `prod` profile the database and Ollama come from `DATABASE_URL`, `DATABASE_USER`, `DATABASE_PASSWORD` and
 `OLLAMA_BASE_URL`; `/q/health/ready` reports readiness. See [`deploy/`](../deploy/README.md).
@@ -37,8 +39,9 @@ ollama pull bge-m3      # or: docker run -d -p 11434:11434 --name ollama ollama/
 COLLECTION_VAULT_PATH=/path/to/Engineering ./service/mvnw -f service/pom.xml quarkus:dev
 ```
 
-The `dev` profile configures the engineering Collection on port 8081 and indexes the Vault in the background after
-start-up. Then connect Claude Code:
+The `dev` profile configures the engineering Collection on port 8081. In the background the service reconciles the
+Vault with the index: right after start-up, every `collection.reconciliation.interval`, and seconds after a file
+changes. Only Notes whose content hash differs from the indexed one are embedded again, so a restart is cheap. Then connect Claude Code:
 
 ```shell
 claude mcp add --transport http knowledge-engineering http://localhost:8081/mcp

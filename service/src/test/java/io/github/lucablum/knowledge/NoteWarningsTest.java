@@ -2,8 +2,8 @@ package io.github.lucablum.knowledge;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.lucablum.knowledge.application.indexing.ContentHashReconciliation;
 import io.github.lucablum.knowledge.application.indexing.IndexVault;
-import io.github.lucablum.knowledge.application.indexing.VaultIndexer;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.util.List;
@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 @QuarkusTest
 class NoteWarningsTest {
 
-    private final Logger logger = Logger.getLogger(VaultIndexer.class.getName());
+    private final Logger logger = Logger.getLogger(ContentHashReconciliation.class.getName());
     private final List<String> warnings = new CopyOnWriteArrayList<>();
     private final Handler capture = new Handler() {
         @Override
@@ -104,7 +104,7 @@ class NoteWarningsTest {
     @Test
     void whenIndexVault_givenFrontmatterThatIsNotYaml_thenWarnAndIndexTheNoteAnyway() {
         vault.write("Running/Broken.md", "---\ntitle: [unclosed\n---\ntext");
-        int indexed = indexVault.run();
+        int indexed = indexVault.run().indexed();
 
         assertThat(indexed).isEqualTo(1);
         assertThat(warnings).singleElement().asString().contains("Running/Broken.md").contains("YAML");

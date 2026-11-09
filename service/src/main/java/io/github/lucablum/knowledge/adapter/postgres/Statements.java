@@ -11,7 +11,8 @@ record Statements(
         String deleteNote,
         String insertNote,
         String insertChunk,
-        String retainOnly,
+        String contentHashes,
+        String removeNotes,
         String nearest,
         String topics,
         String sourceNotes) {
@@ -21,14 +22,18 @@ record Statements(
     private static final String DELETE_NOTE_TEMPLATE = "DELETE FROM {note} WHERE path = ?";
 
     private static final String INSERT_NOTE_TEMPLATE = """
-            INSERT INTO {note} (path, topic, kind, title, imported, published, author, language)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""";
+            INSERT INTO {note} (path, topic, kind, title, imported, published, author, language, content_hash)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""";
 
     private static final String INSERT_CHUNK_TEMPLATE = """
             INSERT INTO {chunk} (note_path, ordinal, heading_path, content, embedding, embedding_model)
             VALUES (?, ?, ?, ?, ?::vector, ?)""";
 
-    private static final String RETAIN_ONLY_TEMPLATE = "DELETE FROM {note} WHERE NOT (path = ANY (?))";
+    /** A Note indexed before content hashes were stored has none, so it is left out and indexed again. */
+    private static final String CONTENT_HASHES_TEMPLATE =
+            "SELECT path, content_hash FROM {note} WHERE content_hash IS NOT NULL";
+
+    private static final String REMOVE_NOTES_TEMPLATE = "DELETE FROM {note} WHERE path = ANY (?)";
 
     private static final String NEAREST_TEMPLATE = """
             SELECT c.content, c.note_path, c.heading_path, n.kind, 1 - (c.embedding <=> ?::vector) AS score
@@ -57,7 +62,8 @@ record Statements(
                 inSchema(DELETE_NOTE_TEMPLATE, schema),
                 inSchema(INSERT_NOTE_TEMPLATE, schema),
                 inSchema(INSERT_CHUNK_TEMPLATE, schema),
-                inSchema(RETAIN_ONLY_TEMPLATE, schema),
+                inSchema(CONTENT_HASHES_TEMPLATE, schema),
+                inSchema(REMOVE_NOTES_TEMPLATE, schema),
                 inSchema(NEAREST_TEMPLATE, schema),
                 inSchema(TOPICS_TEMPLATE, schema),
                 inSchema(SOURCE_NOTES_TEMPLATE, schema));

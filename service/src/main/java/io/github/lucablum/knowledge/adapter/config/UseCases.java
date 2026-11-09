@@ -4,10 +4,10 @@ import io.github.lucablum.knowledge.application.Embedding;
 import io.github.lucablum.knowledge.application.catalog.BrowseCollection;
 import io.github.lucablum.knowledge.application.catalog.Catalog;
 import io.github.lucablum.knowledge.application.catalog.IndexLookup;
+import io.github.lucablum.knowledge.application.indexing.ContentHashReconciliation;
 import io.github.lucablum.knowledge.application.indexing.IndexVault;
 import io.github.lucablum.knowledge.application.indexing.IndexedNotes;
 import io.github.lucablum.knowledge.application.indexing.Vault;
-import io.github.lucablum.knowledge.application.indexing.VaultIndexer;
 import io.github.lucablum.knowledge.application.search.ChunkVectors;
 import io.github.lucablum.knowledge.application.search.SearchChunks;
 import io.github.lucablum.knowledge.application.search.SearchSettings;
@@ -25,7 +25,7 @@ public class UseCases {
     @ApplicationScoped
     IndexVault indexVault(Vault vault, Embedding embedding, IndexedNotes indexedNotes, CollectionConfig collection) {
         NoteParser parser = new NoteParser(new NoteLanguage(collection.defaultLanguage()));
-        return new VaultIndexer(vault, parser, new Splitter(), embedding, indexedNotes);
+        return new ContentHashReconciliation(vault, parser, new Splitter(), embedding, indexedNotes);
     }
 
     @Produces

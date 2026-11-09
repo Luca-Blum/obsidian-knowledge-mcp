@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.lucablum.knowledge.FakeEmbedding;
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
 import io.github.lucablum.knowledge.application.indexing.IndexVault;
+import io.github.lucablum.knowledge.application.indexing.Reconciled;
 import io.github.lucablum.knowledge.application.indexing.Vault;
 import io.github.lucablum.knowledge.application.indexing.VaultNote;
 import io.github.lucablum.knowledge.application.search.SearchChunks;
@@ -49,7 +50,9 @@ class EvaluationRun {
         assertThat(set.missingNotes(vault.notes().stream().map(VaultNote::path).toList()))
                 .as("Expected Notes that are not in %s", collection.vaultPath())
                 .isEmpty();
-        int notes = indexVault.run();
+        Reconciled reconciled = indexVault.run();
+        assertThat(reconciled.failed()).as("Notes that could not be indexed").isEmpty();
+        int notes = reconciled.indexed() + reconciled.unchanged();
 
         Report report = new Evaluation(search).run(set);
 
