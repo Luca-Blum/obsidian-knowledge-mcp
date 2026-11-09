@@ -48,3 +48,48 @@ cd service && ./mvnw test
 
 Tests write Notes into a temporary Vault (`target/test-vault`), index it and search against real Postgres with
 pgvector. A deterministic bag-of-words fake replaces the embedding model.
+
+## Evaluation
+
+The evaluation measures how well a Collection's search finds the right Notes. It runs on the Mac with the real
+embedding model, never in the normal build. Each Collection's Evaluation Set lives in its own Vault, in a folder that
+is never indexed, e.g. `Engineering/_eval/questions.yaml`. Questions never go into this repository.
+
+```yaml
+questions:
+  - question: What does the Dependency Rule say?
+    topic: Software-Engineering          # optional, restricts the search like the tool's 'topic'
+    expected:                            # Notes that answer it, as paths relative to the Vault root
+      - Software-Engineering/Source-Notes/clean-architecture-ch5.md
+negative-questions:                      # questions this Collection must not answer
+  - question: How should I taper before a marathon?
+```
+
+Start Ollama with the model the Pi uses (`EMBEDDING_MODEL` in `deploy/.env`, default `bge-m3`), then run:
+
+```shell
+cd service
+COLLECTION_VAULT_PATH=/path/to/Engineering \
+  ./mvnw test -Dtest=EvaluationRun -Devaluation.set=/path/to/Engineering/_eval/questions.yaml
+```
+
+`COLLECTION_EMBEDDING_MODEL` and `COLLECTION_EMBEDDING_DIMENSION` select another model, and `COLLECTION_NAME`
+another Collection (default `engineering`). The run indexes the whole Vault into a fresh Dev Services database, so it
+takes as long as a Re-Index. It asks each question for the top 5 Search Hits and writes two files to
+`target/evaluation/`, or to `-Devaluation.report=<folder>`:
+
+- `summary.md`: only the run and the numbers, safe to commit.
+- `details.md`: every question with the rank of its first expected Note and the Search Hits it got, and every
+  Negative Question with its hits and their similarity. It stays local.
+
+The metrics are counted on the Notes of the top 5 Search Hits as returned. A Note that fills several slots counts once
+and leaves fewer slots for the others.
+
+- **Hit@5** (main metric): share of questions with at least one expected Note in the top 5.
+- **Recall@5**: mean share of a question's expected Notes found in the top 5.
+- **MRR**: mean of 1 / rank of the first expected Note, 0 when none is in the top 5.
+
+The highest similarity any Negative Question reached is where a Minimum Similarity would have to start.
+
+Measure a baseline first, then change exactly one lever and measure again. Commit each `summary.md` as
+`docs/evaluation/<collection>-<what changed>.md`, starting with `docs/evaluation/engineering-baseline.md`.
