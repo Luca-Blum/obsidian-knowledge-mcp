@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.within;
 
 import io.github.lucablum.knowledge.application.SearchChunks;
 import io.github.lucablum.knowledge.application.SearchRequest;
+import io.github.lucablum.knowledge.domain.NoteKind;
 import io.github.lucablum.knowledge.domain.NotePath;
 import io.github.lucablum.knowledge.domain.SearchHit;
 import io.github.lucablum.knowledge.domain.Topic;
@@ -57,8 +58,8 @@ class EvaluationTest {
     @Test
     void whenRun_givenNegativeQuestion_thenReportItsHitsWithSimilarity() {
         Evaluation evaluation = new Evaluation(returning(Map.of("marathon taper", List.of(
-                new SearchHit("Tapering a release", "Software-Engineering/Releases.md", List.of(), 0.41),
-                new SearchHit("Long runs", "Coaching/Habits.md", List.of(), 0.38)))));
+                new SearchHit("Tapering a release", "Software-Engineering/Releases.md", List.of(), NoteKind.OWN, 0.41),
+                new SearchHit("Long runs", "Coaching/Habits.md", List.of(), NoteKind.OWN, 0.38)))));
 
         Report report = evaluation.run(
                 new EvaluationSet(List.of(), List.of(new NegativeQuestion("marathon taper", null))));
@@ -82,7 +83,7 @@ class EvaluationTest {
     private static List<SearchHit> hits(String... notePaths) {
         List<SearchHit> hits = new ArrayList<>();
         for (int i = 0; i < notePaths.length; i++) {
-            hits.add(new SearchHit("content " + i, notePaths[i], List.of(), 0.9 - i * 0.1));
+            hits.add(new SearchHit("content " + i, notePaths[i], List.of(), NoteKind.OWN, 0.9 - i * 0.1));
         }
         return hits;
     }
