@@ -31,18 +31,29 @@ public class VectorSearch implements SearchChunks {
     public List<SearchHit> search(SearchRequest request) {
         int k = request.k().orElse(settings.defaultK());
         validate(request.query(), k);
+        List<SearchHit> candidates = candidates(request);
+        return withMoreInNote(capped(candidates, k), candidates);
+    }
+
+    /** The closest Chunks that reach the Minimum Similarity, at most as many as the settings allow. */
+    private List<SearchHit> candidates(SearchRequest request) {
         float[] query = embedding.embed(request.query());
         double minimumSimilarity = settings.minimumSimilarity();
         int limit = settings.candidates();
-        List<SearchHit> candidates = request.topic()
+        return request.topic()
                 .map(topic -> vectors.nearest(query, topic, minimumSimilarity, limit))
                 .orElseGet(() -> vectors.nearest(query, minimumSimilarity, limit));
-        List<SearchHit> hits = capped(candidates, k);
+    }
+
+    /** Each Search Hit learns how many candidates of its Note are not among the Search Hits. */
+    private static List<SearchHit> withMoreInNote(List<SearchHit> hits, List<SearchHit> candidates) {
         Map<String, Long> candidatesPerNote = countPerNote(candidates);
         Map<String, Long> hitsPerNote = countPerNote(hits);
         return hits.stream()
-                .map(hit -> hit.withMoreInNote(
-                        Math.toIntExact(candidatesPerNote.get(hit.notePath()) - hitsPerNote.get(hit.notePath()))))
+                .map(hit -> {
+                    String note = hit.notePath();
+                    return hit.withMoreInNote(Math.toIntExact(candidatesPerNote.get(note) - hitsPerNote.get(note)));
+                })
                 .toList();
     }
 
