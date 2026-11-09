@@ -30,3 +30,19 @@ questions carry no `keywords`, so the full-text search gets the whole question, 
 
 Even with every term required, many questions match chunks of long book Source Notes, and at equal weight these push
 expected Notes down or out of the top 5. No Negative Question got a full-text hit.
+
+## With keywords
+
+The same index and settings, after 15 of the 16 questions and all 10 Negative Questions got `keywords`: the exact
+term Claude would pass, usually the concept's name. One question has no such term and kept none.
+
+| Full-text weight | Hit@5 | Recall@5 | MRR | Negative Questions with full-text hits |
+| --- | --- | --- | --- | --- |
+| 0 (plain vector search) | 0.88 | 0.75 | 0.76 | 0 of 10 |
+| 0.25 | 0.94 | 0.81 | 0.88 | 0 of 10 |
+| 0.5 | 0.94 | 0.81 | 0.88 | 0 of 10 |
+| 1.0 (default) | 1.00 | 0.91 | 0.92 | 4 of 10 |
+
+With keywords the full-text search finds every expected Note at equal weight. The Negative Questions' full-text hits
+are literal occurrences of their keyword in unrelated Source Notes, such as an abbreviation with another meaning or
+a metaphor; they decide nothing, and the vector side passes or fails as before.
