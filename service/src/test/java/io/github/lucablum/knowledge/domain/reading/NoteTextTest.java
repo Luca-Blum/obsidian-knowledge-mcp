@@ -114,4 +114,12 @@ class NoteTextTest {
 
         assertThat(text.sections(new HeadingPath(List.of("Notes")))).isEmpty();
     }
+
+    @Test
+    void whenSections_givenEmptyHeadingPath_thenReturnWholeBodyAsTheSectionAboveEveryHeading() {
+        NoteText text = new NoteText("---\ntitle: Intervals\n---\nShort and hard.\n# Warm-up\nEasy.\n# Main set\nHard.\n");
+
+        assertThat(text.sections(new HeadingPath(List.of())))
+                .containsExactly("Short and hard.\n# Warm-up\nEasy.\n# Main set\nHard.");
+    }
 }

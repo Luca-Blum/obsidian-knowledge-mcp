@@ -83,13 +83,15 @@ class ReadNoteToolTest {
     }
 
     @Test
-    void whenCallReadNoteTool_givenEmptyHeadingPath_thenReadTheWholeNote() {
-        vault.write("Running/Intervals.md", "Short and hard.");
+    void whenCallReadNoteTool_givenEmptyHeadingPathOfLongNote_thenReturnWholeBodyAsOneSection() {
+        String body = "Short and hard.\n" + "## Set %d\nFour minutes.\n".repeat(20);
+        vault.write("Running/Intervals.md", "---\ntitle: Intervals\n---\n" + body);
         indexVault.run();
 
         client.when()
                 .toolsCall("read_note", Map.of("path", "Running/Intervals.md", "heading", List.of()), response ->
-                        assertThat(json(response.firstContent()).getString("text")).isEqualTo("Short and hard."))
+                        assertThat(json(response.firstContent()).getJsonArray("sections"))
+                                .containsExactly(body.strip()))
                 .thenAssertResults();
     }
 

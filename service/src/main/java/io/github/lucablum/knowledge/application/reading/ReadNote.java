@@ -17,6 +17,6 @@ public interface ReadNote {
     /** The whole Note, or the outline and beginning of a long one. */
     Optional<NoteReading> read(NotePath path);
 
-    /** The Note's sections whose heading has this path, as a Search Hit shows it. */
-    Optional<NoteSections> read(NotePath path, HeadingPath headings);
+    /** The Note's sections whose heading has this path, as a Search Hit shows it; the empty path is the whole body. */
+    Optional<NoteSections> read(NotePath path, HeadingPath heading);
 }

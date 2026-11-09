@@ -5,17 +5,14 @@ import io.github.lucablum.knowledge.domain.chunk.markdown.HeadingLine;
 import io.github.lucablum.knowledge.domain.chunk.markdown.MarkdownLine;
 import io.github.lucablum.knowledge.domain.chunk.markdown.MarkdownLines;
 import io.github.lucablum.knowledge.domain.chunk.markdown.TextLine;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.List;
-import java.util.Optional;
 
 /** Collects the lines of a Note into sections, tracking the headings above the current one. */
 public final class Sections {
 
     private final List<Section> sections = new ArrayList<>();
-    private final Deque<HeadingLine> headings = new ArrayDeque<>();
+    private OpenHeadings headings = OpenHeadings.NONE;
     private final List<Block> blocks = new ArrayList<>();
     private final List<String> paragraph = new ArrayList<>();
 
@@ -42,8 +39,7 @@ public final class Sections {
     /** Ends the current section and opens one below {@code heading}. */
     private void startSection(HeadingLine heading) {
         endSection();
-        dropHeadingsFrom(heading.level());
-        headings.addLast(heading);
+        headings = headings.open(heading);
     }
 
     /**
@@ -82,21 +78,10 @@ public final class Sections {
 
     private void endSection() {
         endParagraph();
-        Section section = new Section(currentHeadingPath(), Optional.ofNullable(headings.peekLast()), blocks);
+        Section section = new Section(headings.path(), headings.last(), blocks);
         blocks.clear();
         if (!section.body().isEmpty()) {
             sections.add(section);
         }
-    }
-
-    /** A heading closes every open heading of the same or a deeper level. */
-    private void dropHeadingsFrom(int level) {
-        while (!headings.isEmpty() && headings.peekLast().level() >= level) {
-            headings.removeLast();
-        }
-    }
-
-    private HeadingPath currentHeadingPath() {
-        return new HeadingPath(headings.stream().map(HeadingLine::text).toList());
     }
 }

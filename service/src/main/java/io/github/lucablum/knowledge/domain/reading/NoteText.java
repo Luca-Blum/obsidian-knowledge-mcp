@@ -6,9 +6,8 @@ import io.github.lucablum.knowledge.domain.chunk.markdown.MarkdownLine;
 import io.github.lucablum.knowledge.domain.chunk.markdown.MarkdownLines;
 import io.github.lucablum.knowledge.domain.chunk.markdown.TextLine;
 import io.github.lucablum.knowledge.domain.chunk.section.HeadingPath;
-import java.util.ArrayDeque;
+import io.github.lucablum.knowledge.domain.chunk.section.OpenHeadings;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
 import org.jmolecules.ddd.annotation.ValueObject;
@@ -33,23 +32,25 @@ public record NoteText(String markdown) {
     }
 
     /**
-     * Every section whose heading has {@code headings} as its path, in order and as written. A section runs up to the
-     * next heading of its own or a higher level, so it holds the deeper headings below it.
+     * Every section whose heading has {@code heading} as its path, in order and as written. A section runs up to the
+     * next heading of its own or a higher level, so it holds the deeper headings below it. The empty path is the
+     * section above every heading, which is the whole Note without its frontmatter.
      */
-    public List<String> sections(HeadingPath headings) {
+    public List<String> sections(HeadingPath heading) {
         List<String> sections = new ArrayList<>();
-        Deque<HeadingLine> open = new ArrayDeque<>();
-        List<String> section = null;
+        OpenHeadings open = OpenHeadings.NONE;
+        List<String> section = heading.segments().isEmpty() ? new ArrayList<>() : null;
         int sectionLevel = 0;
         for (MarkdownLine line : MarkdownLines.of(markdown)) {
-            if (line instanceof HeadingLine heading) {
-                if (section != null && heading.level() <= sectionLevel) {
-                    sections.add(String.join("\n", section).strip());
+            if (line instanceof HeadingLine next) {
+                open = open.open(next);
+                if (section != null && next.level() <= sectionLevel) {
+                    addSection(sections, section);
                     section = null;
                 }
-                if (open(open, heading).equals(headings)) {
+                if (open.path().equals(heading)) {
                     section = new ArrayList<>();
-                    sectionLevel = heading.level();
+                    sectionLevel = next.level();
                 }
             }
             if (section != null) {
@@ -57,29 +58,29 @@ public record NoteText(String markdown) {
             }
         }
         if (section != null) {
-            sections.add(String.join("\n", section).strip());
+            addSection(sections, section);
         }
         return sections;
     }
 
     private List<HeadingPath> outline() {
         List<HeadingPath> outline = new ArrayList<>();
-        Deque<HeadingLine> open = new ArrayDeque<>();
+        OpenHeadings open = OpenHeadings.NONE;
         for (MarkdownLine line : MarkdownLines.of(markdown)) {
             if (line instanceof HeadingLine heading) {
-                outline.add(open(open, heading));
+                open = open.open(heading);
+                outline.add(open.path());
             }
         }
         return outline;
     }
 
-    /** Opens {@code heading}, which closes every open heading of the same or a deeper level, and returns its path. */
-    private static HeadingPath open(Deque<HeadingLine> open, HeadingLine heading) {
-        while (!open.isEmpty() && open.peekLast().level() >= heading.level()) {
-            open.removeLast();
+    /** A section without content, such as the body of an empty Note, is left out. */
+    private static void addSection(List<String> sections, List<String> lines) {
+        String section = String.join("\n", lines).strip();
+        if (!section.isEmpty()) {
+            sections.add(section);
         }
-        open.addLast(heading);
-        return new HeadingPath(open.stream().map(HeadingLine::text).toList());
     }
 
     private static List<String> lines(MarkdownLine line) {
@@ -97,7 +98,7 @@ public record NoteText(String markdown) {
         if (lineBreak > 0) {
             return start.substring(0, lineBreak).stripTrailing();
         }
-        int space = start.lastIndexOf(' ', start.length() - 1);
+        int space = start.lastIndexOf(' ');
         boolean cutInsideWord = !Character.isWhitespace(markdown.charAt(characters)) && space > 0;
         return (cutInsideWord ? start.substring(0, space) : start).stripTrailing();
     }

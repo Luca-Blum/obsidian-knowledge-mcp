@@ -26,7 +26,7 @@ public class IndexedText implements ReadNote {
     }
 
     @Override
-    public Optional<NoteSections> read(NotePath path, HeadingPath headings) {
-        return texts.text(path).map(text -> new NoteSections(headings, text.sections(headings)));
+    public Optional<NoteSections> read(NotePath path, HeadingPath heading) {
+        return texts.text(path).map(text -> new NoteSections(heading, text.sections(heading)));
     }
 }

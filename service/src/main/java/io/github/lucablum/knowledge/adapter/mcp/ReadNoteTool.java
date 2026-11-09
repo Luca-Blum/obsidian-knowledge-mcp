@@ -35,18 +35,21 @@ public class ReadNoteTool {
                     + "back whole, frontmatter included; a long one as its 'outline' (the heading path of every "
                     + "heading) and its 'beginning'. To read one section, pass its heading path as 'heading', exactly "
                     + "as a Search Hit's headingPath or an entry of the outline shows it; every section with that "
-                    + "path is returned, including the deeper headings below it. Only indexed Notes can be read.")
+                    + "path is returned, including the deeper headings below it. The empty heading path [] is the "
+                    + "section above every heading: the whole Note without frontmatter, however long. Only indexed "
+                    + "Notes can be read.")
     ToolResponse readNote(
             @ToolArg(description = "The Note's path relative to the Vault root, exactly as a Search Hit's notePath "
                     + "or list_sources shows it.") String path,
             @ToolArg(description = "Optional. The heading path of the section to read, outermost heading first, "
-                    + "such as [\"Training\", \"Intervals\"]. Leave it out to read the whole Note.", required = false)
+                    + "such as [\"Training\", \"Intervals\"]. Leave it out to read the whole Note, or its outline if it "
+                    + "is long.", required = false)
             List<String> heading) {
         if (path == null || path.isBlank()) {
             return ToolResponse.error("path must not be blank");
         }
         NotePath notePath = new NotePath(path);
-        if (heading == null || heading.isEmpty()) {
+        if (heading == null) {
             return found(notePath, readNote.read(notePath));
         }
         return found(notePath, readNote.read(notePath, new HeadingPath(heading)));
@@ -61,10 +64,10 @@ public class ReadNoteTool {
             case WholeNote whole -> success(new WholeNoteEntry(path.value(), whole.text()));
             case NoteOutline outline -> success(new OutlineEntry(path.value(),
                     outline.headings().stream().map(HeadingPath::segments).toList(), outline.beginning()));
-            case NoteSections sections when sections.sections().isEmpty() -> ToolResponse.error(
+            case NoteSections sections when sections.isEmpty() -> ToolResponse.error(
                     "Note %s has no section with heading path %s. Read it without 'heading' to see its outline."
-                            .formatted(path, sections.headings().segments()));
-            case NoteSections sections -> success(new SectionsEntry(path.value(), sections.headings().segments(),
+                            .formatted(path, sections.heading().segments()));
+            case NoteSections sections -> success(new SectionsEntry(path.value(), sections.heading().segments(),
                     sections.sections()));
         };
     }
