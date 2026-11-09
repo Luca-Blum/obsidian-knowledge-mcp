@@ -56,6 +56,20 @@ class EvaluationTest {
     }
 
     @Test
+    void whenRun_givenQuestionsWithKeywords_thenSearchWithThemAndLeaveTheQueryAsIs() {
+        Evaluation evaluation = new Evaluation(returning(Map.of()));
+
+        evaluation.run(new EvaluationSet(
+                List.of(new Question("How is the index stored?", null, "PostgresIndex",
+                        Set.of(new NotePath("Software-Engineering/Index.md")))),
+                List.of(new NegativeQuestion("How should I taper?", null, "Tapering"))));
+
+        assertThat(requests).extracting(SearchRequest::query, request -> request.keywords().orElseThrow())
+                .containsExactly(tuple("How is the index stored?", "PostgresIndex"),
+                        tuple("How should I taper?", "Tapering"));
+    }
+
+    @Test
     void whenRun_givenNegativeQuestion_thenReportItsHitsWithSimilarity() {
         Evaluation evaluation = new Evaluation(returning(Map.of("marathon taper", List.of(
                 SearchHit.bySimilarity("Tapering a release", "Software-Engineering/Releases.md", 0, List.of(), NoteKind.OWN, 0.41),

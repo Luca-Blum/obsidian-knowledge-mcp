@@ -73,11 +73,15 @@ is never indexed, e.g. `Engineering/_eval/questions.yaml`. Questions never go in
 questions:
   - question: What does the Dependency Rule say?
     topic: Software-Engineering          # optional, restricts the search like the tool's 'topic'
+    keywords: Dependency Rule            # optional, exact terms for the full-text search like the tool's 'keywords'
     expected:                            # Notes that answer it, as paths relative to the Vault root
       - Software-Engineering/Source-Notes/clean-architecture-ch5.md
 negative-questions:                      # questions this Collection must not answer
   - question: How should I taper before a marathon?
+    keywords: Tapering                   # optional, as above
 ```
+
+Without `keywords` the full-text search gets the whole question, as it would when Claude leaves them out.
 
 Start Ollama with the model the Pi uses (`EMBEDDING_MODEL` in `deploy/.env`, default `bge-m3`), then run:
 
