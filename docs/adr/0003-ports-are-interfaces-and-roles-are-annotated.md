@@ -1,12 +1,12 @@
 # Ports are interfaces, and every architectural role is marked with a jMolecules annotation
 
-The service is a hexagon with the packages `domain`, `application` and `adapter`. Each type states its role with a jMolecules annotation, and `ArchitectureTest` enforces the roles. Names carry the concept, not the role, so there are no `Port`, `Repository` or `Reader` suffixes.
+The service is a hexagon with the packages `domain`, `application` and `adapter`, each split further by concept (ADR 0004). Each type states its role with a jMolecules annotation, and `ArchitectureTest` enforces the roles. Names carry the concept, not the role, so there are no `Port`, `Repository` or `Reader` suffixes.
 
 | Role | Annotation | Form | Example |
 |---|---|---|---|
 | Primary port: what the outside may ask of the core | `@PrimaryPort` | interface in `application` | `SearchChunks`, `IndexVault` |
 | Application: the use case behind a primary port | `@Application` | class in `application`, named after how it works | `VectorSearch`, `ContentHashReconciliation` |
-| Secondary port: what the core needs from the outside | `@SecondaryPort` | interface in `application` | `Index`, `Embedding`, `Vault` |
+| Secondary port: what the core needs from the outside | `@SecondaryPort` | interface in `application` | `IndexedNotes`, `ChunkVectors`, `Catalog`, `Embedding`, `Vault` |
 | Primary adapter: turns an outside event into a call of a primary port | `@PrimaryAdapter` | class in `adapter` | `SearchTool`, `ScheduledReconciliation` |
 | Secondary adapter: implements a secondary port with a technology | `@SecondaryAdapter` | class in `adapter`, named after the technology | `PostgresIndex`, `OllamaEmbedding`, `FileSystemVault` |
 | Value object | `@ValueObject` | record in `domain` (or `EmbeddedChunk`) | `NotePath`, `Chunk`, `HeadingLine` |

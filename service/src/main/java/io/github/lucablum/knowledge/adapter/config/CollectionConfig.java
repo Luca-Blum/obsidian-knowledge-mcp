@@ -21,6 +21,9 @@ public interface CollectionConfig {
 
     Reconciliation reconciliation();
 
+    /** The Note Language of every Note whose frontmatter has no known {@code lang}. */
+    String defaultLanguage();
+
     Embedding embedding();
 
     Search search();
@@ -58,5 +61,19 @@ public interface CollectionConfig {
         /** Caps {@code k}, so one call cannot pull the whole Collection into Claude's context. */
         @WithDefault("20")
         int maxK();
+
+        /**
+         * The cosine similarity a Chunk must reach to count as relevant at all. It belongs to the embedding model
+         * and is calibrated per Collection with Negative Questions.
+         */
+        double minimumSimilarity();
+
+        /** Caps the Search Hits of one Note, so one long Note cannot take every slot. */
+        @WithDefault("2")
+        int maxHitsPerNote();
+
+        /** How many of the closest Chunks a search looks at; {@code moreInNote} counts only among them. */
+        @WithDefault("50")
+        int candidates();
     }
 }

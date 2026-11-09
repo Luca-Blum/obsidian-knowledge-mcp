@@ -13,13 +13,17 @@ record Statements(
         String insertChunk,
         String contentHashes,
         String removeNotes,
-        String nearest) {
+        String nearest,
+        String topics,
+        String sourceNotes) {
 
     private static final Pattern IDENTIFIER = Pattern.compile("[a-z_][a-z0-9_]*");
 
     private static final String DELETE_NOTE_TEMPLATE = "DELETE FROM {note} WHERE path = ?";
 
-    private static final String INSERT_NOTE_TEMPLATE = "INSERT INTO {note} (path, topic, content_hash) VALUES (?, ?, ?)";
+    private static final String INSERT_NOTE_TEMPLATE = """
+            INSERT INTO {note} (path, topic, kind, title, imported, published, author, language, content_hash)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""";
 
     private static final String INSERT_CHUNK_TEMPLATE = """
             INSERT INTO {chunk} (note_path, ordinal, heading_path, content, embedding, embedding_model)
@@ -30,11 +34,23 @@ record Statements(
     private static final String REMOVE_NOTES_TEMPLATE = "DELETE FROM {note} WHERE path = ANY (?)";
 
     private static final String NEAREST_TEMPLATE = """
-            SELECT c.content, c.note_path, c.heading_path, 1 - (c.embedding <=> ?::vector) AS score
+            SELECT c.content, c.note_path, c.heading_path, n.kind, 1 - (c.embedding <=> ?::vector) AS score
             FROM {chunk} c JOIN {note} n ON n.path = c.note_path
             WHERE (?::text IS NULL OR n.topic = ?)
-            ORDER BY c.embedding <=> ?::vector
+              AND 1 - (c.embedding <=> ?::vector) >= ?
+            ORDER BY c.embedding <=> ?::vector, c.note_path, c.ordinal
             LIMIT ?""";
+
+    private static final String TOPICS_TEMPLATE = """
+            SELECT topic, count(*) AS notes FROM {note}
+            WHERE topic IS NOT NULL
+            GROUP BY topic
+            ORDER BY topic""";
+
+    private static final String SOURCE_NOTES_TEMPLATE = """
+            SELECT path, title, published, imported, author FROM {note}
+            WHERE kind = 'source' AND topic = ?
+            ORDER BY lower(title), path""";
 
     static Statements forSchema(String schema) {
         if (!IDENTIFIER.matcher(schema).matches()) {
@@ -46,7 +62,9 @@ record Statements(
                 inSchema(INSERT_CHUNK_TEMPLATE, schema),
                 inSchema(CONTENT_HASHES_TEMPLATE, schema),
                 inSchema(REMOVE_NOTES_TEMPLATE, schema),
-                inSchema(NEAREST_TEMPLATE, schema));
+                inSchema(NEAREST_TEMPLATE, schema),
+                inSchema(TOPICS_TEMPLATE, schema),
+                inSchema(SOURCE_NOTES_TEMPLATE, schema));
     }
 
     private static String inSchema(String template, String schema) {
