@@ -74,10 +74,12 @@ public class SearchTool {
     }
 
     /** A Search Hit as Claude reads it, with the Note Kind as {@code source} or {@code own}. */
-    private record Hit(String content, String notePath, List<String> headingPath, String noteKind, double score) {
+    private record Hit(
+            String content, String notePath, List<String> headingPath, String noteKind, double score, int moreInNote) {
 
         static Hit of(SearchHit hit) {
-            return new Hit(hit.content(), hit.notePath(), hit.headingPath(), hit.noteKind().label(), hit.score());
+            return new Hit(hit.content(), hit.notePath(), hit.headingPath(), hit.noteKind().label(), hit.score(),
+                    hit.moreInNote());
         }
     }
 

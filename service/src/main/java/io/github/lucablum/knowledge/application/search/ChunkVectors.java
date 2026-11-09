@@ -9,9 +9,12 @@ import org.jmolecules.architecture.hexagonal.SecondaryPort;
 @SecondaryPort
 public interface ChunkVectors {
 
-    /** The {@code k} Chunks whose vectors are closest to {@code query}. */
-    List<SearchHit> nearest(float[] query, int k);
+    /**
+     * The {@code limit} Chunks closest to {@code query} whose cosine similarity reaches {@code minimumSimilarity},
+     * closest first.
+     */
+    List<SearchHit> nearest(float[] query, double minimumSimilarity, int limit);
 
-    /** The {@code k} Chunks within {@code topic} whose vectors are closest to {@code query}. */
-    List<SearchHit> nearest(float[] query, Topic topic, int k);
+    /** The same as {@link #nearest(float[], double, int)}, restricted to the Chunks within {@code topic}. */
+    List<SearchHit> nearest(float[] query, Topic topic, double minimumSimilarity, int limit);
 }

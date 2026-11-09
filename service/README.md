@@ -21,6 +21,9 @@ A Collection is defined only by configuration:
 | `collection.search.tool-description` | `COLLECTION_SEARCH_TOOL_DESCRIPTION` | Description Claude reads for `search` |
 | `collection.search.default-k` | `COLLECTION_SEARCH_DEFAULT_K` | Search Hits when `k` is not given (default `5`) |
 | `collection.search.max-k` | `COLLECTION_SEARCH_MAX_K` | Largest `k` a caller may ask for (default `20`) |
+| `collection.search.minimum-similarity` | `COLLECTION_SEARCH_MINIMUM_SIMILARITY` | Cosine similarity a Chunk must reach to be a Search Hit at all (default `0.5`, uncalibrated, belongs to the embedding model) |
+| `collection.search.max-hits-per-note` | `COLLECTION_SEARCH_MAX_HITS_PER_NOTE` | Search Hits one Note may take; each hit's `moreInNote` counts the rest (default `2`) |
+| `collection.search.candidates` | `COLLECTION_SEARCH_CANDIDATES` | Closest Chunks a search looks at before the cap and `k` (default `50`) |
 
 In the `prod` profile the database and Ollama come from `DATABASE_URL`, `DATABASE_USER`, `DATABASE_PASSWORD` and
 `OLLAMA_BASE_URL`; `/q/health/ready` reports readiness. See [`deploy/`](../deploy/README.md).
@@ -81,7 +84,7 @@ takes as long as a Re-Index. It asks each question for the top 5 Search Hits and
 
 - `summary.md`: only the run and the numbers, safe to commit.
 - `details.md`: every question with the rank of its first expected Note and the Search Hits it got, and every
-  Negative Question with its hits and their similarity. It stays local.
+  Negative Question, marked passed or failed, with its hits and their similarity. It stays local.
 
 The metrics are counted on the Notes of the top 5 Search Hits as returned. A Note that fills several slots counts once
 and leaves fewer slots for the others.
@@ -90,7 +93,11 @@ and leaves fewer slots for the others.
 - **Recall@5**: mean share of a question's expected Notes found in the top 5.
 - **MRR**: mean of 1 / rank of the first expected Note, 0 when none is in the top 5.
 
-The highest similarity any Negative Question reached is where a Minimum Similarity would have to start.
+A Negative Question passes when none of its hits reaches the configured Minimum Similarity
+(`COLLECTION_SEARCH_MINIMUM_SIMILARITY`), and the summary counts how many passed. The search already drops every hit
+below that value, so to see how close the Negative Questions come, run once with
+`COLLECTION_SEARCH_MINIMUM_SIMILARITY=0`: the highest similarity any of them reached is where the Minimum Similarity
+would have to start. Run again with that value to see in Hit@5 what it costs the real questions.
 
 Measure a baseline first, then change exactly one lever and measure again. Commit each `summary.md` as
 `docs/evaluation/<collection>-<what changed>.md`, starting with `docs/evaluation/engineering-baseline.md`.

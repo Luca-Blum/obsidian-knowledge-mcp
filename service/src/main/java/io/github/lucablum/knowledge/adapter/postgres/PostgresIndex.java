@@ -63,24 +63,26 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog {
     }
 
     @Override
-    public List<SearchHit> nearest(float[] query, int k) {
-        return nearestInTopic(query, null, k);
+    public List<SearchHit> nearest(float[] query, double minimumSimilarity, int limit) {
+        return nearestInTopic(query, null, minimumSimilarity, limit);
     }
 
     @Override
-    public List<SearchHit> nearest(float[] query, Topic topic, int k) {
-        return nearestInTopic(query, topic.name(), k);
+    public List<SearchHit> nearest(float[] query, Topic topic, double minimumSimilarity, int limit) {
+        return nearestInTopic(query, topic.name(), minimumSimilarity, limit);
     }
 
     /** A {@code null} topic name leaves the search unrestricted. */
-    private List<SearchHit> nearestInTopic(float[] query, String topicName, int k) {
+    private List<SearchHit> nearestInTopic(float[] query, String topicName, double minimumSimilarity, int limit) {
         String vector = Arrays.toString(query);
         return query(sql.nearest(), select -> {
             select.setString(1, vector);
             select.setString(2, topicName);
             select.setString(3, topicName);
             select.setString(4, vector);
-            select.setInt(5, k);
+            select.setDouble(5, minimumSimilarity);
+            select.setString(6, vector);
+            select.setInt(7, limit);
         }, PostgresIndex::toSearchHit);
     }
 
@@ -159,7 +161,8 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog {
                 row.getString("note_path"),
                 List.of((String[]) row.getArray("heading_path").getArray()),
                 NoteKind.ofLabel(row.getString("kind")),
-                row.getDouble("score"));
+                row.getDouble("score"),
+                0);
     }
 
     private static SourceNoteListing toSourceNoteListing(ResultSet row) throws SQLException {

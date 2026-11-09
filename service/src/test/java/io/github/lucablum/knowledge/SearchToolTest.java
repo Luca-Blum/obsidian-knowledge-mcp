@@ -59,6 +59,7 @@ class SearchToolTest {
                     assertThat(hit.getJsonArray("headingPath")).containsExactly("Workouts");
                     assertThat(hit.getString("noteKind")).isEqualTo("own");
                     assertThat(hit.getDouble("score")).isBetween(-1.0, 1.0);
+                    assertThat(hit.getInteger("moreInNote")).isZero();
                 })
                 .thenAssertResults();
     }

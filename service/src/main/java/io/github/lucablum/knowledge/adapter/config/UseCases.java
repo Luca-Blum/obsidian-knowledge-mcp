@@ -10,6 +10,7 @@ import io.github.lucablum.knowledge.application.indexing.Vault;
 import io.github.lucablum.knowledge.application.indexing.VaultIndexer;
 import io.github.lucablum.knowledge.application.search.ChunkVectors;
 import io.github.lucablum.knowledge.application.search.SearchChunks;
+import io.github.lucablum.knowledge.application.search.SearchSettings;
 import io.github.lucablum.knowledge.application.search.VectorSearch;
 import io.github.lucablum.knowledge.domain.chunk.Splitter;
 import io.github.lucablum.knowledge.domain.note.NoteLanguage;
@@ -37,6 +38,7 @@ public class UseCases {
     @ApplicationScoped
     SearchChunks searchChunks(Embedding embedding, ChunkVectors vectors, CollectionConfig collection) {
         CollectionConfig.Search search = collection.search();
-        return new VectorSearch(embedding, vectors, search.defaultK(), search.maxK());
+        return new VectorSearch(embedding, vectors, new SearchSettings(search.defaultK(), search.maxK(),
+                search.minimumSimilarity(), search.maxHitsPerNote(), search.candidates()));
     }
 }
