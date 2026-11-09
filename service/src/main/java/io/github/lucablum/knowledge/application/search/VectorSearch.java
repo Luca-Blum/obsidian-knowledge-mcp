@@ -4,6 +4,7 @@ import io.github.lucablum.knowledge.application.Embedding;
 import io.github.lucablum.knowledge.domain.search.SearchHit;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -61,10 +62,9 @@ public class VectorSearch implements SearchChunks {
     private List<SearchHit> capped(List<SearchHit> candidates, int k) {
         Map<String, Integer> hitsPerNote = new HashMap<>();
         List<SearchHit> hits = new ArrayList<>();
-        for (SearchHit candidate : candidates) {
-            if (hits.size() == k) {
-                break;
-            }
+        Iterator<SearchHit> remaining = candidates.iterator();
+        while (hits.size() < k && remaining.hasNext()) {
+            SearchHit candidate = remaining.next();
             if (hitsPerNote.merge(candidate.notePath(), 1, Integer::sum) <= settings.maxHitsPerNote()) {
                 hits.add(candidate);
             }
