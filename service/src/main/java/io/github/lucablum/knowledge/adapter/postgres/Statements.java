@@ -11,11 +11,13 @@ record Statements(
         String deleteNote,
         String insertNote,
         String insertChunk,
+        String insertLink,
         String contentHashes,
         String removeNotes,
         String nearest,
         String topics,
-        String sourceNotes) {
+        String sourceNotes,
+        String linksOfEveryNote) {
 
     private static final Pattern IDENTIFIER = Pattern.compile("[a-z_][a-z0-9_]*");
 
@@ -28,6 +30,10 @@ record Statements(
     private static final String INSERT_CHUNK_TEMPLATE = """
             INSERT INTO {chunk} (note_path, ordinal, heading_path, content, embedding, embedding_model)
             VALUES (?, ?, ?, ?, ?::vector, ?)""";
+
+    private static final String INSERT_LINK_TEMPLATE = """
+            INSERT INTO {link} (note_path, ordinal, target, kind, anchor)
+            VALUES (?, ?, ?, ?, ?)""";
 
     /** A Note indexed before content hashes were stored has none, so it is left out and indexed again. */
     private static final String CONTENT_HASHES_TEMPLATE =
@@ -54,6 +60,12 @@ record Statements(
             WHERE kind = 'source' AND topic = ?
             ORDER BY lower(title), path""";
 
+    /** Every Note, joined with its Links if it has any. */
+    private static final String LINKS_OF_EVERY_NOTE_TEMPLATE = """
+            SELECT n.path, l.target, l.kind, l.anchor
+            FROM {note} n LEFT JOIN {link} l ON l.note_path = n.path
+            ORDER BY n.path, l.ordinal""";
+
     static Statements forSchema(String schema) {
         if (!IDENTIFIER.matcher(schema).matches()) {
             throw new IllegalArgumentException("Invalid schema name: " + schema);
@@ -62,16 +74,19 @@ record Statements(
                 inSchema(DELETE_NOTE_TEMPLATE, schema),
                 inSchema(INSERT_NOTE_TEMPLATE, schema),
                 inSchema(INSERT_CHUNK_TEMPLATE, schema),
+                inSchema(INSERT_LINK_TEMPLATE, schema),
                 inSchema(CONTENT_HASHES_TEMPLATE, schema),
                 inSchema(REMOVE_NOTES_TEMPLATE, schema),
                 inSchema(NEAREST_TEMPLATE, schema),
                 inSchema(TOPICS_TEMPLATE, schema),
-                inSchema(SOURCE_NOTES_TEMPLATE, schema));
+                inSchema(SOURCE_NOTES_TEMPLATE, schema),
+                inSchema(LINKS_OF_EVERY_NOTE_TEMPLATE, schema));
     }
 
     private static String inSchema(String template, String schema) {
         return template
                 .replace("{note}", schema + ".note")
-                .replace("{chunk}", schema + ".chunk");
+                .replace("{chunk}", schema + ".chunk")
+                .replace("{link}", schema + ".link");
     }
 }

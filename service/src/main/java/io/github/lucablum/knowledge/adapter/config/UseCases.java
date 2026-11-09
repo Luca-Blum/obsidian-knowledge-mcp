@@ -8,6 +8,9 @@ import io.github.lucablum.knowledge.application.indexing.ContentHashReconciliati
 import io.github.lucablum.knowledge.application.indexing.IndexVault;
 import io.github.lucablum.knowledge.application.indexing.IndexedNotes;
 import io.github.lucablum.knowledge.application.indexing.Vault;
+import io.github.lucablum.knowledge.application.link.FollowLinks;
+import io.github.lucablum.knowledge.application.link.IndexedLinks;
+import io.github.lucablum.knowledge.application.link.QueryTimeResolution;
 import io.github.lucablum.knowledge.application.search.ChunkVectors;
 import io.github.lucablum.knowledge.application.search.SearchChunks;
 import io.github.lucablum.knowledge.application.search.SearchSettings;
@@ -36,6 +39,12 @@ public class UseCases {
     @ApplicationScoped
     BrowseCollection browseCollection(Catalog catalog) {
         return new IndexLookup(catalog);
+    }
+
+    @Produces
+    @ApplicationScoped
+    FollowLinks followLinks(IndexedLinks indexedLinks) {
+        return new QueryTimeResolution(indexedLinks);
     }
 
     @Produces

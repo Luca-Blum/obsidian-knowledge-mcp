@@ -5,10 +5,13 @@ import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
 import io.github.lucablum.knowledge.application.catalog.Catalog;
 import io.github.lucablum.knowledge.application.indexing.EmbeddedChunk;
 import io.github.lucablum.knowledge.application.indexing.IndexedNotes;
+import io.github.lucablum.knowledge.application.link.IndexedLinks;
 import io.github.lucablum.knowledge.application.search.ChunkVectors;
 import io.github.lucablum.knowledge.domain.catalog.SourceNoteListing;
 import io.github.lucablum.knowledge.domain.catalog.TopicCount;
 import io.github.lucablum.knowledge.domain.chunk.Chunk;
+import io.github.lucablum.knowledge.domain.link.Link;
+import io.github.lucablum.knowledge.domain.link.LinkKind;
 import io.github.lucablum.knowledge.domain.note.ContentHash;
 import io.github.lucablum.knowledge.domain.note.Note;
 import io.github.lucablum.knowledge.domain.note.NoteKind;
@@ -27,16 +30,17 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.jmolecules.architecture.hexagonal.SecondaryAdapter;
 
-/** Stores Notes and Chunks in the Collection's own schema; vectors live in pgvector columns. */
+/** Stores Notes, their Links and Chunks in the Collection's own schema; vectors live in pgvector columns. */
 @ApplicationScoped
 @SecondaryAdapter
-public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog {
+public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog, IndexedLinks {
 
     private final AgroalDataSource dataSource;
     private final Statements sql;
@@ -53,10 +57,12 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog {
     }
 
     @Override
-    public void replace(Note note, ContentHash hash, List<EmbeddedChunk> chunks, String embeddingModel) {
+    public void replace(Note note, ContentHash hash, List<Link> links, List<EmbeddedChunk> chunks,
+            String embeddingModel) {
         Transaction.run(dataSource, connection -> {
             deleteNote(connection, note.path());
             insertNote(connection, note, hash);
+            insertLinks(connection, note.path(), links);
             insertChunks(connection, note.path(), chunks, embeddingModel);
         });
     }
@@ -106,6 +112,18 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog {
         return query(sql.sourceNotes(), select -> select.setString(1, topic.name()), PostgresIndex::toSourceNoteListing);
     }
 
+    @Override
+    public Map<NotePath, List<Link>> ofEveryNote() {
+        Map<NotePath, List<Link>> linksOfEveryNote = new LinkedHashMap<>();
+        List<Map.Entry<NotePath, Optional<Link>>> rows =
+                query(sql.linksOfEveryNote(), select -> {}, PostgresIndex::toNoteLink);
+        for (Map.Entry<NotePath, Optional<Link>> row : rows) {
+            List<Link> links = linksOfEveryNote.computeIfAbsent(row.getKey(), path -> new ArrayList<>());
+            row.getValue().ifPresent(links::add);
+        }
+        return linksOfEveryNote;
+    }
+
     private void deleteNote(Connection connection, NotePath path) throws SQLException {
         try (PreparedStatement delete = connection.prepareStatement(sql.deleteNote())) {
             delete.setString(1, path.value());
@@ -125,6 +143,21 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog {
             insert.setString(8, note.language().code());
             insert.setString(9, hash.value());
             insert.executeUpdate();
+        }
+    }
+
+    private void insertLinks(Connection connection, NotePath path, List<Link> links) throws SQLException {
+        try (PreparedStatement insert = connection.prepareStatement(sql.insertLink())) {
+            insert.setString(1, path.value());
+            for (int ordinal = 0; ordinal < links.size(); ordinal++) {
+                Link link = links.get(ordinal);
+                insert.setInt(2, ordinal);
+                insert.setString(3, link.target());
+                insert.setString(4, link.kind().label());
+                insert.setString(5, link.anchor().orElse(null));
+                insert.addBatch();
+            }
+            insert.executeBatch();
         }
     }
 
@@ -173,6 +206,17 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog {
                 NoteKind.ofLabel(row.getString("kind")),
                 row.getDouble("score"),
                 0);
+    }
+
+    /** A Note without Links comes as one row without a target. */
+    private static Map.Entry<NotePath, Optional<Link>> toNoteLink(ResultSet row) throws SQLException {
+        NotePath note = new NotePath(row.getString("path"));
+        String target = row.getString("target");
+        if (target == null) {
+            return Map.entry(note, Optional.empty());
+        }
+        Link link = new Link(target, LinkKind.ofLabel(row.getString("kind")), Optional.ofNullable(row.getString("anchor")));
+        return Map.entry(note, Optional.of(link));
     }
 
     private static Map.Entry<NotePath, ContentHash> toContentHash(ResultSet row) throws SQLException {
