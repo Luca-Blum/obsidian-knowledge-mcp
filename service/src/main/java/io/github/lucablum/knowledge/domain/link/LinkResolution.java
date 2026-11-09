@@ -21,19 +21,22 @@ public class LinkResolution {
 
     /**
      * Every Note whose path ends with {@code target}, ignoring case and {@code .md}: a file name matches in any
-     * folder, and a path only at a folder boundary. Several matches are all returned, never guessed between.
+     * folder, and a path only at a folder boundary. A target that is a Note's whole path means only that Note;
+     * otherwise several matches are all returned, never guessed between.
      */
     public List<NotePath> resolve(String target) {
         String path = withoutExtension(lowerCase(new NotePath(target.strip()).value()));
         while (path.startsWith("/")) {
             path = path.substring(1);
         }
+        String wholePath = path;
         String suffix = "/" + path;
-        return notesByFileName.getOrDefault(path.substring(path.lastIndexOf('/') + 1), List.of()).stream()
-                .filter(note -> {
-                    String notePath = withoutExtension(lowerCase(note.value()));
-                    return notePath.equals(suffix.substring(1)) || notePath.endsWith(suffix);
-                })
+        List<NotePath> candidates = notesByFileName.getOrDefault(path.substring(path.lastIndexOf('/') + 1), List.of());
+        List<NotePath> exact = candidates.stream()
+                .filter(note -> withoutExtension(lowerCase(note.value())).equals(wholePath))
+                .toList();
+        return !exact.isEmpty() ? exact : candidates.stream()
+                .filter(note -> withoutExtension(lowerCase(note.value())).endsWith(suffix))
                 .toList();
     }
 

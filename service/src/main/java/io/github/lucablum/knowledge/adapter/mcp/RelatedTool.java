@@ -34,8 +34,8 @@ public class RelatedTool {
     @Tool(name = "related",
             description = "Shows how one Note is linked: 'links' to other Notes, 'backlinks' from other Notes, "
                     + "'files' it links to (such as the PDF of a Source Note), 'unresolved' Links that match no Note, "
-                    + "and 'ambiguous' Links that match several Notes, with all 'candidates'. 'anchor' is the heading "
-                    + "a Link points into. Read a linked Note with read_note.")
+                    + "and 'ambiguous' Links that match several Notes, with all 'candidates'. 'anchor' is the heading, "
+                    + "or the block after '^', a Link points into. Read a linked Note with read_note.")
     ToolResponse related(@ToolArg(description = "The Note path, exactly as a Search Hit shows it.") String path) {
         if (path == null || path.isBlank()) {
             return ToolResponse.error("path must not be blank");

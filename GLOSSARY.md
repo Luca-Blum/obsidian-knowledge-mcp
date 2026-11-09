@@ -79,7 +79,7 @@ _Avoid_: Edge, reference
 A Link in another Note that resolves to the Note being looked at.
 
 **Unresolved Link**:
-A Link whose target matches no Note or file in the Vault.
+A Link to a Note whose target matches no Note in the Vault. A Link to a file is never resolved, because the index holds no files.
 _Avoid_: Broken link, dangling link
 
 **Ambiguous Link**:

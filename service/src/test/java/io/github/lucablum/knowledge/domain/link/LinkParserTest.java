@@ -59,6 +59,12 @@ class LinkParserTest {
     }
 
     @Test
+    void whenParse_givenAliasWithEscapedPipeInTable_thenTargetHasNoBackslash() {
+        assertThat(parser.parse("| [[Seiler#Zones\\|zones]] | text |"))
+                .containsExactly(new Link("Seiler", LinkKind.NOTE, Optional.of("Zones")));
+    }
+
+    @Test
     void whenParse_givenLinkToOwnHeading_thenIgnoreIt() {
         assertThat(parser.parse("Back to [[#Summary]]")).isEmpty();
     }

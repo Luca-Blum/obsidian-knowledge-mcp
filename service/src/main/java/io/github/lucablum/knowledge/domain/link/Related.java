@@ -38,10 +38,12 @@ public record Related(
         List<Link> unresolved = new ArrayList<>();
         List<AmbiguousLink> ambiguous = new ArrayList<>();
         for (Link link : linksOfEveryNote.getOrDefault(note, List.of())) {
-            List<NotePath> matches = link.pointsToFile() ? List.of() : resolution.resolve(link.target());
             if (link.pointsToFile()) {
                 files.add(link);
-            } else if (matches.isEmpty()) {
+                continue;
+            }
+            List<NotePath> matches = resolution.resolve(link.target());
+            if (matches.isEmpty()) {
                 unresolved.add(link);
             } else if (matches.size() == 1) {
                 links.add(new ResolvedLink(link, matches.getFirst()));

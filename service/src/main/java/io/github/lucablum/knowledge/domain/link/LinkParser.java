@@ -63,11 +63,16 @@ public class LinkParser {
         });
     }
 
-    /** A note link to an attachment is a file link; an embed stays an embed, whatever it shows. */
+    /**
+     * A note link to an attachment is a file link; an embed stays an embed, whatever it shows. In a table the pipe
+     * before an alias is escaped ({@code [[Note\\|alias]]}), and that backslash is no part of the target.
+     */
     private static Link link(String written, LinkKind kind) {
-        int hash = written.indexOf('#');
-        String target = hash < 0 ? written : written.substring(0, hash);
-        Optional<String> anchor = hash < 0 ? Optional.empty() : Optional.of(written.substring(hash + 1));
-        return new Link(target, kind == LinkKind.NOTE && Attachments.isAttachment(target) ? LinkKind.FILE : kind, anchor);
+        String unescaped = written.endsWith("\\") ? written.substring(0, written.length() - 1) : written;
+        int hash = unescaped.indexOf('#');
+        String target = hash < 0 ? unescaped : unescaped.substring(0, hash);
+        Optional<String> anchor = hash < 0 ? Optional.empty() : Optional.of(unescaped.substring(hash + 1));
+        boolean toFile = kind == LinkKind.NOTE && Attachments.isAttachment(target);
+        return new Link(target, toFile ? LinkKind.FILE : kind, anchor);
     }
 }

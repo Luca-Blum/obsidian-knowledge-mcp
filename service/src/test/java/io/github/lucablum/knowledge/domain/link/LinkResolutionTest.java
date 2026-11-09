@@ -11,7 +11,8 @@ class LinkResolutionTest {
     private final LinkResolution resolution = new LinkResolution(List.of(
             new NotePath("Running/Source-Notes/Seiler.md"),
             new NotePath("Running/Zones.md"),
-            new NotePath("Cycling/Zones.md")));
+            new NotePath("Cycling/Zones.md"),
+            new NotePath("Archive/Running/Zones.md")));
 
     @Test
     void whenResolve_givenFileNameInAnotherCase_thenMatchThatNote() {
@@ -20,7 +21,7 @@ class LinkResolutionTest {
 
     @Test
     void whenResolve_givenPathSuffixWithOrWithoutExtension_thenMatchOnlyTheNoteWithThatSuffix() {
-        assertThat(resolution.resolve("running/zones")).containsExactly(new NotePath("Running/Zones.md"));
+        assertThat(resolution.resolve("cycling/zones")).containsExactly(new NotePath("Cycling/Zones.md"));
         assertThat(resolution.resolve("Cycling/Zones.md")).containsExactly(new NotePath("Cycling/Zones.md"));
         assertThat(resolution.resolve("/Source-Notes/Seiler")).containsExactly(
                 new NotePath("Running/Source-Notes/Seiler.md"));
@@ -34,7 +35,12 @@ class LinkResolutionTest {
 
     @Test
     void whenResolve_givenFileNameOfSeveralNotes_thenMatchAllOfThem() {
-        assertThat(resolution.resolve("ZONES"))
-                .containsExactlyInAnyOrder(new NotePath("Running/Zones.md"), new NotePath("Cycling/Zones.md"));
+        assertThat(resolution.resolve("ZONES")).containsExactlyInAnyOrder(new NotePath("Running/Zones.md"),
+                new NotePath("Cycling/Zones.md"), new NotePath("Archive/Running/Zones.md"));
+    }
+
+    @Test
+    void whenResolve_givenWholeVaultPathThatIsAlsoSuffixOfAnother_thenMatchOnlyTheWholePath() {
+        assertThat(resolution.resolve("Running/Zones")).containsExactly(new NotePath("Running/Zones.md"));
     }
 }

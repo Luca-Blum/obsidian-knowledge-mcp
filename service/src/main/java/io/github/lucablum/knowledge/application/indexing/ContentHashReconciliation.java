@@ -15,9 +15,9 @@ import java.util.Map;
 import org.jmolecules.architecture.hexagonal.Application;
 
 /**
- * Compares the content hash of every Note in the Vault with the one stored in the index, parses, reads the Links of,
- * splits, embeds and stores only the Notes whose hash differs or is missing, then removes the Notes the Vault no longer has. What looks
- * wrong in a Note is logged as a warning when it is indexed, and indexed as it is.
+ * Compares the content hash of every Note in the Vault with the one stored in the index, then parses, reads the
+ * Links of, splits, embeds and stores only the Notes whose hash differs or is missing, and removes the Notes the
+ * Vault no longer has. What looks wrong in a Note is logged as a warning when it is indexed, and indexed as it is.
  */
 @Application
 public class ContentHashReconciliation implements IndexVault {
