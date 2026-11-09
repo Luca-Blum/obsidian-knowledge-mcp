@@ -103,7 +103,7 @@ class ReportTest {
         return SearchHit.bySimilarity("content", notePath, 0, List.of(), NoteKind.OWN, score);
     }
 
-    private static SearchHit fullTextHit(String notePath, double rank) {
+    private static SearchHit fullTextHit(String notePath, double score) {
         return SearchHit.byFullTextScore("content", notePath, 0, List.of(), NoteKind.OWN, score);
     }
 }
