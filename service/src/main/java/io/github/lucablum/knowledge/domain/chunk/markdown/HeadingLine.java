@@ -1,4 +1,4 @@
-package io.github.lucablum.knowledge.domain.chunk;
+package io.github.lucablum.knowledge.domain.chunk.markdown;
 
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -10,7 +10,7 @@ import org.jmolecules.ddd.annotation.ValueObject;
  * next one, deeper ones stay inside the section.
  */
 @ValueObject
-record HeadingLine(int level, String text, String line) implements MarkdownLine {
+public record HeadingLine(int level, String text, String line) implements MarkdownLine {
 
     private static final Pattern HEADING = Pattern.compile("(?<marks>#{1,6})\\s+(?<text>(?:\\S.*)?)");
 

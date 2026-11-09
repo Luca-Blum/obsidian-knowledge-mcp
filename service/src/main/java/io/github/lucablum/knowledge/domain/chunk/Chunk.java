@@ -1,5 +1,6 @@
 package io.github.lucablum.knowledge.domain.chunk;
 
+import io.github.lucablum.knowledge.domain.chunk.section.HeadingPath;
 import io.github.lucablum.knowledge.domain.note.Note;
 import io.github.lucablum.knowledge.domain.note.Topic;
 import java.util.ArrayList;

@@ -12,7 +12,7 @@ import io.github.lucablum.knowledge.application.indexing.IndexVault;
 import io.github.lucablum.knowledge.application.indexing.IndexedNotes;
 import io.github.lucablum.knowledge.application.search.ChunkVectors;
 import io.github.lucablum.knowledge.domain.chunk.Chunk;
-import io.github.lucablum.knowledge.domain.chunk.HeadingPath;
+import io.github.lucablum.knowledge.domain.chunk.section.HeadingPath;
 import io.github.lucablum.knowledge.domain.note.ContentHash;
 import io.github.lucablum.knowledge.domain.note.Note;
 import io.github.lucablum.knowledge.domain.note.NoteKind;

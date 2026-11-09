@@ -1,5 +1,10 @@
-package io.github.lucablum.knowledge.domain.chunk;
+package io.github.lucablum.knowledge.domain.chunk.section;
 
+import io.github.lucablum.knowledge.domain.chunk.markdown.CodeBlock;
+import io.github.lucablum.knowledge.domain.chunk.markdown.HeadingLine;
+import io.github.lucablum.knowledge.domain.chunk.markdown.MarkdownLine;
+import io.github.lucablum.knowledge.domain.chunk.markdown.MarkdownLines;
+import io.github.lucablum.knowledge.domain.chunk.markdown.TextLine;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -7,15 +12,35 @@ import java.util.List;
 import java.util.Optional;
 
 /** Collects the lines of a Note into sections, tracking the headings above the current one. */
-final class SectionAssembler {
+public final class Sections {
 
     private final List<Section> sections = new ArrayList<>();
     private final Deque<HeadingLine> headings = new ArrayDeque<>();
     private final List<Block> blocks = new ArrayList<>();
     private final List<String> paragraph = new ArrayList<>();
 
+    private Sections() {
+    }
+
+    /**
+     * The sections of a Note in order, each started by a heading down to {@code headingLevel}; deeper headings stay
+     * inside their section. A section without content is left out, and so is frontmatter.
+     */
+    public static List<Section> of(String markdown, int headingLevel) {
+        Sections sections = new Sections();
+        for (MarkdownLine line : MarkdownLines.of(markdown)) {
+            switch (line) {
+                case HeadingLine heading when heading.level() > headingLevel -> sections.addLine(heading.line());
+                case HeadingLine heading -> sections.startSection(heading);
+                case TextLine text -> sections.addLine(text.value());
+                case CodeBlock code -> sections.addCodeBlock(code);
+            }
+        }
+        return sections.finish();
+    }
+
     /** Ends the current section and opens one below {@code heading}. */
-    void startSection(HeadingLine heading) {
+    private void startSection(HeadingLine heading) {
         endSection();
         dropHeadingsFrom(heading.level());
         headings.addLast(heading);
@@ -25,10 +50,10 @@ final class SectionAssembler {
      * A non-blank line after a blank one starts a new paragraph. A blank line belongs to the block before it, so no
      * block is blank; the blank lines that open a section belong to none.
      */
-    void addLine(String line) {
+    private void addLine(String line) {
         if (line.isBlank() && paragraph.isEmpty()) {
             if (!blocks.isEmpty()) {
-                blocks.add(blocks.removeLast().plus(line));
+                blocks.add(blocks.removeLast().withBlankLine(line));
             }
             return;
         }
@@ -38,13 +63,12 @@ final class SectionAssembler {
         paragraph.add(line);
     }
 
-    void addCodeBlock(CodeBlock code) {
+    private void addCodeBlock(CodeBlock code) {
         endParagraph();
         blocks.add(Block.code(code.lines()));
     }
 
-    /** The sections in order; a section without content is left out. */
-    List<Section> finish() {
+    private List<Section> finish() {
         endSection();
         return List.copyOf(sections);
     }

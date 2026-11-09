@@ -1,5 +1,7 @@
 package io.github.lucablum.knowledge.domain.chunk;
 
+import io.github.lucablum.knowledge.domain.chunk.section.Section;
+import io.github.lucablum.knowledge.domain.chunk.section.Sections;
 import io.github.lucablum.knowledge.domain.note.Note;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,83 +23,39 @@ public class Splitter {
 
     public List<Chunk> split(Note note, String markdown) {
         List<Chunk> chunks = new ArrayList<>();
-        for (SectionGroup group : merged(sections(markdown))) {
-            for (String content : pieces(group)) {
+        for (SectionGroup group : merged(Sections.of(markdown, rules.headingLevel()))) {
+            for (String content : contents(group)) {
                 chunks.add(new Chunk(note, chunks.size(), group.headings(), content));
             }
         }
         return chunks;
     }
 
-    private List<Section> sections(String markdown) {
-        SectionAssembler assembler = new SectionAssembler();
-        for (MarkdownLine line : MarkdownLines.of(markdown)) {
-            switch (line) {
-                case HeadingLine heading when heading.level() > rules.headingLevel() -> assembler.addLine(heading.line());
-                case HeadingLine heading -> assembler.startSection(heading);
-                case TextLine text -> assembler.addLine(text.value());
-                case CodeBlock code -> assembler.addCodeBlock(code);
-            }
-        }
-        return assembler.finish();
-    }
-
+    /** Each section joins the group before it if one of them is small and they fit together. */
     private List<SectionGroup> merged(List<Section> sections) {
         List<SectionGroup> groups = new ArrayList<>();
-        SectionGroup current = null;
         for (Section section : sections) {
-            if (current != null && shouldMerge(current, section)) {
-                current = current.plus(section);
+            if (!groups.isEmpty() && shouldMerge(groups.getLast(), section)) {
+                groups.add(groups.removeLast().plus(section));
             } else {
-                if (current != null) {
-                    groups.add(current);
-                }
-                current = SectionGroup.of(section);
+                groups.add(SectionGroup.of(section));
             }
-        }
-        if (current != null) {
-            groups.add(current);
         }
         return groups;
     }
 
-    /**
-     * The group's content, split at paragraphs if it is above the maximum. Merging never goes above it, so only a
-     * group of one section can be.
-     */
-    private List<String> pieces(SectionGroup group) {
+    private boolean shouldMerge(SectionGroup group, Section next) {
+        boolean small = group.content().length() < rules.minimumCharacters()
+                || next.body().length() < rules.minimumCharacters();
+        return small && group.plus(next).content().length() <= rules.maximumCharacters();
+    }
+
+    /** Merging never goes above the maximum, so a group above it is a single section, which is split into pieces. */
+    private List<String> contents(SectionGroup group) {
         String content = group.content();
         if (content.length() <= rules.maximumCharacters()) {
             return List.of(content);
         }
-        List<String> pieces = new ArrayList<>();
-        String overlap = "";
-        List<Block> piece = new ArrayList<>();
-        for (Block block : group.sections().getFirst().blocks()) {
-            if (!piece.isEmpty() && withOverlap(overlap, plus(piece, block)).length() > rules.maximumCharacters()) {
-                pieces.add(withOverlap(overlap, piece));
-                overlap = piece.getLast().ending(rules.overlapCharacters());
-                piece = new ArrayList<>();
-            }
-            piece.add(block);
-        }
-        pieces.add(withOverlap(overlap, piece));
-        return pieces;
-    }
-
-    private static List<Block> plus(List<Block> blocks, Block block) {
-        List<Block> more = new ArrayList<>(blocks);
-        more.add(block);
-        return more;
-    }
-
-    private static String withOverlap(String overlap, List<Block> blocks) {
-        return overlap.isEmpty() ? Block.text(blocks) : overlap + "\n\n" + Block.text(blocks);
-    }
-
-    private boolean shouldMerge(SectionGroup current, Section next) {
-        boolean small = current.content().length() < rules.minimumCharacters()
-                || next.body().length() < rules.minimumCharacters();
-        return small && current.plus(next).content().length() <= rules.maximumCharacters();
+        return Pieces.of(group.sections().getFirst().blocks(), rules);
     }
 }

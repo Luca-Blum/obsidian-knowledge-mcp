@@ -1,5 +1,7 @@
 package io.github.lucablum.knowledge.domain.chunk;
 
+import io.github.lucablum.knowledge.domain.chunk.section.HeadingPath;
+import io.github.lucablum.knowledge.domain.chunk.section.Section;
 import java.util.ArrayList;
 import java.util.List;
 import org.jmolecules.ddd.annotation.ValueObject;

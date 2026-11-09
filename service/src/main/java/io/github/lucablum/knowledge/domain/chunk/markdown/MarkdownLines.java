@@ -1,4 +1,4 @@
-package io.github.lucablum.knowledge.domain.chunk;
+package io.github.lucablum.knowledge.domain.chunk.markdown;
 
 import io.github.lucablum.knowledge.domain.note.Frontmatter;
 import java.util.ArrayList;
@@ -10,14 +10,14 @@ import java.util.regex.Pattern;
 /**
  * Reads a Note's Markdown line by line, telling headings from text. Frontmatter is left out.
  */
-final class MarkdownLines {
+public final class MarkdownLines {
 
     private static final Pattern CODE_FENCE = Pattern.compile("^\\s*(?<fence>`{3,}|~{3,})");
 
     private MarkdownLines() {
     }
 
-    static List<MarkdownLine> of(String markdown) {
+    public static List<MarkdownLine> of(String markdown) {
         Iterator<String> lines = withoutFrontmatter(List.of(markdown.split("\\R", -1))).iterator();
         List<MarkdownLine> result = new ArrayList<>();
         while (lines.hasNext()) {

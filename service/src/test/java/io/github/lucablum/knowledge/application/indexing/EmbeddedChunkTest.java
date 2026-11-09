@@ -3,7 +3,7 @@ package io.github.lucablum.knowledge.application.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.lucablum.knowledge.domain.chunk.Chunk;
-import io.github.lucablum.knowledge.domain.chunk.HeadingPath;
+import io.github.lucablum.knowledge.domain.chunk.section.HeadingPath;
 import io.github.lucablum.knowledge.domain.note.Note;
 import io.github.lucablum.knowledge.domain.note.NoteKind;
 import io.github.lucablum.knowledge.domain.note.NoteLanguage;
