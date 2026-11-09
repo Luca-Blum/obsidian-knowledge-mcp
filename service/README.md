@@ -1,7 +1,7 @@
 # Knowledge service
 
 One instance serves one Collection. It indexes the Collection's Vault into its own Postgres schema and offers
-`search`, `list_topics` and `list_sources` over MCP (Streamable HTTP, `/mcp`). See [`docs/architecture.md`](../docs/architecture.md).
+`search`, `read_note`, `list_topics` and `list_sources` over MCP (Streamable HTTP, `/mcp`). See [`docs/architecture.md`](../docs/architecture.md).
 
 Requires Java 25+ and Docker (Dev Services start Postgres with pgvector).
 
@@ -28,6 +28,8 @@ A Collection is defined only by configuration:
 | `collection.search.minimum-similarity` | `COLLECTION_SEARCH_MINIMUM_SIMILARITY` | Cosine similarity a Chunk must reach to be a Search Hit at all (default `0.5`, uncalibrated, belongs to the embedding model) |
 | `collection.search.max-hits-per-note` | `COLLECTION_SEARCH_MAX_HITS_PER_NOTE` | Search Hits one Note may take; each hit's `moreInNote` counts the rest (default `2`) |
 | `collection.search.candidates` | `COLLECTION_SEARCH_CANDIDATES` | Closest Chunks a search looks at before the cap and `k` (default `50`) |
+| `collection.reading.maximum-characters` | `COLLECTION_READING_MAXIMUM_CHARACTERS` | Longest Note `read_note` returns in full; a longer one comes back as an outline and its beginning (default `8000`) |
+| `collection.reading.beginning-characters` | `COLLECTION_READING_BEGINNING_CHARACTERS` | How much of a long Note's start comes with its outline (default `2000`) |
 | `collection.reconciliation.interval` | `COLLECTION_RECONCILIATION_INTERVAL` | How often the Vault is compared with the index (default `5m`) |
 | `collection.reconciliation.quiet-period` | `COLLECTION_RECONCILIATION_QUIET_PERIOD` | How long the Vault must stay quiet after a file change before it is reconciled (default `2s`) |
 

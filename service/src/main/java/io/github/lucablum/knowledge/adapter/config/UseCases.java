@@ -8,6 +8,9 @@ import io.github.lucablum.knowledge.application.indexing.ContentHashReconciliati
 import io.github.lucablum.knowledge.application.indexing.IndexVault;
 import io.github.lucablum.knowledge.application.indexing.IndexedNotes;
 import io.github.lucablum.knowledge.application.indexing.Vault;
+import io.github.lucablum.knowledge.application.reading.IndexedText;
+import io.github.lucablum.knowledge.application.reading.NoteTexts;
+import io.github.lucablum.knowledge.application.reading.ReadNote;
 import io.github.lucablum.knowledge.application.search.ChunkVectors;
 import io.github.lucablum.knowledge.application.search.SearchChunks;
 import io.github.lucablum.knowledge.application.search.SearchSettings;
@@ -16,6 +19,7 @@ import io.github.lucablum.knowledge.domain.chunk.ChunkingRules;
 import io.github.lucablum.knowledge.domain.chunk.Splitter;
 import io.github.lucablum.knowledge.domain.note.NoteLanguage;
 import io.github.lucablum.knowledge.domain.note.NoteParser;
+import io.github.lucablum.knowledge.domain.reading.ReadingRules;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 
@@ -36,6 +40,13 @@ public class UseCases {
     @ApplicationScoped
     BrowseCollection browseCollection(Catalog catalog) {
         return new IndexLookup(catalog);
+    }
+
+    @Produces
+    @ApplicationScoped
+    ReadNote readNote(NoteTexts texts, CollectionConfig collection) {
+        CollectionConfig.Reading reading = collection.reading();
+        return new IndexedText(texts, new ReadingRules(reading.maximumCharacters(), reading.beginningCharacters()));
     }
 
     @Produces

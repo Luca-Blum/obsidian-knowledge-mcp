@@ -75,6 +75,6 @@ public class ContentHashReconciliation implements IndexVault {
         List<EmbeddedChunk> chunks = splitter.split(parsed.note(), text).stream()
                 .map(chunk -> new EmbeddedChunk(chunk, embedding.embed(chunk.embeddingText())))
                 .toList();
-        indexedNotes.replace(parsed.note(), hash, chunks, embedding.model());
+        indexedNotes.replace(parsed.note(), text, hash, chunks, embedding.model());
     }
 }
