@@ -12,6 +12,7 @@ import io.github.lucablum.knowledge.application.search.ChunkVectors;
 import io.github.lucablum.knowledge.application.search.SearchChunks;
 import io.github.lucablum.knowledge.application.search.SearchSettings;
 import io.github.lucablum.knowledge.application.search.VectorSearch;
+import io.github.lucablum.knowledge.domain.chunk.ChunkingRules;
 import io.github.lucablum.knowledge.domain.chunk.Splitter;
 import io.github.lucablum.knowledge.domain.note.NoteLanguage;
 import io.github.lucablum.knowledge.domain.note.NoteParser;
@@ -25,7 +26,10 @@ public class UseCases {
     @ApplicationScoped
     IndexVault indexVault(Vault vault, Embedding embedding, IndexedNotes indexedNotes, CollectionConfig collection) {
         NoteParser parser = new NoteParser(new NoteLanguage(collection.defaultLanguage()));
-        return new ContentHashReconciliation(vault, parser, new Splitter(), embedding, indexedNotes);
+        CollectionConfig.Chunking chunking = collection.chunking();
+        Splitter splitter = new Splitter(new ChunkingRules(chunking.headingLevel(), chunking.minimumCharacters(),
+                chunking.maximumCharacters(), chunking.overlapCharacters()));
+        return new ContentHashReconciliation(vault, parser, splitter, embedding, indexedNotes);
     }
 
     @Produces

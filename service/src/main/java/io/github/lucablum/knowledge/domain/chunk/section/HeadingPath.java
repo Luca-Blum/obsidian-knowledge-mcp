@@ -1,4 +1,4 @@
-package io.github.lucablum.knowledge.domain.chunk;
+package io.github.lucablum.knowledge.domain.chunk.section;
 
 import java.util.List;
 import org.jmolecules.ddd.annotation.ValueObject;

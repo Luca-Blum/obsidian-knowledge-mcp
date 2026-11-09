@@ -10,5 +10,5 @@ The hexagon's layers `domain`, `application` and `adapter` stay the top-level pa
 ## Consequences
 
 - `ArchitectureTest` matches `..knowledge.application..` instead of the exact package, so the role rules cover the sub-packages. Two slice rules keep the concepts of `domain` and the use cases of `application` free of cycles, and `domain.note` may depend on no other domain concept.
-- The Markdown helpers of the Splitter (`MarkdownLines`, `HeadingLine` and the rest) live package-private in `domain.chunk`, next to `Chunk`, instead of in a separate `splitting` package.
+- `domain.chunk` is split by the steps a Note goes through: `domain.chunk.markdown` reads its lines (`MarkdownLines`, `HeadingLine` and the rest), `domain.chunk.section` collects them into sections (`Sections`, `Section`, `Block`, `HeadingPath`), and `domain.chunk` itself merges and splits sections into Chunks (`Splitter`, `ChunkingRules`, `Chunk`). Each step sees only the public types of the one before it, and the slice rule still treats all three as the one concept `chunk`.
 - A new use case adds its own sub-package in `application` with its own secondary port, which `PostgresIndex` (or another adapter) implements.

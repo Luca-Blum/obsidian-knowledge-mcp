@@ -12,7 +12,7 @@ import io.github.lucablum.knowledge.application.indexing.IndexVault;
 import io.github.lucablum.knowledge.application.indexing.IndexedNotes;
 import io.github.lucablum.knowledge.application.search.ChunkVectors;
 import io.github.lucablum.knowledge.domain.chunk.Chunk;
-import io.github.lucablum.knowledge.domain.chunk.HeadingPath;
+import io.github.lucablum.knowledge.domain.chunk.section.HeadingPath;
 import io.github.lucablum.knowledge.domain.note.ContentHash;
 import io.github.lucablum.knowledge.domain.note.Note;
 import io.github.lucablum.knowledge.domain.note.NoteKind;
@@ -126,7 +126,7 @@ class PostgresIndexTest {
         List<EmbeddedChunk> newVersion = List.of(
                 chunk(note, "Tempo runs at threshold pace"),
                 new EmbeddedChunk(
-                        new Chunk(note.path(), 1, new HeadingPath(List.of()), "too few dimensions"), new float[] {1}));
+                        new Chunk(note, 1, new HeadingPath(List.of()), "too few dimensions"), new float[] {1}));
 
         assertThatThrownBy(() -> indexedNotes.replace(note, ContentHash.of("new"), newVersion, FakeEmbedding.MODEL))
                 .isInstanceOf(IllegalStateException.class);
@@ -142,6 +142,6 @@ class PostgresIndexTest {
     }
 
     private EmbeddedChunk chunk(Note note, String content) {
-        return new EmbeddedChunk(new Chunk(note.path(), 0, new HeadingPath(List.of()), content), embedding.embed(content));
+        return new EmbeddedChunk(new Chunk(note, 0, new HeadingPath(List.of()), content), embedding.embed(content));
     }
 }

@@ -1,28 +1,29 @@
-package io.github.lucablum.knowledge.domain.chunk;
+package io.github.lucablum.knowledge.domain.chunk.markdown;
 
 import io.github.lucablum.knowledge.domain.note.Frontmatter;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * Reads a Note's Markdown line by line, telling headings from text. Frontmatter is left out.
  */
-final class MarkdownLines {
+public final class MarkdownLines {
 
-    private static final Pattern CODE_FENCE = Pattern.compile("^\\s*(```|~~~)");
+    private static final Pattern CODE_FENCE = Pattern.compile("^\\s*(?<fence>`{3,}|~{3,})");
 
     private MarkdownLines() {
     }
 
-    static List<MarkdownLine> of(String markdown) {
+    public static List<MarkdownLine> of(String markdown) {
         Iterator<String> lines = withoutFrontmatter(List.of(markdown.split("\\R", -1))).iterator();
         List<MarkdownLine> result = new ArrayList<>();
         while (lines.hasNext()) {
             String line = lines.next();
             if (isCodeFence(line)) {
-                result.addAll(codeBlock(line, lines));
+                result.add(codeBlock(line, lines));
             } else {
                 result.add(headingOrText(line));
             }
@@ -32,23 +33,38 @@ final class MarkdownLines {
 
     /**
      * The code block from its opening fence up to and including the closing fence, which consumes {@code lines};
-     * an unclosed block runs to the end.
+     * an unclosed block runs to the end. Only a fence of the same character and at least the same length closes it.
      */
-    private static List<MarkdownLine> codeBlock(String openingFence, Iterator<String> lines) {
-        List<MarkdownLine> block = new ArrayList<>();
-        block.add(new TextLine(openingFence));
+    private static CodeBlock codeBlock(String openingFence, Iterator<String> lines) {
+        List<String> block = new ArrayList<>();
+        block.add(openingFence);
         while (lines.hasNext()) {
             String line = lines.next();
-            block.add(new TextLine(line));
-            if (isCodeFence(line)) {
+            block.add(line);
+            if (closes(openingFence, line)) {
                 break;
             }
         }
-        return block;
+        return new CodeBlock(block);
     }
 
     private static MarkdownLine headingOrText(String line) {
         return HeadingLine.parse(line).<MarkdownLine>map(heading -> heading).orElseGet(() -> new TextLine(line));
+    }
+
+    private static boolean closes(String openingFence, String line) {
+        String opening = fence(openingFence);
+        Matcher closing = CODE_FENCE.matcher(line);
+        return closing.find()
+                && closing.group("fence").charAt(0) == opening.charAt(0)
+                && closing.group("fence").length() >= opening.length()
+                && line.substring(closing.end()).isBlank();
+    }
+
+    private static String fence(String line) {
+        Matcher fence = CODE_FENCE.matcher(line);
+        fence.find();
+        return fence.group("fence");
     }
 
     private static boolean isCodeFence(String line) {

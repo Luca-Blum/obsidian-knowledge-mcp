@@ -72,7 +72,7 @@ public class ContentHashReconciliation implements IndexVault {
     private void index(NotePath path, String text, ContentHash hash) {
         ParsedNote parsed = parser.parse(path, text);
         parsed.warnings().forEach(warning -> LOG.log(Level.WARNING, "Note {0} {1}", path, warning));
-        List<EmbeddedChunk> chunks = splitter.split(path, text).stream()
+        List<EmbeddedChunk> chunks = splitter.split(parsed.note(), text).stream()
                 .map(chunk -> new EmbeddedChunk(chunk, embedding.embed(chunk.embeddingText())))
                 .toList();
         indexedNotes.replace(parsed.note(), hash, chunks, embedding.model());
