@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.lucablum.knowledge.domain.chunk.ChunkingRules;
+import io.github.lucablum.knowledge.domain.note.NotePath;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -57,15 +58,19 @@ class FingerprintReIndexTest {
     @Test
     void whenReIndex_givenReconciliationUnderway_thenReportHowManyNotesAreDone() {
         reconciliation.during = progress -> {
-            progress.accept(new Progress(0, 2));
+            progress.accept(new ReconciliationProgress(0, 2));
             reconciliation.seen.add(reIndex.progress());
-            progress.accept(new Progress(1, 2));
+            progress.accept(new ReconciliationProgress(1, 2));
             reconciliation.seen.add(reIndex.progress());
+            reconciliation.runningMeanwhile = reIndex.running();
         };
 
         reIndex.reIndex();
 
-        assertThat(reconciliation.seen).containsExactly(Optional.of(new Progress(0, 2)), Optional.of(new Progress(1, 2)));
+        assertThat(reconciliation.runningMeanwhile).isTrue();
+        assertThat(reIndex.running()).isFalse();
+        assertThat(reconciliation.seen).containsExactly(
+                Optional.of(new ReconciliationProgress(0, 2)), Optional.of(new ReconciliationProgress(1, 2)));
     }
 
     @Test
@@ -77,7 +82,7 @@ class FingerprintReIndexTest {
     }
 
     @Test
-    void whenReIndex_givenReconciliationFails_thenRecordNoFingerprintAndReportNoProgress() {
+    void whenReIndex_givenReconciliationFails_thenRecordNoFingerprintAndKeepReportingTheReIndex() {
         build.fingerprint = Optional.of(new IndexFingerprint("nomic-embed-text", 768, CONFIGURED.chunking()));
         reconciliation.during = progress -> {
             throw new IllegalStateException("Vault unreadable");
@@ -86,12 +91,52 @@ class FingerprintReIndexTest {
         assertThatThrownBy(reIndex::reIndex).hasMessage("Vault unreadable");
 
         assertThat(build.fingerprint).isEmpty();
+        assertThat(reIndex.progress()).contains(ReconciliationProgress.NOT_STARTED);
+    }
+
+    @Test
+    void whenReIndex_givenStartingOverFails_thenReportNoReIndexOnceTheUntouchedIndexIsCheckedAgain() {
+        build.fingerprint = Optional.of(CONFIGURED);
+        build.failsToStartOver = true;
+
+        assertThatThrownBy(reIndex::reIndex).hasMessage("Database unreachable");
+
+        assertThat(reIndex.reIndexIfOutdated()).isEmpty();
         assertThat(reIndex.progress()).isEmpty();
     }
 
     @Test
-    void whenProgress_givenNoReIndexRunning_thenReportNone() {
+    void whenReIndex_givenEveryNoteFailed_thenRecordNoFingerprintAndKeepReportingTheReIndex() {
+        reconciliation.result = new Reconciled(0, 0, 0, List.of(new NotePath("Running/Tempo.md")));
+
+        reIndex.reIndex();
+
+        assertThat(build.fingerprint).isEmpty();
+        assertThat(reIndex.progress()).isPresent();
+    }
+
+    @Test
+    void whenReIndex_givenSomeNotesFailed_thenRecordFingerprintAsTheyHoldNoChunkOfTheOldModel() {
+        reconciliation.result = new Reconciled(1, 0, 0, List.of(new NotePath("Running/Tempo.md")));
+
+        reIndex.reIndex();
+
+        assertThat(build.fingerprint).contains(CONFIGURED);
         assertThat(reIndex.progress()).isEmpty();
+    }
+
+    @Test
+    void whenProgress_givenIndexBuiltWithConfiguredFingerprint_thenReportNone() {
+        build.fingerprint = Optional.of(CONFIGURED);
+
+        assertThat(reIndex.progress()).isEmpty();
+    }
+
+    @Test
+    void whenProgress_givenIndexBuiltWithOtherFingerprintBeforeAnyReIndex_thenReportOneNotStartedYet() {
+        build.fingerprint = Optional.of(new IndexFingerprint("nomic-embed-text", 768, CONFIGURED.chunking()));
+
+        assertThat(reIndex.progress()).contains(ReconciliationProgress.NOT_STARTED);
     }
 
     /** Forgets its fingerprint when it starts over, as the real index does. */
@@ -99,6 +144,7 @@ class FingerprintReIndexTest {
 
         private Optional<IndexFingerprint> fingerprint = Optional.empty();
         private final List<Integer> startedOverWith = new ArrayList<>();
+        private boolean failsToStartOver;
 
         @Override
         public Optional<IndexFingerprint> fingerprint() {
@@ -107,6 +153,9 @@ class FingerprintReIndexTest {
 
         @Override
         public void startOver(int dimension) {
+            if (failsToStartOver) {
+                throw new IllegalStateException("Database unreachable");
+            }
             startedOverWith.add(dimension);
             fingerprint = Optional.empty();
         }
@@ -120,14 +169,16 @@ class FingerprintReIndexTest {
     private static final class ScriptedReconciliation implements IndexVault {
 
         private int runs;
-        private Consumer<Consumer<Progress>> during = progress -> {};
-        private final List<Optional<Progress>> seen = new ArrayList<>();
+        private Reconciled result = EVERY_NOTE_INDEXED;
+        private boolean runningMeanwhile;
+        private Consumer<Consumer<ReconciliationProgress>> during = progress -> {};
+        private final List<Optional<ReconciliationProgress>> seen = new ArrayList<>();
 
         @Override
-        public Reconciled run(Consumer<Progress> progress) {
+        public Reconciled run(Consumer<ReconciliationProgress> progress) {
             runs++;
             during.accept(progress);
-            return EVERY_NOTE_INDEXED;
+            return result;
         }
     }
 }

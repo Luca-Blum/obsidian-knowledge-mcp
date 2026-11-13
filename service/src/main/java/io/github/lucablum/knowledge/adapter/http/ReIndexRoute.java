@@ -1,14 +1,13 @@
 package io.github.lucablum.knowledge.adapter.http;
 
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
-import io.github.lucablum.knowledge.application.indexing.Progress;
 import io.github.lucablum.knowledge.application.indexing.ReIndexCollection;
 import io.github.lucablum.knowledge.application.indexing.Reconciled;
+import io.github.lucablum.knowledge.application.indexing.ReconciliationProgress;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
-import java.util.Optional;
 import org.jboss.logging.Logger;
 import org.jmolecules.architecture.hexagonal.PrimaryAdapter;
 
@@ -35,10 +34,9 @@ public class ReIndexRoute {
     }
 
     private void reIndex(RoutingContext request) {
-        Optional<Progress> running = reIndex.progress();
-        if (running.isPresent()) {
-            request.response().setStatusCode(409)
-                    .end("A Re-Index is already running: " + running.get().describe() + " done.\n");
+        if (reIndex.running()) {
+            String progress = reIndex.progress().map(ReconciliationProgress::describe).orElse("");
+            request.response().setStatusCode(409).end("A Re-Index is already running: " + progress + " done.\n");
             return;
         }
         Thread.ofVirtual().name("re-index-" + collection.name()).start(this::reIndexInBackground);
@@ -49,8 +47,7 @@ public class ReIndexRoute {
     private void reIndexInBackground() {
         try {
             Reconciled reconciled = reIndex.reIndex();
-            LOG.infof("Re-Indexed Collection %s: indexed %d, removed %d, failed %d Notes", collection.name(),
-                    reconciled.indexed(), reconciled.removed(), reconciled.failed().size());
+            LOG.infof("Re-Indexed Collection %s: %s", collection.name(), reconciled.summary());
         } catch (RuntimeException e) {
             LOG.errorf(e, "Re-Index of Collection %s failed", collection.name());
         }

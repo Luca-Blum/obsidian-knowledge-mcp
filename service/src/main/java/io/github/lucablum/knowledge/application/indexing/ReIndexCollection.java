@@ -13,8 +13,15 @@ public interface ReIndexCollection {
     /** Re-indexes unless the index was built with the configured fingerprint; empty if it was. */
     Optional<Reconciled> reIndexIfOutdated();
 
+    /** Starts the index over and indexes every Note, whatever fingerprint the index was built with. */
     Reconciled reIndex();
 
-    /** How far the running Re-Index has come, or empty if none runs. */
-    Optional<Progress> progress();
+    /**
+     * How far the Re-Index has come, or empty if the index was built with the configured fingerprint. A Re-Index that
+     * did not start yet or failed and waits to be tried again reports {@link ReconciliationProgress#NOT_STARTED}.
+     */
+    Optional<ReconciliationProgress> progress();
+
+    /** Whether a Re-Index run is under way right now. */
+    boolean running();
 }

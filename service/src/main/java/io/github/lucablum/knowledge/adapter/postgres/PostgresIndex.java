@@ -98,7 +98,7 @@ public class PostgresIndex
         Transaction.run(dataSource, connection -> {
             execute(connection, sql.forgetFingerprint());
             execute(connection, sql.removeChunks());
-            execute(connection, sql.resizeEmbedding(dimension));
+            execute(connection, sql.resizeEmbedding().apply(dimension));
             execute(connection, sql.markNotesChanged());
         });
     }

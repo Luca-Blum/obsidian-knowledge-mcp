@@ -3,14 +3,14 @@ package io.github.lucablum.knowledge.adapter.mcp;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
-import io.github.lucablum.knowledge.application.indexing.Progress;
 import io.github.lucablum.knowledge.application.indexing.ReIndexCollection;
+import io.github.lucablum.knowledge.application.indexing.ReconciliationProgress;
 import io.github.lucablum.knowledge.application.search.SearchChunks;
 import io.github.lucablum.knowledge.application.search.SearchRequest;
 import io.github.lucablum.knowledge.domain.note.Topic;
 import io.github.lucablum.knowledge.domain.search.SearchHit;
-import io.quarkiverse.mcp.server.ToolManager;
 import io.quarkiverse.mcp.server.ToolManager.ToolArguments;
+import io.quarkiverse.mcp.server.ToolManager;
 import io.quarkiverse.mcp.server.ToolResponse;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -62,10 +62,10 @@ public class SearchTool {
     }
 
     private ToolResponse search(ToolArguments arguments) {
-        Optional<Progress> reIndexing = reIndex.progress();
+        Optional<ReconciliationProgress> reIndexing = reIndex.progress();
         if (reIndexing.isPresent()) {
-            return ToolResponse.error(("The Collection is being rebuilt by a Re-Index (%s done) and answers no "
-                    + "searches until it is through. Try again later.").formatted(reIndexing.get().describe()));
+            return ToolResponse.error(("The Collection is being re-indexed (progress: %s) and answers no searches "
+                    + "until the Re-Index is through. Try again later.").formatted(reIndexing.get().describe()));
         }
         Map<String, Object> args = arguments.args();
         try {

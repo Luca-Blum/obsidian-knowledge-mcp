@@ -15,5 +15,5 @@ public interface IndexVault {
     }
 
     /** Tells {@code progress} how many Notes are done before the first and after every Note. */
-    Reconciled run(Consumer<Progress> progress);
+    Reconciled run(Consumer<ReconciliationProgress> progress);
 }

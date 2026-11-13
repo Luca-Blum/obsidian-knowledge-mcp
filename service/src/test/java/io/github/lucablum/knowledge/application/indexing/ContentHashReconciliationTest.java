@@ -133,11 +133,12 @@ class ContentHashReconciliationTest {
     void whenIndexVault_givenTwoNotes_thenReportProgressBeforeTheFirstAndAfterEachNote() {
         vault.put("Running/Intervals.md", "Interval training improves speed");
         vault.put("Running/Broken.md", "unembeddable");
-        List<Progress> reported = new ArrayList<>();
+        List<ReconciliationProgress> reported = new ArrayList<>();
 
         indexVault.run(reported::add);
 
-        assertThat(reported).containsExactly(new Progress(0, 2), new Progress(1, 2), new Progress(2, 2));
+        assertThat(reported).containsExactly(new ReconciliationProgress(0, 2), new ReconciliationProgress(1, 2),
+                new ReconciliationProgress(2, 2));
     }
 
     private static final class InMemoryVault implements Vault {

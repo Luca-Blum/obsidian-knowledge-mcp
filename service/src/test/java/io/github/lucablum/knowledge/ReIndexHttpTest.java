@@ -2,9 +2,7 @@ package io.github.lucablum.knowledge;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.agroal.api.AgroalDataSource;
 import io.github.lucablum.knowledge.application.indexing.IndexVault;
-import io.github.lucablum.knowledge.application.indexing.Progress;
 import io.github.lucablum.knowledge.application.indexing.ReIndexCollection;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusMock;
@@ -15,8 +13,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
@@ -45,18 +41,19 @@ class ReIndexHttpTest {
     ReIndexCollection reIndex;
 
     @Inject
-    AgroalDataSource dataSource;
+    TestIndex index;
 
     private final HttpClient http = HttpClient.newHttpClient();
 
     @BeforeEach
-    void emptyVault() {
+    void emptyVaultAndIndexUpToDate() {
         vault.clear();
+        reIndex.reIndexIfOutdated();
     }
 
     @Test
     void whenGetReadiness_givenReIndexRunning_thenStayUpAndReportItsProgress() throws Exception {
-        QuarkusMock.installMockForType(new RunningReIndex(new Progress(12, 340)), ReIndexCollection.class);
+        QuarkusMock.installMockForType(new RunningReIndex(12, 340), ReIndexCollection.class);
 
         HttpResponse<String> response = http.send(HttpRequest.newBuilder(readiness).build(), ofString());
 
@@ -78,7 +75,7 @@ class ReIndexHttpTest {
     void whenPostAdminReIndex_givenChunksOfAnOldModel_thenAcceptAndReIndexInTheBackground() throws Exception {
         vault.write("Running/Tempo.md", "Tempo runs at threshold pace");
         indexVault.run();
-        markEveryChunkAsEmbeddedBy("old-model");
+        index.markEveryChunkAsEmbeddedBy("old-model");
 
         HttpResponse<String> response = http.send(post(adminReIndex), ofString());
 
@@ -90,7 +87,7 @@ class ReIndexHttpTest {
 
     @Test
     void whenPostAdminReIndex_givenReIndexRunning_thenRejectWithConflictNamingItsProgress() throws Exception {
-        QuarkusMock.installMockForType(new RunningReIndex(new Progress(12, 340)), ReIndexCollection.class);
+        QuarkusMock.installMockForType(new RunningReIndex(12, 340), ReIndexCollection.class);
 
         HttpResponse<String> response = http.send(post(adminReIndex), ofString());
 
@@ -123,19 +120,7 @@ class ReIndexHttpTest {
         }
     }
 
-    private void markEveryChunkAsEmbeddedBy(String model) throws SQLException {
-        try (Connection connection = dataSource.getConnection()) {
-            connection.createStatement().executeUpdate(
-                    "UPDATE test_collection.chunk SET embedding_model = '" + model + "'");
-        }
-    }
-
     private int chunksEmbeddedBy(String model) throws SQLException {
-        try (Connection connection = dataSource.getConnection();
-                ResultSet rows = connection.createStatement().executeQuery(
-                        "SELECT count(*) FROM test_collection.chunk WHERE embedding_model = '" + model + "'")) {
-            rows.next();
-            return rows.getInt(1);
-        }
+        return (int) index.embeddingModelOfEveryChunk().stream().filter(model::equals).count();
     }
 }

@@ -3,11 +3,10 @@ package io.github.lucablum.knowledge;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.lucablum.knowledge.application.indexing.IndexVault;
-import io.github.lucablum.knowledge.application.indexing.Progress;
 import io.github.lucablum.knowledge.application.indexing.ReIndexCollection;
 import io.quarkiverse.mcp.server.TextContent;
-import io.quarkiverse.mcp.server.test.McpAssured;
 import io.quarkiverse.mcp.server.test.McpAssured.McpStreamableTestClient;
+import io.quarkiverse.mcp.server.test.McpAssured;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.vertx.core.json.JsonArray;
@@ -26,11 +25,15 @@ class SearchToolTest {
     @Inject
     IndexVault indexVault;
 
+    @Inject
+    ReIndexCollection reIndex;
+
     McpStreamableTestClient client;
 
     @BeforeEach
     void connect() {
         vault.clear();
+        reIndex.reIndexIfOutdated();
         client = McpAssured.newConnectedStreamableClient();
     }
 
@@ -102,7 +105,7 @@ class SearchToolTest {
 
     @Test
     void whenCallSearchTool_givenReIndexRunning_thenReturnErrorNamingHowManyNotesAreDone() {
-        QuarkusMock.installMockForType(new RunningReIndex(new Progress(12, 340)), ReIndexCollection.class);
+        QuarkusMock.installMockForType(new RunningReIndex(12, 340), ReIndexCollection.class);
 
         client.when()
                 .toolsCall("search", Map.of("query", "interval training"), response -> {

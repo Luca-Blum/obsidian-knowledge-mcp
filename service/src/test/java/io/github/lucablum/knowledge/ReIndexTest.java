@@ -2,7 +2,6 @@ package io.github.lucablum.knowledge;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.agroal.api.AgroalDataSource;
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
 import io.github.lucablum.knowledge.application.indexing.EmbeddedChunk;
 import io.github.lucablum.knowledge.application.indexing.IndexBuild;
@@ -23,10 +22,7 @@ import io.github.lucablum.knowledge.domain.note.NotePath;
 import io.github.lucablum.knowledge.domain.search.SearchHit;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
@@ -58,7 +54,7 @@ class ReIndexTest {
     SearchChunks search;
 
     @Inject
-    AgroalDataSource dataSource;
+    TestIndex index;
 
     @Inject
     CollectionConfig collection;
@@ -80,11 +76,11 @@ class ReIndexTest {
         vault.write("Running/Intervals.md", "## Short\nInterval training improves speed\n\n## Long\nLong runs");
         vault.write("Running/Tempo.md", "Tempo runs at threshold pace");
         indexVault.run();
-        markEveryChunkAsEmbeddedBy(OLD_MODEL);
+        index.markEveryChunkAsEmbeddedBy(OLD_MODEL);
 
         reIndex.reIndex();
 
-        assertThat(embeddingModelOfEveryChunk())
+        assertThat(index.embeddingModelOfEveryChunk())
                 .hasSize(3)
                 .containsOnly(FakeEmbedding.MODEL);
     }
@@ -118,27 +114,9 @@ class ReIndexTest {
         build.startOver(3);
         Note note = new Note(new NotePath(path), NoteKind.OWN, path, Optional.empty(), Optional.empty(),
                 Optional.empty(), new NoteLanguage("en"));
-        EmbeddedChunk chunk = new EmbeddedChunk(new Chunk(note, 0, new HeadingPath(List.of()), text), new float[] {1, 0, 0});
-        indexedNotes.replace(note, text, ContentHash.of(text), List.of(), List.of(chunk), OLD_MODEL);
+        Chunk chunk = new Chunk(note, 0, new HeadingPath(List.of()), text);
+        indexedNotes.replace(note, text, ContentHash.of(text), List.of(),
+                List.of(new EmbeddedChunk(chunk, new float[] {1, 0, 0})), OLD_MODEL);
         build.complete(new IndexFingerprint(OLD_MODEL, 3, new ChunkingRules(3, 0, 2000, 100)));
-    }
-
-    private void markEveryChunkAsEmbeddedBy(String model) throws SQLException {
-        try (Connection connection = dataSource.getConnection()) {
-            connection.createStatement().executeUpdate(
-                    "UPDATE test_collection.chunk SET embedding_model = '" + model + "'");
-        }
-    }
-
-    private List<String> embeddingModelOfEveryChunk() throws SQLException {
-        List<String> models = new ArrayList<>();
-        try (Connection connection = dataSource.getConnection();
-                ResultSet rows = connection.createStatement()
-                        .executeQuery("SELECT embedding_model FROM test_collection.chunk")) {
-            while (rows.next()) {
-                models.add(rows.getString(1));
-            }
-        }
-        return models;
     }
 }

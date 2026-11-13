@@ -1,5 +1,6 @@
 package io.github.lucablum.knowledge.adapter.postgres;
 
+import java.util.function.IntFunction;
 import java.util.regex.Pattern;
 
 /**
@@ -24,7 +25,7 @@ record Statements(
         String forgetFingerprint,
         String insertFingerprint,
         String removeChunks,
-        String resizeEmbeddingTemplate,
+        IntFunction<String> resizeEmbedding,
         String markNotesChanged) {
 
     private static final Pattern IDENTIFIER = Pattern.compile("[a-z_][a-z0-9_]*");
@@ -105,7 +106,10 @@ record Statements(
 
     private static final String REMOVE_CHUNKS_TEMPLATE = "DELETE FROM {chunk}";
 
-    /** Only possible on an empty table, as a vector cannot change its dimension. */
+    /**
+     * Only possible on an empty table, as a vector cannot change its dimension. A type modifier cannot be bound as a
+     * parameter either, but a number cannot smuggle in any SQL.
+     */
     private static final String RESIZE_EMBEDDING_TEMPLATE =
             "ALTER TABLE {chunk} ALTER COLUMN embedding TYPE public.vector({dimension})";
 
@@ -133,13 +137,13 @@ record Statements(
                 inSchema(FORGET_FINGERPRINT_TEMPLATE, schema),
                 inSchema(INSERT_FINGERPRINT_TEMPLATE, schema),
                 inSchema(REMOVE_CHUNKS_TEMPLATE, schema),
-                inSchema(RESIZE_EMBEDDING_TEMPLATE, schema),
+                resizeEmbedding(schema),
                 inSchema(MARK_NOTES_CHANGED_TEMPLATE, schema));
     }
 
-    /** A type modifier cannot be bound as a parameter either, but a number cannot smuggle in any SQL. */
-    String resizeEmbedding(int dimension) {
-        return resizeEmbeddingTemplate.replace("{dimension}", Integer.toString(dimension));
+    private static IntFunction<String> resizeEmbedding(String schema) {
+        String statement = inSchema(RESIZE_EMBEDDING_TEMPLATE, schema);
+        return dimension -> statement.replace("{dimension}", Integer.toString(dimension));
     }
 
     private static String inSchema(String template, String schema) {

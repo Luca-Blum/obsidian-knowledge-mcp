@@ -48,7 +48,13 @@ without a fingerprint, such as one from before fingerprints were stored, is re-i
 
 While a Re-Index runs, `search` answers with an error that says how far it has come (`12 of 340 Notes`), and the
 `Re-Index` check of `/q/health/ready` reports `state` `running` with the same `progress`. The instance stays ready,
-as `read_note`, `related` and the lists keep working. `POST /admin/re-index` forces a Re-Index (`202`, or `409` while
+as `read_note`, `related` and the lists keep working.
+
+Until the index carries the configured fingerprint, it counts as being re-indexed, also before the Re-Index starts
+and after one failed (`progress` then reads `not started yet`). Reconciliation never runs on such an index: each run
+tries the Re-Index again first. A Re-Index in which some Notes failed still completes, as those Notes hold no Chunk
+of the old model and the next Reconciliation indexes them; only one in which every Note failed, such as when Ollama
+is unreachable, does not. `POST /admin/re-index` forces a Re-Index (`202`, or `409` while
 one runs):
 
 ```shell

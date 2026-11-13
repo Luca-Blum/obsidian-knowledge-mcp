@@ -1,7 +1,7 @@
 package io.github.lucablum.knowledge.adapter.health;
 
-import io.github.lucablum.knowledge.application.indexing.Progress;
 import io.github.lucablum.knowledge.application.indexing.ReIndexCollection;
+import io.github.lucablum.knowledge.application.indexing.ReconciliationProgress;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Optional;
 import org.eclipse.microprofile.health.HealthCheck;
@@ -28,7 +28,7 @@ public class ReIndexHealth implements HealthCheck {
     @Override
     public HealthCheckResponse call() {
         HealthCheckResponseBuilder response = HealthCheckResponse.named("Re-Index").up();
-        Optional<Progress> progress = reIndex.progress();
+        Optional<ReconciliationProgress> progress = reIndex.progress();
         if (progress.isEmpty()) {
             return response.withData("state", "idle").build();
         }
