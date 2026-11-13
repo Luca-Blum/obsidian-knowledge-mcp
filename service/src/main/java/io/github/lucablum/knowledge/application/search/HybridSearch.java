@@ -1,6 +1,7 @@
 package io.github.lucablum.knowledge.application.search;
 
 import io.github.lucablum.knowledge.application.Embedding;
+import io.github.lucablum.knowledge.domain.search.ReciprocalRankFusion;
 import io.github.lucablum.knowledge.domain.search.SearchHit;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,20 +12,27 @@ import java.util.stream.Collectors;
 import org.jmolecules.architecture.hexagonal.Application;
 
 /**
- * Finds Chunks by the cosine distance between their vectors and the embedded query. Candidates below the Minimum
- * Similarity are left out, so a question with nothing relevant in the Collection gets no Search Hits, and each
- * Note gets at most a fixed number of Search Hits. Each Search Hit says how many more candidates its Note had.
+ * Finds Chunks twice, by the cosine distance between their vectors and the embedded query and by their full text,
+ * and fuses both rankings. Vector candidates below the Minimum Similarity are left out before the fusion, so a
+ * question with nothing relevant in the Collection gets only what the full-text search matches; the fused score is
+ * never thresholded (ADR 0002). Each Note gets at most a fixed number of Search Hits, and each Search Hit says how
+ * many more candidates its Note had.
  */
 @Application
-public class VectorSearch implements SearchChunks {
+public class HybridSearch implements SearchChunks {
 
     private final Embedding embedding;
     private final ChunkVectors vectors;
+    private final ChunkFullText fullText;
+    private final ReciprocalRankFusion fusion;
     private final SearchSettings settings;
 
-    public VectorSearch(Embedding embedding, ChunkVectors vectors, SearchSettings settings) {
+    public HybridSearch(Embedding embedding, ChunkVectors vectors, ChunkFullText fullText,
+            ReciprocalRankFusion fusion, SearchSettings settings) {
         this.embedding = embedding;
         this.vectors = vectors;
+        this.fullText = fullText;
+        this.fusion = fusion;
         this.settings = settings;
     }
 
@@ -32,18 +40,27 @@ public class VectorSearch implements SearchChunks {
     public List<SearchHit> search(SearchRequest request) {
         int k = request.k().orElse(settings.defaultK());
         validate(request.query(), k);
-        List<SearchHit> candidates = candidates(request);
+        List<SearchHit> candidates = fusion.fuse(vectorCandidates(request), fullTextCandidates(request));
         return withMoreInNote(capped(candidates, k), candidates);
     }
 
     /** The closest Chunks that reach the Minimum Similarity, at most as many as the settings allow. */
-    private List<SearchHit> candidates(SearchRequest request) {
+    private List<SearchHit> vectorCandidates(SearchRequest request) {
         float[] query = embedding.embed(request.query());
         double minimumSimilarity = settings.minimumSimilarity();
         int limit = settings.candidates();
         return request.topic()
                 .map(topic -> vectors.nearest(query, topic, minimumSimilarity, limit))
                 .orElseGet(() -> vectors.nearest(query, minimumSimilarity, limit));
+    }
+
+    /** The best ranked Chunks that contain every term, at most as many as the settings allow. */
+    private List<SearchHit> fullTextCandidates(SearchRequest request) {
+        String terms = request.fullTextTerms();
+        int limit = settings.candidates();
+        return request.topic()
+                .map(topic -> fullText.matching(terms, topic, limit))
+                .orElseGet(() -> fullText.matching(terms, limit));
     }
 
     /** Each Search Hit learns how many candidates of its Note are not among the Search Hits. */

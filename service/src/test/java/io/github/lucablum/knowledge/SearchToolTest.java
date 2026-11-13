@@ -65,6 +65,32 @@ class SearchToolTest {
     }
 
     @Test
+    void whenCallSearchTool_givenKeywords_thenFindTheChunkContainingThem() {
+        vault.write("Software-Engineering/Index.md", "The class PostgresIndex implements ChunkVectors.");
+        indexVault.run();
+
+        client.when()
+                .toolsCall("search", Map.of("query", "where are embeddings kept", "keywords", "PostgresIndex"),
+                        response -> {
+                            JsonArray hits = new JsonObject(((TextContent) response.firstContent()).text())
+                                    .getJsonArray("hits");
+                            assertThat(hits).hasSize(1);
+                            assertThat(hits.getJsonObject(0).getString("notePath"))
+                                    .isEqualTo("Software-Engineering/Index.md");
+                        })
+                .thenAssertResults();
+    }
+
+    @Test
+    void whenListTools_givenSearchTool_thenKeywordsExplainHowTheyDifferFromTheQuery() {
+        client.when()
+                .toolsList(page -> assertThat(page.findByName("search").inputSchema().getJsonObject("properties")
+                        .getJsonObject("keywords").getString("description"))
+                        .contains("exact", "full-text", "query"))
+                .thenAssertResults();
+    }
+
+    @Test
     void whenCallSearchTool_givenKNotAWholeNumber_thenReturnError() {
         client.when()
                 .toolsCall("search", Map.of("query", "interval training", "k", "ten"), response -> assertThat(response.isError()).isTrue())

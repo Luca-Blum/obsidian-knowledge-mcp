@@ -11,15 +11,17 @@ import io.github.lucablum.knowledge.application.indexing.Vault;
 import io.github.lucablum.knowledge.application.reading.IndexedText;
 import io.github.lucablum.knowledge.application.reading.NoteTexts;
 import io.github.lucablum.knowledge.application.reading.ReadNote;
+import io.github.lucablum.knowledge.application.search.ChunkFullText;
 import io.github.lucablum.knowledge.application.search.ChunkVectors;
+import io.github.lucablum.knowledge.application.search.HybridSearch;
 import io.github.lucablum.knowledge.application.search.SearchChunks;
 import io.github.lucablum.knowledge.application.search.SearchSettings;
-import io.github.lucablum.knowledge.application.search.VectorSearch;
 import io.github.lucablum.knowledge.domain.chunk.ChunkingRules;
 import io.github.lucablum.knowledge.domain.chunk.Splitter;
 import io.github.lucablum.knowledge.domain.note.NoteLanguage;
 import io.github.lucablum.knowledge.domain.note.NoteParser;
 import io.github.lucablum.knowledge.domain.reading.ReadingRules;
+import io.github.lucablum.knowledge.domain.search.ReciprocalRankFusion;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 
@@ -51,9 +53,13 @@ public class UseCases {
 
     @Produces
     @ApplicationScoped
-    SearchChunks searchChunks(Embedding embedding, ChunkVectors vectors, CollectionConfig collection) {
+    SearchChunks searchChunks(
+            Embedding embedding, ChunkVectors vectors, ChunkFullText fullText, CollectionConfig collection) {
         CollectionConfig.Search search = collection.search();
-        return new VectorSearch(embedding, vectors, new SearchSettings(search.defaultK(), search.maxK(),
-                search.minimumSimilarity(), search.maxHitsPerNote(), search.candidates()));
+        CollectionConfig.Search.Fusion fusion = search.fusion();
+        return new HybridSearch(embedding, vectors, fullText,
+                new ReciprocalRankFusion(fusion.k(), fusion.vectorWeight(), fusion.fullTextWeight()),
+                new SearchSettings(search.defaultK(), search.maxK(), search.minimumSimilarity(),
+                        search.maxHitsPerNote(), search.candidates()));
     }
 }

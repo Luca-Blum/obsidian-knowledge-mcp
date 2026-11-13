@@ -6,6 +6,7 @@ import io.github.lucablum.knowledge.application.catalog.Catalog;
 import io.github.lucablum.knowledge.application.indexing.EmbeddedChunk;
 import io.github.lucablum.knowledge.application.indexing.IndexedNotes;
 import io.github.lucablum.knowledge.application.reading.NoteTexts;
+import io.github.lucablum.knowledge.application.search.ChunkFullText;
 import io.github.lucablum.knowledge.application.search.ChunkVectors;
 import io.github.lucablum.knowledge.domain.catalog.SourceNoteListing;
 import io.github.lucablum.knowledge.domain.catalog.TopicCount;
@@ -35,10 +36,13 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.jmolecules.architecture.hexagonal.SecondaryAdapter;
 
-/** Stores Notes, their text and their Chunks in the Collection's own schema; vectors live in pgvector columns. */
+/**
+ * Stores Notes, their text and their Chunks in the Collection's own schema; vectors live in pgvector columns, full
+ * text in {@code tsvector} columns built in each Note's language.
+ */
 @ApplicationScoped
 @SecondaryAdapter
-public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog, NoteTexts {
+public class PostgresIndex implements IndexedNotes, ChunkVectors, ChunkFullText, Catalog, NoteTexts {
 
     private final AgroalDataSource dataSource;
     private final Statements sql;
@@ -59,7 +63,7 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog, NoteT
         Transaction.run(dataSource, connection -> {
             deleteNote(connection, note.path());
             insertNote(connection, note, text, hash);
-            insertChunks(connection, note.path(), chunks, embeddingModel);
+            insertChunks(connection, note, chunks, embeddingModel);
         });
     }
 
@@ -94,7 +98,27 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog, NoteT
             select.setDouble(5, minimumSimilarity);
             select.setString(6, vector);
             select.setInt(7, limit);
-        }, PostgresIndex::toSearchHit);
+        }, searchHit(SearchHit::bySimilarity));
+    }
+
+    @Override
+    public List<SearchHit> matching(String terms, int limit) {
+        return matchingInTopic(terms, null, limit);
+    }
+
+    @Override
+    public List<SearchHit> matching(String terms, Topic topic, int limit) {
+        return matchingInTopic(terms, topic.name(), limit);
+    }
+
+    /** A {@code null} topic name leaves the search unrestricted. */
+    private List<SearchHit> matchingInTopic(String terms, String topicName, int limit) {
+        return query(sql.matching(), select -> {
+            select.setString(1, terms);
+            select.setString(2, topicName);
+            select.setString(3, topicName);
+            select.setInt(4, limit);
+        }, searchHit(SearchHit::byFullTextScore));
     }
 
     @Override
@@ -137,17 +161,22 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog, NoteT
         }
     }
 
-    private void insertChunks(Connection connection, NotePath path, List<EmbeddedChunk> chunks, String embeddingModel)
+    private void insertChunks(Connection connection, Note note, List<EmbeddedChunk> chunks, String embeddingModel)
             throws SQLException {
         try (PreparedStatement insert = connection.prepareStatement(sql.insertChunk())) {
-            insert.setString(1, path.value());
+            insert.setString(1, note.path().value());
             insert.setString(6, embeddingModel);
+            insert.setString(7, note.language().code());
+            insert.setString(8, note.title());
             for (EmbeddedChunk embedded : chunks) {
                 Chunk chunk = embedded.chunk();
+                Array headings = textArray(connection, chunk.headings().segments());
                 insert.setInt(2, chunk.ordinal());
-                insert.setArray(3, textArray(connection, chunk.headings().segments()));
+                insert.setArray(3, headings);
                 insert.setString(4, chunk.content());
                 insert.setString(5, Arrays.toString(embedded.embedding()));
+                insert.setArray(9, headings);
+                insert.setString(10, chunk.content());
                 insert.addBatch();
             }
             insert.executeBatch();
@@ -174,14 +203,15 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog, NoteT
         return results;
     }
 
-    private static SearchHit toSearchHit(ResultSet row) throws SQLException {
-        return new SearchHit(
+    /** Reads a candidate row of either search; {@code score} is that search's own. */
+    private static Row<SearchHit> searchHit(Candidate candidate) {
+        return row -> candidate.of(
                 row.getString("content"),
                 row.getString("note_path"),
+                row.getInt("ordinal"),
                 List.of((String[]) row.getArray("heading_path").getArray()),
                 NoteKind.ofLabel(row.getString("kind")),
-                row.getDouble("score"),
-                0);
+                row.getDouble("score"));
     }
 
     private static Map.Entry<NotePath, ContentHash> toContentHash(ResultSet row) throws SQLException {
@@ -207,5 +237,10 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, Catalog, NoteT
 
     private interface Row<T> {
         T read(ResultSet row) throws SQLException;
+    }
+
+    private interface Candidate {
+        SearchHit of(String content, String notePath, int ordinal, List<String> headingPath, NoteKind noteKind,
+                double score);
     }
 }
