@@ -3,11 +3,14 @@ package io.github.lucablum.knowledge.evaluation;
 import io.github.lucablum.knowledge.application.search.SearchRequest;
 import io.github.lucablum.knowledge.domain.note.Topic;
 
-/** A question the Collection must not answer; the Topic is optional. */
-record NegativeQuestion(String text, Topic topic) {
+/** A question the Collection must not answer; the Topic and the keywords are optional. */
+record NegativeQuestion(String text, Topic topic, String keywords) {
+
+    NegativeQuestion(String text, Topic topic) {
+        this(text, topic, null);
+    }
 
     SearchRequest request(int k) {
-        SearchRequest request = SearchRequest.of(text).withK(k);
-        return topic == null ? request : request.inTopic(topic);
+        return Requests.of(text, topic, keywords, k);
     }
 }

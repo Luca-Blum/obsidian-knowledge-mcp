@@ -243,6 +243,76 @@ class SearchTest {
     }
 
     @Test
+    void whenSearch_givenKeywordsNamingAClassTheQueryMisses_thenReturnTheChunkByFullText() {
+        vault.write("Software-Engineering/Index.md", "The class PostgresIndex implements ChunkVectors.");
+        indexVault.run();
+
+        List<SearchHit> hits = search.search(
+                SearchRequest.of("where are embeddings kept").withKeywords("PostgresIndex").withK(10));
+
+        assertThat(hits).extracting(SearchHit::notePath).containsExactly("Software-Engineering/Index.md");
+    }
+
+    @Test
+    void whenSearch_givenNoKeywords_thenFullTextSearchesTheQueryStemmedInTheNoteLanguage() {
+        vault.write("Running/Training.md", """
+                ---
+                lang: de
+                ---
+                Der Läufer trainiert Intervalle
+                """);
+        indexVault.run();
+
+        List<SearchHit> hits = search.search(SearchRequest.of("laufen").withK(10));
+
+        assertThat(hits).extracting(SearchHit::notePath).containsExactly("Running/Training.md");
+    }
+
+    @Test
+    void whenSearch_givenKeywordThatIsAGermanStopWord_thenMatchOnlyEnglishChunks() {
+        vault.write("Software-Engineering/Architektur.md", """
+                ---
+                lang: de
+                ---
+                Die Architektur bleibt stabil
+                """);
+        vault.write("Software-Engineering/Processes.md", """
+                ---
+                lang: en
+                ---
+                Old processes die quietly
+                """);
+        indexVault.run();
+
+        List<SearchHit> hits = search.search(SearchRequest.of("unrelated").withKeywords("die").withK(10));
+
+        assertThat(hits).extracting(SearchHit::notePath).containsExactly("Software-Engineering/Processes.md");
+    }
+
+    @Test
+    void whenSearch_givenSeveralKeywords_thenMatchOnlyChunksContainingAll() {
+        vault.write("Software-Engineering/Hexagonal.md", "Ports and adapters keep the core clean");
+        vault.write("Software-Engineering/Network.md", "Open ports on the firewall");
+        indexVault.run();
+
+        List<SearchHit> hits = search.search(SearchRequest.of("unrelated").withKeywords("ports adapters").withK(10));
+
+        assertThat(hits).extracting(SearchHit::notePath).containsExactly("Software-Engineering/Hexagonal.md");
+    }
+
+    @Test
+    void whenSearch_givenKeywordInOneTitleAndAnotherBody_thenRankTheTitleFirst() {
+        vault.write("Software-Engineering/Grid.md", "Tiles laid out in a hexagonal grid");
+        vault.write("Software-Engineering/Hexagonal.md", "Ports and adapters keep the core clean");
+        indexVault.run();
+
+        List<SearchHit> hits = search.search(SearchRequest.of("unrelated").withKeywords("hexagonal").withK(10));
+
+        assertThat(hits).extracting(SearchHit::notePath)
+                .containsExactly("Software-Engineering/Hexagonal.md", "Software-Engineering/Grid.md");
+    }
+
+    @Test
     void whenSearch_givenBlankQuery_thenRejectWithIllegalArgument() {
         assertThatThrownBy(() -> search.search(SearchRequest.of("  ")))
                 .isInstanceOf(IllegalArgumentException.class)

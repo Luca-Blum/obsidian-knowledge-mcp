@@ -40,7 +40,11 @@ public class SearchTool {
     void register(@Observes StartupEvent startup) {
         tools.newTool("search")
                 .setDescription(config.toolDescription())
-                .addArgument("query", "The question in your own words.", true, String.class)
+                .addArgument("query", "The question in your own words. It drives the vector search, which finds "
+                        + "meaning across German and English.", true, String.class)
+                .addArgument("keywords", "Optional exact terms for the full-text search, such as class names, "
+                        + "abbreviations or proper names; every term must occur. Without them the full-text search "
+                        + "uses the query.", false, String.class)
                 .addArgument("topic", "Restricts the search to one Topic (first folder below the Vault root).",
                         false, String.class)
                 .addArgument("k", "How many Search Hits to return (default %d, at most %d)."
@@ -52,9 +56,10 @@ public class SearchTool {
 
     private ToolResponse search(ToolArguments arguments) {
         Map<String, Object> args = arguments.args();
-        String topic = (String) args.get("topic");
         try {
-            List<Hit> hits = search.search(request((String) args.get("query"), topic, args.get("k"))).stream()
+            SearchRequest request = request((String) args.get("query"), (String) args.get("keywords"),
+                    (String) args.get("topic"), args.get("k"));
+            List<Hit> hits = search.search(request).stream()
                     .map(Hit::of)
                     .toList();
             return ToolResponse.success(json.writeValueAsString(Map.of("hits", hits)));
@@ -65,8 +70,11 @@ public class SearchTool {
         }
     }
 
-    private SearchRequest request(String query, String topic, Object k) {
+    private SearchRequest request(String query, String keywords, String topic, Object k) {
         SearchRequest request = SearchRequest.of(query);
+        if (keywords != null && !keywords.isBlank()) {
+            request = request.withKeywords(keywords);
+        }
         if (topic != null && !topic.isBlank()) {
             request = request.inTopic(new Topic(topic));
         }

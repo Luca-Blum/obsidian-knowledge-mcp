@@ -23,10 +23,12 @@ import java.util.stream.Collectors;
  * questions:
  *   - question: What does the Dependency Rule say?
  *     topic: Software-Engineering            # optional
+ *     keywords: Dependency Rule              # optional, exact terms for the full-text search
  *     expected:
  *       - Software-Engineering/Source-Notes/clean-architecture-ch5.md
  * negative-questions:
  *   - question: How should I taper before a marathon?
+ *     keywords: Tapering                     # optional, as above
  * </pre>
  */
 record EvaluationSet(List<Question> questions, List<NegativeQuestion> negativeQuestions) {
@@ -72,22 +74,22 @@ record EvaluationSet(List<Question> questions, List<NegativeQuestion> negativeQu
         }
     }
 
-    private record Entry(String question, String topic, List<String> expected) {
+    private record Entry(String question, String topic, String keywords, List<String> expected) {
 
         Question toQuestion(Path file) {
             if (expected == null || expected.isEmpty()) {
                 throw new IllegalArgumentException("Question \"%s\" in %s names no expected Note"
                         .formatted(question, file));
             }
-            return new Question(question, topicNamed(topic), expected.stream().map(NotePath::new)
+            return new Question(question, topicNamed(topic), keywords, expected.stream().map(NotePath::new)
                     .collect(Collectors.toSet()));
         }
     }
 
-    private record NegativeEntry(String question, String topic) {
+    private record NegativeEntry(String question, String topic, String keywords) {
 
         NegativeQuestion toNegativeQuestion() {
-            return new NegativeQuestion(question, topicNamed(topic));
+            return new NegativeQuestion(question, topicNamed(topic), keywords);
         }
     }
 }

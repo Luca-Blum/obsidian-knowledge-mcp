@@ -94,8 +94,27 @@ public interface CollectionConfig {
         @WithDefault("2")
         int maxHitsPerNote();
 
-        /** How many of the closest Chunks a search looks at; {@code moreInNote} counts only among them. */
+        /**
+         * How many candidates each list contributes to the fusion: the closest Chunks of the vector search and the best
+         * ranked of the full-text search. {@code moreInNote} counts only among them.
+         */
         @WithDefault("50")
         int candidates();
+
+        Fusion fusion();
+
+        /** How Reciprocal Rank Fusion merges the vector and the full-text list: {@code weight / (k + rank)}. */
+        interface Fusion {
+
+            /** Flattens the difference between the top ranks and the ones below; 60 is the usual choice. */
+            @WithDefault("60")
+            int k();
+
+            @WithDefault("1.0")
+            double vectorWeight();
+
+            @WithDefault("1.0")
+            double fullTextWeight();
+        }
     }
 }
