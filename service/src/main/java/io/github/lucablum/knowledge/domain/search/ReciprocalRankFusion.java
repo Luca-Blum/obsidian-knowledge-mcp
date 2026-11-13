@@ -1,6 +1,5 @@
 package io.github.lucablum.knowledge.domain.search;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,28 +31,44 @@ public class ReciprocalRankFusion {
 
     /** Both rankings' Search Hits, each Chunk once, highest fused score first. */
     public List<SearchHit> fuse(List<SearchHit> vector, List<SearchHit> fullText) {
-        Map<ChunkKey, SearchHit> chunks = new LinkedHashMap<>();
-        Map<ChunkKey, Double> scores = new LinkedHashMap<>();
-        add(vector, vectorWeight, chunks, scores);
-        add(fullText, fullTextWeight, chunks, scores);
-        List<SearchHit> fused = new ArrayList<>();
-        chunks.forEach((chunk, hit) -> fused.add(hit.withScore(scores.get(chunk))));
-        fused.sort(Comparator.comparingDouble(SearchHit::score).reversed());
-        return fused;
+        Map<ChunkKey, SearchHit> fused = combined(scoredByRank(vector, vectorWeight),
+                scoredByRank(fullText, fullTextWeight));
+        return fused.values().stream()
+                .sorted(Comparator.comparingDouble(SearchHit::score).reversed())
+                .toList();
     }
 
-    private void add(List<SearchHit> ranking, double weight, Map<ChunkKey, SearchHit> chunks, Map<ChunkKey, Double> scores) {
+    /** Each Search Hit of the ranking, scored by its rank alone; none if the ranking's weight is 0. */
+    private Map<ChunkKey, SearchHit> scoredByRank(List<SearchHit> ranking, double weight) {
+        Map<ChunkKey, SearchHit> scored = new LinkedHashMap<>();
         if (weight == 0) {
-            return;
+            return scored;
         }
         for (int i = 0; i < ranking.size(); i++) {
+            int rank = i + 1;
             SearchHit hit = ranking.get(i);
-            ChunkKey chunk = new ChunkKey(hit.notePath(), hit.ordinal());
-            chunks.merge(chunk, hit, SearchHit::mergedWith);
-            scores.merge(chunk, weight / (k + i + 1), Double::sum);
+            scored.merge(ChunkKey.of(hit), hit.withScore(weight / (k + rank)), ReciprocalRankFusion::sameChunkCombined);
         }
+        return scored;
+    }
+
+    /** The Search Hits of both rankings, a Chunk in both combined into one. */
+    private static Map<ChunkKey, SearchHit> combined(Map<ChunkKey, SearchHit> first, Map<ChunkKey, SearchHit> second) {
+        Map<ChunkKey, SearchHit> combined = new LinkedHashMap<>(first);
+        second.forEach((chunk, hit) -> combined.merge(chunk, hit, ReciprocalRankFusion::sameChunkCombined));
+        return combined;
+    }
+
+    /** The Chunk as both searches know it, scored by the sum of both ranks' scores. */
+    private static SearchHit sameChunkCombined(SearchHit earlier, SearchHit later) {
+        return earlier.mergedWith(later).withScore(earlier.score() + later.score());
     }
 
     /** A Chunk is its Note and its position there, so the same Chunk from both searches is fused into one. */
-    private record ChunkKey(String notePath, int ordinal) {}
+    private record ChunkKey(String notePath, int ordinal) {
+
+        static ChunkKey of(SearchHit hit) {
+            return new ChunkKey(hit.notePath(), hit.ordinal());
+        }
+    }
 }
