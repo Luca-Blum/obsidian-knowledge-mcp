@@ -239,33 +239,25 @@ public record Chunk(ChunkId id, NotePath note, HeadingPath headings, String cont
 
 ### 2. Hybrid Search: Two Rankings, One Fusion
 
-Vector search finds meaning, and full-text search finds exact terms (class names, abbreviations, proper names). The vector search uses `query` and works across languages. The full-text search uses `keywords` (else `query`) combined with AND and exists only for exact terms. Full-text hits pass unfiltered, and vector hits pass only above the Minimum Similarity. Both rankings are merged with Reciprocal Rank Fusion:
+Vector search finds meaning, and full-text search finds exact terms (class names, abbreviations, proper names). The vector search uses `query` and works across languages. The full-text search uses `keywords` (else `query`) combined with AND and exists only for exact terms. Full-text hits pass unfiltered, and vector hits pass only above the Minimum Similarity. Both rankings are merged with Reciprocal Rank Fusion: each Chunk scores `weight / (k + rank)` summed over the lists it appears in (`HybridSearch` with `ReciprocalRankFusion`). The full-text list comes from one query that parses the terms once per Note Language in the Collection and compares each Chunk only with the terms of its own language:
 
 ```sql
-WITH vec AS (
-  SELECT id, row_number() OVER (ORDER BY embedding <=> :queryVector) AS rank
-  FROM chunk
-  WHERE (:topic IS NULL OR topic = :topic)
-  ORDER BY embedding <=> :queryVector
-  LIMIT 50
-),
-fts AS (
-  SELECT id, row_number() OVER (ORDER BY ts_rank_cd(tsv, q) DESC) AS rank
-  FROM chunk, websearch_to_tsquery('simple', :queryText) q
-  WHERE tsv @@ q AND (:topic IS NULL OR topic = :topic)
-  ORDER BY ts_rank_cd(tsv, q) DESC
-  LIMIT 50
+WITH terms AS (
+  SELECT language, plainto_tsquery(text_search_config(language), :terms) AS query
+  FROM (SELECT DISTINCT language FROM note) languages
 )
-SELECT id, sum(1.0 / (60 + rank)) AS score
-FROM (SELECT * FROM vec UNION ALL SELECT * FROM fts) ranked
-GROUP BY id
+SELECT c.*, ts_rank_cd(c.full_text, t.query) AS score
+FROM chunk c JOIN note n ON n.path = c.note_path JOIN terms t ON t.language = n.language
+WHERE (:topic IS NULL OR n.topic = :topic) AND c.full_text @@ t.query
 ORDER BY score DESC
-LIMIT :k;
+LIMIT :candidates;
 ```
+
+`full_text` is `chunk_full_text(language, title, heading_path, content)`: the Title weighted `A`, the heading path `B`, the body `D`.
 
 | Lever | Effect |
 | --- | --- |
-| Candidates per list, final `k` | Breadth of the search vs. noise |
+| Candidates per list, final `k`, RRF `k` and list weights | Breadth of the search vs. noise; a full-text weight of 0 is plain vector search |
 | Minimum Similarity (cosine, on the vector list before the fusion) | Below the threshold a vector hit doesn't count, which prevents off-topic answers. RRF only sets the order afterwards; a threshold on the RRF score would have no effect ([ADR 0002](adr/0002-minimum-similarity-before-fusion.md)). The value belongs to the model and is calibrated per Collection with Negative Questions |
 | Hits per Note | Keeps one long Note from taking every slot |
 | `setweight` on Title and headings | Hits in headings count more than in body text |

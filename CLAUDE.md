@@ -21,6 +21,14 @@ Hexagonal with jMolecules annotations; ADR `docs/adr/0003-ports-are-interfaces-a
 - A use case is a `@PrimaryPort` interface plus an `@Application` class named after how it works. Adapters depend on the port, never on the `@Application` class.
 - Adapters are named after the technology (`PostgresIndex`, `OllamaEmbedding`). Never annotate a concrete class as a port to satisfy a rule; fix the design instead.
 
+## Code style
+
+Readability comes first: code should read like prose to someone new to the codebase.
+
+- Write small functions that do one thing, named so the call site explains itself. Split a function when it needs a comment to explain its parts.
+- Keep it simple: no abstractions, interfaces or configuration for needs that don't exist yet. Plain readable code beats clever code.
+- Improve the package structure whenever you touch an area and it no longer fits, e.g. a package holds too many classes or mixes unrelated concepts. Group by concept, and keep the moves within the architecture rules above.
+
 ## Testing
 
 Name test methods `when<Action>_given<Context>_then<Outcome>`, three parts separated by underscores, e.g. `whenIndexVault_givenNoFiles_thenReturnZero`. Setup methods (`@BeforeEach`) and ArchUnit rules are exempt.

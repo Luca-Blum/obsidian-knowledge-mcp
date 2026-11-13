@@ -15,6 +15,7 @@ record Statements(
         String contentHashes,
         String removeNotes,
         String nearest,
+        String matching,
         String topics,
         String sourceNotes,
         String linksOfEveryNote) {
@@ -28,8 +29,8 @@ record Statements(
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""";
 
     private static final String INSERT_CHUNK_TEMPLATE = """
-            INSERT INTO {chunk} (note_path, ordinal, heading_path, content, embedding, embedding_model)
-            VALUES (?, ?, ?, ?, ?::vector, ?)""";
+            INSERT INTO {chunk} (note_path, ordinal, heading_path, content, embedding, embedding_model, full_text)
+            VALUES (?, ?, ?, ?, ?::vector, ?, {schema}.chunk_full_text(?, ?, ?, ?))""";
 
     private static final String INSERT_LINK_TEMPLATE = """
             INSERT INTO {link} (note_path, ordinal, target, kind, anchor)
@@ -42,11 +43,26 @@ record Statements(
     private static final String REMOVE_NOTES_TEMPLATE = "DELETE FROM {note} WHERE path = ANY (?)";
 
     private static final String NEAREST_TEMPLATE = """
-            SELECT c.content, c.note_path, c.heading_path, n.kind, 1 - (c.embedding <=> ?::vector) AS score
+            SELECT c.content, c.note_path, c.ordinal, c.heading_path, n.kind, 1 - (c.embedding <=> ?::vector) AS score
             FROM {chunk} c JOIN {note} n ON n.path = c.note_path
             WHERE (?::text IS NULL OR n.topic = ?)
               AND 1 - (c.embedding <=> ?::vector) >= ?
             ORDER BY c.embedding <=> ?::vector, c.note_path, c.ordinal
+            LIMIT ?""";
+
+    /** The terms are parsed once per Note Language in the Collection; each Chunk meets those of its own language. */
+    private static final String MATCHING_TEMPLATE = """
+            WITH terms AS (
+                SELECT language, plainto_tsquery({schema}.text_search_config(language), ?) AS query
+                FROM (SELECT DISTINCT language FROM {note}) languages
+            )
+            SELECT c.content, c.note_path, c.ordinal, c.heading_path, n.kind, ts_rank_cd(c.full_text, t.query) AS score
+            FROM {chunk} c
+            JOIN {note} n ON n.path = c.note_path
+            JOIN terms t ON t.language = n.language
+            WHERE (?::text IS NULL OR n.topic = ?)
+              AND c.full_text @@ t.query
+            ORDER BY score DESC, c.note_path, c.ordinal
             LIMIT ?""";
 
     private static final String TOPICS_TEMPLATE = """
@@ -78,6 +94,7 @@ record Statements(
                 inSchema(CONTENT_HASHES_TEMPLATE, schema),
                 inSchema(REMOVE_NOTES_TEMPLATE, schema),
                 inSchema(NEAREST_TEMPLATE, schema),
+                inSchema(MATCHING_TEMPLATE, schema),
                 inSchema(TOPICS_TEMPLATE, schema),
                 inSchema(SOURCE_NOTES_TEMPLATE, schema),
                 inSchema(LINKS_OF_EVERY_NOTE_TEMPLATE, schema));
@@ -87,6 +104,7 @@ record Statements(
         return template
                 .replace("{note}", schema + ".note")
                 .replace("{chunk}", schema + ".chunk")
-                .replace("{link}", schema + ".link");
+                .replace("{link}", schema + ".link")
+                .replace("{schema}", schema);
     }
 }

@@ -35,12 +35,32 @@ class EvaluationSetTest {
         EvaluationSet set = EvaluationSet.read(file);
 
         assertThat(set.questions()).containsExactly(
-                new Question("What does the Dependency Rule say?", new Topic("Software-Engineering"),
+                new Question("What does the Dependency Rule say?", new Topic("Software-Engineering"), null,
                         Set.of(new NotePath("Software-Engineering/Source-Notes/clean-architecture-ch5.md"))),
-                new Question("How do I run a kata?", null,
+                new Question("How do I run a kata?", null, null,
                         Set.of(new NotePath("Coaching/Kata.md"), new NotePath("Coaching/Dojo.md"))));
         assertThat(set.negativeQuestions())
-                .containsExactly(new NegativeQuestion("How should I taper before a marathon?", null));
+                .containsExactly(new NegativeQuestion("How should I taper before a marathon?", null, null));
+    }
+
+    @Test
+    void whenRead_givenKeywords_thenQuestionsAndNegativeQuestionsCarryThem() throws IOException {
+        Path file = write("""
+                questions:
+                  - question: How is the index stored?
+                    keywords: PostgresIndex pgvector
+                    expected: [Software-Engineering/Index.md]
+                negative-questions:
+                  - question: How should I taper before a marathon?
+                    keywords: Tapering
+                """);
+
+        EvaluationSet set = EvaluationSet.read(file);
+
+        assertThat(set.questions()).containsExactly(new Question("How is the index stored?", null,
+                "PostgresIndex pgvector", Set.of(new NotePath("Software-Engineering/Index.md"))));
+        assertThat(set.negativeQuestions())
+                .containsExactly(new NegativeQuestion("How should I taper before a marathon?", null, "Tapering"));
     }
 
     @Test
@@ -70,8 +90,8 @@ class EvaluationSetTest {
     @Test
     void whenFindMissingNotes_givenExpectedNoteNotInVault_thenReturnIt() {
         EvaluationSet set = new EvaluationSet(List.of(
-                new Question("How do I run a kata?", null, Set.of(new NotePath("Coaching/Kata.md"))),
-                new Question("What is a dojo?", null, Set.of(new NotePath("Coaching/Dojo (renamed).md")))), List.of());
+                new Question("How do I run a kata?", null, null, Set.of(new NotePath("Coaching/Kata.md"))),
+                new Question("What is a dojo?", null, null, Set.of(new NotePath("Coaching/Dojo (renamed).md")))), List.of());
 
         Set<NotePath> missing = set.missingNotes(List.of(new NotePath("Coaching/Kata.md"), new NotePath("Index.md")));
 
