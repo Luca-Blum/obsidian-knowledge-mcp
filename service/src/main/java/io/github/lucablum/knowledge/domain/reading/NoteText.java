@@ -37,30 +37,33 @@ public record NoteText(String markdown) {
      * section above every heading, which is the whole Note without its frontmatter.
      */
     public List<String> sections(HeadingPath heading) {
+        List<MarkdownLine> lines = MarkdownLines.of(markdown);
+        List<String> sections = heading.segments().isEmpty() ? List.of(text(lines)) : sectionsUnder(heading, lines);
+        return sections.stream().filter(section -> !section.isEmpty()).toList();
+    }
+
+    private static List<String> sectionsUnder(HeadingPath heading, List<MarkdownLine> lines) {
         List<String> sections = new ArrayList<>();
         OpenHeadings open = OpenHeadings.NONE;
-        List<String> section = heading.segments().isEmpty() ? new ArrayList<>() : null;
-        int sectionLevel = 0;
-        for (MarkdownLine line : MarkdownLines.of(markdown)) {
-            if (line instanceof HeadingLine next) {
+        for (int start = 0; start < lines.size(); start++) {
+            if (lines.get(start) instanceof HeadingLine next) {
                 open = open.open(next);
-                if (section != null && next.level() <= sectionLevel) {
-                    addSection(sections, section);
-                    section = null;
-                }
                 if (open.path().equals(heading)) {
-                    section = new ArrayList<>();
-                    sectionLevel = next.level();
+                    sections.add(text(lines.subList(start, sectionEnd(lines, start, next))));
                 }
             }
-            if (section != null) {
-                section.addAll(lines(line));
-            }
-        }
-        if (section != null) {
-            addSection(sections, section);
         }
         return sections;
+    }
+
+    /** The index of the next heading of the same or a higher level than {@code heading}, or the end of the Note. */
+    private static int sectionEnd(List<MarkdownLine> lines, int start, HeadingLine heading) {
+        for (int end = start + 1; end < lines.size(); end++) {
+            if (lines.get(end) instanceof HeadingLine next && next.level() <= heading.level()) {
+                return end;
+            }
+        }
+        return lines.size();
     }
 
     private List<HeadingPath> outline() {
@@ -75,15 +78,12 @@ public record NoteText(String markdown) {
         return outline;
     }
 
-    /** A section without content, such as the body of an empty Note, is left out. */
-    private static void addSection(List<String> sections, List<String> lines) {
-        String section = String.join("\n", lines).strip();
-        if (!section.isEmpty()) {
-            sections.add(section);
-        }
+    /** The lines as written, stripped; a section without content, such as the body of an empty Note, is empty. */
+    private static String text(List<MarkdownLine> lines) {
+        return String.join("\n", lines.stream().flatMap(line -> written(line).stream()).toList()).strip();
     }
 
-    private static List<String> lines(MarkdownLine line) {
+    private static List<String> written(MarkdownLine line) {
         return switch (line) {
             case HeadingLine heading -> List.of(heading.line());
             case TextLine text -> List.of(text.value());
