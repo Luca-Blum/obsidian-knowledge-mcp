@@ -11,6 +11,9 @@ import io.github.lucablum.knowledge.application.indexing.Vault;
 import io.github.lucablum.knowledge.application.link.FollowLinks;
 import io.github.lucablum.knowledge.application.link.IndexedLinks;
 import io.github.lucablum.knowledge.application.link.QueryTimeResolution;
+import io.github.lucablum.knowledge.application.reading.IndexedText;
+import io.github.lucablum.knowledge.application.reading.NoteTexts;
+import io.github.lucablum.knowledge.application.reading.ReadNote;
 import io.github.lucablum.knowledge.application.search.ChunkFullText;
 import io.github.lucablum.knowledge.application.search.ChunkVectors;
 import io.github.lucablum.knowledge.application.search.HybridSearch;
@@ -20,6 +23,7 @@ import io.github.lucablum.knowledge.domain.chunk.ChunkingRules;
 import io.github.lucablum.knowledge.domain.chunk.Splitter;
 import io.github.lucablum.knowledge.domain.note.NoteLanguage;
 import io.github.lucablum.knowledge.domain.note.NoteParser;
+import io.github.lucablum.knowledge.domain.reading.ReadingRules;
 import io.github.lucablum.knowledge.domain.search.ReciprocalRankFusion;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
@@ -47,6 +51,13 @@ public class UseCases {
     @ApplicationScoped
     FollowLinks followLinks(IndexedLinks indexedLinks) {
         return new QueryTimeResolution(indexedLinks);
+    }
+
+    @Produces
+    @ApplicationScoped
+    ReadNote readNote(NoteTexts texts, CollectionConfig collection) {
+        CollectionConfig.Reading reading = collection.reading();
+        return new IndexedText(texts, new ReadingRules(reading.maximumCharacters(), reading.beginningCharacters()));
     }
 
     @Produces

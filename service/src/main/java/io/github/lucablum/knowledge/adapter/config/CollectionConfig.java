@@ -30,6 +30,8 @@ public interface CollectionConfig {
 
     Search search();
 
+    Reading reading();
+
     interface Reconciliation {
 
         /** Off only in tests that run Reconciliation themselves. */
@@ -116,5 +118,17 @@ public interface CollectionConfig {
             @WithDefault("1.0")
             double fullTextWeight();
         }
+    }
+
+    /** How much of a Note {@code read_note} returns at once; sizes are in characters, frontmatter included. */
+    interface Reading {
+
+        /** A Note up to this long is returned in full, a longer one as the outline of its headings and its beginning. */
+        @WithDefault("8000")
+        int maximumCharacters();
+
+        /** How much of the start of a long Note comes with its outline. */
+        @WithDefault("2000")
+        int beginningCharacters();
     }
 }

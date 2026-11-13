@@ -169,8 +169,8 @@ class ContentHashReconciliationTest {
         }
 
         @Override
-        public void replace(
-                Note note, ContentHash hash, List<Link> links, List<EmbeddedChunk> chunks, String embeddingModel) {
+        public void replace(Note note, String text, ContentHash hash, List<Link> links, List<EmbeddedChunk> chunks,
+                String embeddingModel) {
             replaced.add(note.path());
             hashes.put(note.path(), hash);
             this.chunks.put(note.path(), chunks);

@@ -1,7 +1,7 @@
 # Knowledge service
 
 One instance serves one Collection. It indexes the Collection's Vault into its own Postgres schema and offers
-`search`, `list_topics` and `list_sources` over MCP (Streamable HTTP, `/mcp`). See [`docs/architecture.md`](../docs/architecture.md).
+`search`, `read_note`, `list_topics` and `list_sources` over MCP (Streamable HTTP, `/mcp`). See [`docs/architecture.md`](../docs/architecture.md).
 
 Requires Java 25+ and Docker (Dev Services start Postgres with pgvector).
 
@@ -31,6 +31,8 @@ A Collection is defined only by configuration:
 | `collection.search.fusion.k` | `COLLECTION_SEARCH_FUSION_K` | The `k` of Reciprocal Rank Fusion, `weight / (k + rank)`; larger flattens the top ranks (default `60`) |
 | `collection.search.fusion.vector-weight` | `COLLECTION_SEARCH_FUSION_VECTOR_WEIGHT` | Weight of the vector list in the fusion (default `1.0`) |
 | `collection.search.fusion.full-text-weight` | `COLLECTION_SEARCH_FUSION_FULL_TEXT_WEIGHT` | Weight of the full-text list in the fusion; `0` leaves it out, which is plain vector search (default `1.0`) |
+| `collection.reading.maximum-characters` | `COLLECTION_READING_MAXIMUM_CHARACTERS` | Longest Note `read_note` returns in full; a longer one comes back as an outline and its beginning (default `8000`) |
+| `collection.reading.beginning-characters` | `COLLECTION_READING_BEGINNING_CHARACTERS` | How much of a long Note's start comes with its outline (default `2000`) |
 | `collection.reconciliation.interval` | `COLLECTION_RECONCILIATION_INTERVAL` | How often the Vault is compared with the index (default `5m`) |
 | `collection.reconciliation.quiet-period` | `COLLECTION_RECONCILIATION_QUIET_PERIOD` | How long the Vault must stay quiet after a file change before it is reconciled (default `2s`) |
 

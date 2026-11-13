@@ -10,6 +10,7 @@ import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
 import io.github.lucablum.knowledge.application.indexing.EmbeddedChunk;
 import io.github.lucablum.knowledge.application.indexing.IndexVault;
 import io.github.lucablum.knowledge.application.indexing.IndexedNotes;
+import io.github.lucablum.knowledge.application.reading.NoteTexts;
 import io.github.lucablum.knowledge.application.search.ChunkVectors;
 import io.github.lucablum.knowledge.domain.chunk.Chunk;
 import io.github.lucablum.knowledge.domain.chunk.section.HeadingPath;
@@ -18,6 +19,7 @@ import io.github.lucablum.knowledge.domain.note.Note;
 import io.github.lucablum.knowledge.domain.note.NoteKind;
 import io.github.lucablum.knowledge.domain.note.NoteLanguage;
 import io.github.lucablum.knowledge.domain.note.NotePath;
+import io.github.lucablum.knowledge.domain.reading.NoteText;
 import io.github.lucablum.knowledge.domain.search.SearchHit;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -33,7 +35,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * What the index records next to the text: the model of every Chunk, the language and content hash of every Note.
- * It never shows half of a Note, because a Note is replaced as a whole or not at all.
+ * It never shows half of a Note, text included, because a Note is replaced as a whole or not at all.
  */
 @QuarkusTest
 class PostgresIndexTest {
@@ -55,6 +57,9 @@ class PostgresIndexTest {
 
     @Inject
     ChunkVectors vectors;
+
+    @Inject
+    NoteTexts texts;
 
     @Inject
     FakeEmbedding embedding;
@@ -113,8 +118,8 @@ class PostgresIndexTest {
     void whenReplace_givenNote_thenStoreItsContentHash() {
         Note note = note("Running/Tempo.md");
 
-        indexedNotes.replace(
-                note, ContentHash.of("Tempo runs"), List.of(), List.of(chunk(note, "Tempo runs")), FakeEmbedding.MODEL);
+        indexedNotes.replace(note, "Tempo runs", ContentHash.of("Tempo runs"), List.of(),
+                List.of(chunk(note, "Tempo runs")), FakeEmbedding.MODEL);
 
         assertThat(indexedNotes.contentHashes())
                 .containsExactly(Map.entry(note.path(), ContentHash.of("Tempo runs")));
@@ -123,18 +128,20 @@ class PostgresIndexTest {
     @Test
     void whenReplace_givenChunkThatCannotBeStored_thenKeepPreviousVersionOfNote() {
         Note note = note("Running/Tempo.md");
-        indexedNotes.replace(
-                note, ContentHash.of("Tempo runs"), List.of(), List.of(chunk(note, "Tempo runs")), FakeEmbedding.MODEL);
+        indexedNotes.replace(note, "Tempo runs", ContentHash.of("Tempo runs"), List.of(),
+                List.of(chunk(note, "Tempo runs")), FakeEmbedding.MODEL);
         List<EmbeddedChunk> newVersion = List.of(
                 chunk(note, "Tempo runs at threshold pace"),
                 new EmbeddedChunk(
                         new Chunk(note, 1, new HeadingPath(List.of()), "too few dimensions"), new float[] {1}));
 
         assertThatThrownBy(() -> indexedNotes.replace(
-                        note, ContentHash.of("new"), List.of(), newVersion, FakeEmbedding.MODEL))
+                        note, "Tempo runs at threshold pace", ContentHash.of("new"), List.of(), newVersion,
+                        FakeEmbedding.MODEL))
                 .isInstanceOf(IllegalStateException.class);
 
         assertThat(indexedNotes.contentHashes()).containsEntry(note.path(), ContentHash.of("Tempo runs"));
+        assertThat(texts.text(note.path())).contains(new NoteText("Tempo runs"));
         assertThat(vectors.nearest(embedding.embed("tempo runs"), -1, 10)).extracting(SearchHit::content)
                 .containsExactly("Tempo runs");
     }

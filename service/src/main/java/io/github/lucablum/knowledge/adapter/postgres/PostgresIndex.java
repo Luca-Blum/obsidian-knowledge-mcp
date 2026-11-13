@@ -6,6 +6,7 @@ import io.github.lucablum.knowledge.application.catalog.Catalog;
 import io.github.lucablum.knowledge.application.indexing.EmbeddedChunk;
 import io.github.lucablum.knowledge.application.indexing.IndexedNotes;
 import io.github.lucablum.knowledge.application.link.IndexedLinks;
+import io.github.lucablum.knowledge.application.reading.NoteTexts;
 import io.github.lucablum.knowledge.application.search.ChunkFullText;
 import io.github.lucablum.knowledge.application.search.ChunkVectors;
 import io.github.lucablum.knowledge.domain.catalog.SourceNoteListing;
@@ -19,6 +20,7 @@ import io.github.lucablum.knowledge.domain.note.NoteKind;
 import io.github.lucablum.knowledge.domain.note.NotePath;
 import io.github.lucablum.knowledge.domain.note.PublishedDate;
 import io.github.lucablum.knowledge.domain.note.Topic;
+import io.github.lucablum.knowledge.domain.reading.NoteText;
 import io.github.lucablum.knowledge.domain.search.SearchHit;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.sql.Array;
@@ -39,12 +41,13 @@ import java.util.stream.Collectors;
 import org.jmolecules.architecture.hexagonal.SecondaryAdapter;
 
 /**
- * Stores Notes, their Links and Chunks in the Collection's own schema; vectors live in pgvector columns, full text in
- * {@code tsvector} columns built in each Note's language.
+/**
+ * Stores Notes, their text, Links and Chunks in the Collection's own schema; vectors live in pgvector columns, full
+ * text in {@code tsvector} columns built in each Note's language.
  */
 @ApplicationScoped
 @SecondaryAdapter
-public class PostgresIndex implements IndexedNotes, ChunkVectors, ChunkFullText, Catalog, IndexedLinks {
+public class PostgresIndex implements IndexedNotes, ChunkVectors, ChunkFullText, Catalog, IndexedLinks, NoteTexts {
 
     private final AgroalDataSource dataSource;
     private final Statements sql;
@@ -61,11 +64,11 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, ChunkFullText,
     }
 
     @Override
-    public void replace(Note note, ContentHash hash, List<Link> links, List<EmbeddedChunk> chunks,
+    public void replace(Note note, String text, ContentHash hash, List<Link> links, List<EmbeddedChunk> chunks,
             String embeddingModel) {
         Transaction.run(dataSource, connection -> {
             deleteNote(connection, note.path());
-            insertNote(connection, note, hash);
+            insertNote(connection, note, text, hash);
             insertLinks(connection, note.path(), links);
             insertChunks(connection, note, chunks, embeddingModel);
         });
@@ -148,6 +151,12 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, ChunkFullText,
         return linksOfEveryNote;
     }
 
+    @Override
+    public Optional<NoteText> text(NotePath path) {
+        return query(sql.noteText(), select -> select.setString(1, path.value()),
+                row -> new NoteText(row.getString("text"))).stream().findFirst();
+    }
+
     private void deleteNote(Connection connection, NotePath path) throws SQLException {
         try (PreparedStatement delete = connection.prepareStatement(sql.deleteNote())) {
             delete.setString(1, path.value());
@@ -155,7 +164,7 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, ChunkFullText,
         }
     }
 
-    private void insertNote(Connection connection, Note note, ContentHash hash) throws SQLException {
+    private void insertNote(Connection connection, Note note, String text, ContentHash hash) throws SQLException {
         try (PreparedStatement insert = connection.prepareStatement(sql.insertNote())) {
             insert.setString(1, note.path().value());
             insert.setString(2, note.path().topic().map(Topic::name).orElse(null));
@@ -166,6 +175,7 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, ChunkFullText,
             insert.setString(7, note.author().orElse(null));
             insert.setString(8, note.language().code());
             insert.setString(9, hash.value());
+            insert.setString(10, text);
             insert.executeUpdate();
         }
     }

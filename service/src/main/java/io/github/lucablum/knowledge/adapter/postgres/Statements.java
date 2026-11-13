@@ -18,15 +18,16 @@ record Statements(
         String matching,
         String topics,
         String sourceNotes,
-        String linksOfEveryNote) {
+        String linksOfEveryNote,
+        String noteText) {
 
     private static final Pattern IDENTIFIER = Pattern.compile("[a-z_][a-z0-9_]*");
 
     private static final String DELETE_NOTE_TEMPLATE = "DELETE FROM {note} WHERE path = ?";
 
     private static final String INSERT_NOTE_TEMPLATE = """
-            INSERT INTO {note} (path, topic, kind, title, imported, published, author, language, content_hash)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""";
+            INSERT INTO {note} (path, topic, kind, title, imported, published, author, language, content_hash, text)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""";
 
     private static final String INSERT_CHUNK_TEMPLATE = """
             INSERT INTO {chunk} (note_path, ordinal, heading_path, content, embedding, embedding_model, full_text)
@@ -82,6 +83,9 @@ record Statements(
             FROM {note} n LEFT JOIN {link} l ON l.note_path = n.path
             ORDER BY n.path, l.ordinal""";
 
+    /** A Note indexed before its text was stored has none, so it is not found until it is indexed again. */
+    private static final String NOTE_TEXT_TEMPLATE = "SELECT text FROM {note} WHERE path = ? AND text IS NOT NULL";
+
     static Statements forSchema(String schema) {
         if (!IDENTIFIER.matcher(schema).matches()) {
             throw new IllegalArgumentException("Invalid schema name: " + schema);
@@ -97,7 +101,8 @@ record Statements(
                 inSchema(MATCHING_TEMPLATE, schema),
                 inSchema(TOPICS_TEMPLATE, schema),
                 inSchema(SOURCE_NOTES_TEMPLATE, schema),
-                inSchema(LINKS_OF_EVERY_NOTE_TEMPLATE, schema));
+                inSchema(LINKS_OF_EVERY_NOTE_TEMPLATE, schema),
+                inSchema(NOTE_TEXT_TEMPLATE, schema));
     }
 
     private static String inSchema(String template, String schema) {

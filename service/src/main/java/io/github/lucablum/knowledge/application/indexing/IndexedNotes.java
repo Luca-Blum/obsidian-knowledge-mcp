@@ -17,10 +17,11 @@ public interface IndexedNotes {
     Map<NotePath, ContentHash> contentHashes();
 
     /**
-     * Replaces the Note, its content hash and all of its Links and Chunks in one transaction, so a search sees either
-     * the old or the new version of the Note, never a mix.
+     * Replaces the Note, its full raw text, its content hash and all of its Links and Chunks in one transaction, so a
+     * search or a read sees either the old or the new version of the Note, never a mix.
      */
-    void replace(Note note, ContentHash hash, List<Link> links, List<EmbeddedChunk> chunks, String embeddingModel);
+    void replace(
+            Note note, String text, ContentHash hash, List<Link> links, List<EmbeddedChunk> chunks, String embeddingModel);
 
     /** Removes these Notes with their Links and Chunks. */
     void remove(Collection<NotePath> notes);
