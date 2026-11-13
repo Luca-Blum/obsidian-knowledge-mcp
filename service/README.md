@@ -55,10 +55,10 @@ and after one failed (`progress` then reads `not started yet`). Reconciliation n
 tries the Re-Index again first. A Re-Index in which some Notes failed still completes, as those Notes hold no Chunk
 of the old model and the next Reconciliation indexes them; only one in which every Note failed, such as when Ollama
 is unreachable, does not. `POST /admin/re-index` forces a Re-Index (`202`, or `409` while
-one runs):
+one runs). Like the MCP endpoint, it needs a client token:
 
 ```shell
-curl -X POST http://localhost:8081/admin/re-index
+curl -X POST -H "Authorization: Bearer dev-token" http://localhost:8081/admin/re-index
 ```
 
 In development, Ollama is expected at `http://localhost:11434` (`quarkus.langchain4j.ollama.base-url`).
@@ -73,11 +73,19 @@ COLLECTION_VAULT_PATH=/path/to/Engineering ./service/mvnw -f service/pom.xml qua
 The `dev` profile configures the engineering Collection on port 8081. In the background the service reconciles the
 Vault with the index: right after start-up, every `collection.reconciliation.interval`, and seconds after a file
 changes. Only Notes whose content hash differs from the indexed one are embedded again, so a restart is cheap,
-unless the configuration changed the index fingerprint (see [Re-Index](#re-index)). Then connect Claude Code:
+unless the configuration changed the index fingerprint (see [Re-Index](#re-index)). Then connect Claude Code with the
+`dev` profile's client token:
 
 ```shell
-claude mcp add --transport http knowledge-engineering http://localhost:8081/mcp
+claude mcp add --transport http knowledge-engineering http://localhost:8081/mcp --header "Authorization: Bearer dev-token"
 ```
+
+## Authentication
+
+Every request to `/mcp` and `/admin` needs `Authorization: Bearer <token>` with the token of a configured client;
+anything else gets `401`. Health (`/q/health`) stays open. Each client has its own token per Collection, set only in the
+environment as `COLLECTION_AUTH_TOKENS_<CLIENT>`, for example `COLLECTION_AUTH_TOKENS_CLAUDE_CODE`. Removing one, or
+leaving it empty, locks out that client alone. An instance with no token at all refuses to start.
 
 ## Tests
 

@@ -4,6 +4,8 @@ import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Map;
+import java.util.Optional;
 
 /** Everything that makes this instance serve one particular Collection. */
 @ConfigMapping(prefix = "collection")
@@ -19,6 +21,8 @@ public interface CollectionConfig {
     /** The HTTP port of this Collection's MCP endpoint. */
     int mcpPort();
 
+    Auth auth();
+
     Reconciliation reconciliation();
 
     /** The Note Language of every Note whose frontmatter has no known {@code lang}. */
@@ -31,6 +35,15 @@ public interface CollectionConfig {
     Search search();
 
     Reading reading();
+
+    interface Auth {
+
+        /**
+         * The bearer token of every client allowed to reach this Collection, keyed by the client's name. Each client
+         * has its own, so removing one token locks out that client alone; an empty token counts as removed.
+         */
+        Map<String, Optional<String>> tokens();
+    }
 
     interface Reconciliation {
 

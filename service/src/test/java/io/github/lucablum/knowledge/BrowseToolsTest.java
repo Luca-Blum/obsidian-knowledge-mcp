@@ -28,7 +28,7 @@ class BrowseToolsTest {
     @BeforeEach
     void connect() {
         vault.clear();
-        client = McpAssured.newConnectedStreamableClient();
+        client = McpClients.connect();
     }
 
     @Test

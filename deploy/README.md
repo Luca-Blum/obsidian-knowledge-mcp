@@ -18,6 +18,7 @@ On the Pi everything runs in Docker, started from `docker-compose.yml`:
 | Container | Image | Job |
 | --- | --- | --- |
 | `postgres` | `pgvector/pgvector:pg17` | Stores the index. Data in the Docker volume `knowledgebase_postgres`. |
+| `postgres-init` | `pgvector/pgvector:pg17` | Gives each Collection its own database role that sees only its schema, then exits. |
 | `ollama` | `ollama/ollama` | Computes embeddings. Models in the Docker volume `knowledgebase_ollama`. |
 | `ollama-pull` | `ollama/ollama` | Downloads the embedding model (`bge-m3`) once, then exits. |
 | `knowledgebase-engineering` | `ghcr.io/luca-blum/obsidian-knowledge-mcp` | The service for the Engineering Collection. Serves MCP on port 8081. |
@@ -51,12 +52,25 @@ sudo mkdir -p /srv/knowledgebase /srv/vaults/Engineering
 sudo chown -R $USER: /srv/knowledgebase /srv/vaults
 cp deploy/.env.example /srv/knowledgebase/.env
 sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(openssl rand -hex 24)/" /srv/knowledgebase/.env
+sed -i "s/^ENGINEERING_DB_PASSWORD=.*/ENGINEERING_DB_PASSWORD=$(openssl rand -hex 24)/" /srv/knowledgebase/.env
+sed -i "s/^ENGINEERING_TOKEN_CLAUDE_CODE=.*/ENGINEERING_TOKEN_CLAUDE_CODE=$(openssl rand -hex 32)/" /srv/knowledgebase/.env
+sed -i "s/^ENGINEERING_TOKEN_CLAUDE_AI=.*/ENGINEERING_TOKEN_CLAUDE_AI=$(openssl rand -hex 32)/" /srv/knowledgebase/.env
 chmod 600 /srv/knowledgebase/.env
 ```
 
-`.env.example` explains each value. Only `POSTGRES_PASSWORD` must be changed. The password is used only between
-containers on the Pi, so you never type it anywhere. Keep the file: if you lose it, the Postgres volume can no longer
-be opened with a new password.
+`.env.example` explains each value. The passwords are used only between containers on the Pi, so you never type them
+anywhere. Keep the file: if you lose it, the Postgres volume can no longer be opened with a new password.
+
+- `POSTGRES_PASSWORD` belongs to the superuser, which only `postgres-init` uses.
+- `ENGINEERING_DB_PASSWORD` belongs to the role `engineering`. `postgres-init` creates it on every deploy (or sets its
+  password again) and makes it the owner of the schema `engineering`, which no other Collection's role can read. The
+  instance connects as this role.
+- `ENGINEERING_TOKEN_<CLIENT>` is the bearer token one client sends to the Engineering Collection. Every request to
+  `/mcp` and `/admin` without a configured token gets `401`; health stays open. At least one token must be set, or the
+  instance refuses to start.
+
+An existing installation needs the three new values in `.env` before its next deploy. `postgres-init` then hands the
+schema that the superuser built to the role `engineering`, and the index stays as it is.
 
 ### 2. GitHub Actions runner
 
@@ -155,7 +169,8 @@ docker logs --tail 50 knowledgebase-knowledgebase-engineering-1
 The Mac and the Pi must be in the same Tailscale network.
 
 ```shell
-claude mcp add --transport http knowledge-engineering http://<pi-tailscale-name>:8081/mcp
+claude mcp add --transport http knowledge-engineering http://<pi-tailscale-name>:8081/mcp \
+  --header "Authorization: Bearer <ENGINEERING_TOKEN_CLAUDE_CODE from .env>"
 ```
 
 ## Day to day
@@ -165,6 +180,8 @@ claude mcp add --transport http knowledge-engineering http://<pi-tailscale-name>
 | Deploy a change | Merge to `main`. |
 | Roll back | GitHub → Actions → Deploy → pick the run of an earlier commit → Re-run all jobs. |
 | Change configuration | Edit `/srv/knowledgebase/.env`, then rerun the latest Deploy workflow, or run the command below. |
+| Lock out a client | Empty its `ENGINEERING_TOKEN_<CLIENT>` in `.env` and deploy. To rotate, set a new token and add the connector again. |
+| Force a Re-Index | `curl -X POST -H "Authorization: Bearer <token>" http://<pi-tailscale-name>:8081/admin/re-index` |
 | Deploy by hand | See below. |
 
 To deploy by hand from a clone on the Pi (the `docker login` is only needed while the image is private):
@@ -186,6 +203,8 @@ leaves room for Postgres and Ollama in 8 GB.
 | --- | --- |
 | The `deploy` job waits for a runner forever | The runner is offline: `sudo systemctl status 'actions.runner.*'`. |
 | `set in .env` error in the `deploy` job | `/srv/knowledgebase/.env` is missing or a required value is empty. |
+| `401` from `/mcp` | The client sends no token or one that is not in `.env`. Check the connector's `Authorization` header. |
+| `No client token is configured` in the logs | Every `ENGINEERING_TOKEN_<CLIENT>` in `.env` is empty. |
 | `knowledgebase-engineering` never gets healthy | Look at its logs. It waits for Postgres and Ollama first, and the first model download can take a while. |
 | Search finds nothing | The Vault is empty on the Pi (check the Syncthing connection), or the files arrived after the service started (restart it). |
 | `AccessDeniedException` in the logs | The Notes are not readable for the container: see *Ignore permissions* above. |
