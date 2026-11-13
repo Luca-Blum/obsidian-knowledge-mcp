@@ -34,7 +34,7 @@ expected Notes down or out of the top 5. No Negative Question got a full-text hi
 ## With keywords
 
 The same index and settings, after 15 of the 16 questions and all 10 Negative Questions got `keywords`: the exact
-term Claude would pass, usually the concept's name. One question has no such term and kept none.
+term the AI Agent would pass, usually the concept's name. One question has no such term and kept none.
 
 | Full-text weight | Hit@5 | Recall@5 | MRR | Negative Questions with full-text hits |
 | --- | --- | --- | --- | --- |

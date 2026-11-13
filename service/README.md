@@ -81,7 +81,7 @@ negative-questions:                      # questions this Collection must not an
     keywords: Tapering                   # optional, as above
 ```
 
-Without `keywords` the full-text search gets the whole question, as it would when Claude leaves them out.
+Without `keywords` the full-text search gets the whole question, as it would when the AI Agent leaves them out.
 
 Start Ollama with the model the Pi uses (`EMBEDDING_MODEL` in `deploy/.env`, default `bge-m3`), then run:
 
