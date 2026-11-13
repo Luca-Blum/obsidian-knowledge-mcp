@@ -42,40 +42,38 @@ public record NoteText(String markdown) {
         return sections.stream().filter(section -> !section.isEmpty()).toList();
     }
 
-    private static List<String> sectionsUnder(HeadingPath heading, List<MarkdownLine> lines) {
-        List<String> sections = new ArrayList<>();
-        OpenHeadings open = OpenHeadings.NONE;
-        for (int start = 0; start < lines.size(); start++) {
-            if (lines.get(start) instanceof HeadingLine next) {
-                open = open.open(next);
-                if (open.path().equals(heading)) {
-                    sections.add(text(lines.subList(start, sectionEnd(lines, start, next))));
-                }
-            }
-        }
-        return sections;
+    private static List<String> sectionsUnder(HeadingPath path, List<MarkdownLine> lines) {
+        List<Heading> headings = headings(lines);
+        return headings.stream()
+                .filter(heading -> heading.path().equals(path))
+                .map(heading -> text(lines.subList(heading.index(), sectionEnd(heading, headings, lines.size()))))
+                .toList();
     }
 
-    /** The index of the next heading of the same or a higher level than {@code heading}, or the end of the Note. */
-    private static int sectionEnd(List<MarkdownLine> lines, int start, HeadingLine heading) {
-        for (int end = start + 1; end < lines.size(); end++) {
-            if (lines.get(end) instanceof HeadingLine next && next.level() <= heading.level()) {
-                return end;
-            }
-        }
-        return lines.size();
+    /** Where the next heading of the same or a higher level stands, or the end of the Note. */
+    private static int sectionEnd(Heading heading, List<Heading> headings, int endOfNote) {
+        return headings.stream()
+                .filter(next -> next.index() > heading.index() && next.level() <= heading.level())
+                .mapToInt(Heading::index)
+                .findFirst()
+                .orElse(endOfNote);
     }
 
     private List<HeadingPath> outline() {
-        List<HeadingPath> outline = new ArrayList<>();
+        return headings(MarkdownLines.of(markdown)).stream().map(Heading::path).toList();
+    }
+
+    /** Every heading of the Note, in order. */
+    private static List<Heading> headings(List<MarkdownLine> lines) {
+        List<Heading> headings = new ArrayList<>();
         OpenHeadings open = OpenHeadings.NONE;
-        for (MarkdownLine line : MarkdownLines.of(markdown)) {
-            if (line instanceof HeadingLine heading) {
-                open = open.open(heading);
-                outline.add(open.path());
+        for (int index = 0; index < lines.size(); index++) {
+            if (lines.get(index) instanceof HeadingLine line) {
+                open = open.open(line);
+                headings.add(new Heading(index, line.level(), open.path()));
             }
         }
-        return outline;
+        return headings;
     }
 
     /** The lines as written, stripped; a section without content, such as the body of an empty Note, is empty. */
@@ -93,13 +91,27 @@ public record NoteText(String markdown) {
 
     /** At most {@code characters} from the start, cut at the last line break, or else between words. */
     private String beginning(int characters) {
+        return markdown.substring(0, cut(characters)).stripTrailing();
+    }
+
+    /** The last line break before {@code characters}; without one, the last space if the cut would split a word. */
+    private int cut(int characters) {
         String start = markdown.substring(0, characters);
         int lineBreak = start.lastIndexOf('\n');
         if (lineBreak > 0) {
-            return start.substring(0, lineBreak).stripTrailing();
+            return lineBreak;
         }
         int space = start.lastIndexOf(' ');
-        boolean cutInsideWord = !Character.isWhitespace(markdown.charAt(characters)) && space > 0;
-        return (cutInsideWord ? start.substring(0, space) : start).stripTrailing();
+        if (space > 0 && splitsWord(characters)) {
+            return space;
+        }
+        return characters;
     }
+
+    private boolean splitsWord(int cut) {
+        return !Character.isWhitespace(markdown.charAt(cut));
+    }
+
+    /** A heading with the index of its line among the Note's lines and its heading path. */
+    private record Heading(int index, int level, HeadingPath path) {}
 }
