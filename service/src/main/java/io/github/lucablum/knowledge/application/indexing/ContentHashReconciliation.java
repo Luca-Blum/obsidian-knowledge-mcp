@@ -2,6 +2,7 @@ package io.github.lucablum.knowledge.application.indexing;
 
 import io.github.lucablum.knowledge.application.Embedding;
 import io.github.lucablum.knowledge.domain.chunk.Splitter;
+import io.github.lucablum.knowledge.domain.link.LinkParser;
 import io.github.lucablum.knowledge.domain.note.ContentHash;
 import io.github.lucablum.knowledge.domain.note.NoteParser;
 import io.github.lucablum.knowledge.domain.note.NotePath;
@@ -14,9 +15,9 @@ import java.util.Map;
 import org.jmolecules.architecture.hexagonal.Application;
 
 /**
- * Compares the content hash of every Note in the Vault with the one stored in the index, parses, splits, embeds and
- * stores only the Notes whose hash differs or is missing, then removes the Notes the Vault no longer has. What looks
- * wrong in a Note is logged as a warning when it is indexed, and indexed as it is.
+ * Compares the content hash of every Note in the Vault with the one stored in the index, then parses, reads the
+ * Links of, splits, embeds and stores only the Notes whose hash differs or is missing, and removes the Notes the
+ * Vault no longer has. What looks wrong in a Note is logged as a warning when it is indexed, and indexed as it is.
  */
 @Application
 public class ContentHashReconciliation implements IndexVault {
@@ -28,6 +29,7 @@ public class ContentHashReconciliation implements IndexVault {
     private final Splitter splitter;
     private final Embedding embedding;
     private final IndexedNotes indexedNotes;
+    private final LinkParser linkParser = new LinkParser();
 
     public ContentHashReconciliation(
             Vault vault, NoteParser parser, Splitter splitter, Embedding embedding, IndexedNotes indexedNotes) {
@@ -75,6 +77,6 @@ public class ContentHashReconciliation implements IndexVault {
         List<EmbeddedChunk> chunks = splitter.split(parsed.note(), text).stream()
                 .map(chunk -> new EmbeddedChunk(chunk, embedding.embed(chunk.embeddingText())))
                 .toList();
-        indexedNotes.replace(parsed.note(), text, hash, chunks, embedding.model());
+        indexedNotes.replace(parsed.note(), text, hash, linkParser.parse(text), chunks, embedding.model());
     }
 }

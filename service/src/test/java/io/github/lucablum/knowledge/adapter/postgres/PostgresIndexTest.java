@@ -118,8 +118,8 @@ class PostgresIndexTest {
     void whenReplace_givenNote_thenStoreItsContentHash() {
         Note note = note("Running/Tempo.md");
 
-        indexedNotes.replace(note, "Tempo runs", ContentHash.of("Tempo runs"), List.of(chunk(note, "Tempo runs")),
-                FakeEmbedding.MODEL);
+        indexedNotes.replace(note, "Tempo runs", ContentHash.of("Tempo runs"), List.of(),
+                List.of(chunk(note, "Tempo runs")), FakeEmbedding.MODEL);
 
         assertThat(indexedNotes.contentHashes())
                 .containsExactly(Map.entry(note.path(), ContentHash.of("Tempo runs")));
@@ -128,15 +128,16 @@ class PostgresIndexTest {
     @Test
     void whenReplace_givenChunkThatCannotBeStored_thenKeepPreviousVersionOfNote() {
         Note note = note("Running/Tempo.md");
-        indexedNotes.replace(note, "Tempo runs", ContentHash.of("Tempo runs"), List.of(chunk(note, "Tempo runs")),
-                FakeEmbedding.MODEL);
+        indexedNotes.replace(note, "Tempo runs", ContentHash.of("Tempo runs"), List.of(),
+                List.of(chunk(note, "Tempo runs")), FakeEmbedding.MODEL);
         List<EmbeddedChunk> newVersion = List.of(
                 chunk(note, "Tempo runs at threshold pace"),
                 new EmbeddedChunk(
                         new Chunk(note, 1, new HeadingPath(List.of()), "too few dimensions"), new float[] {1}));
 
         assertThatThrownBy(() -> indexedNotes.replace(
-                        note, "Tempo runs at threshold pace", ContentHash.of("new"), newVersion, FakeEmbedding.MODEL))
+                        note, "Tempo runs at threshold pace", ContentHash.of("new"), List.of(), newVersion,
+                        FakeEmbedding.MODEL))
                 .isInstanceOf(IllegalStateException.class);
 
         assertThat(indexedNotes.contentHashes()).containsEntry(note.path(), ContentHash.of("Tempo runs"));

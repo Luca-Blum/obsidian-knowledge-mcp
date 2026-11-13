@@ -11,12 +11,14 @@ record Statements(
         String deleteNote,
         String insertNote,
         String insertChunk,
+        String insertLink,
         String contentHashes,
         String removeNotes,
         String nearest,
         String matching,
         String topics,
         String sourceNotes,
+        String linksOfEveryNote,
         String noteText) {
 
     private static final Pattern IDENTIFIER = Pattern.compile("[a-z_][a-z0-9_]*");
@@ -30,6 +32,10 @@ record Statements(
     private static final String INSERT_CHUNK_TEMPLATE = """
             INSERT INTO {chunk} (note_path, ordinal, heading_path, content, embedding, embedding_model, full_text)
             VALUES (?, ?, ?, ?, ?::vector, ?, {schema}.chunk_full_text(?, ?, ?, ?))""";
+
+    private static final String INSERT_LINK_TEMPLATE = """
+            INSERT INTO {link} (note_path, ordinal, target, kind, anchor)
+            VALUES (?, ?, ?, ?, ?)""";
 
     /** A Note indexed before content hashes were stored has none, so it is left out and indexed again. */
     private static final String CONTENT_HASHES_TEMPLATE =
@@ -71,6 +77,12 @@ record Statements(
             WHERE kind = 'source' AND topic = ?
             ORDER BY lower(title), path""";
 
+    /** Every Note, joined with its Links if it has any. */
+    private static final String LINKS_OF_EVERY_NOTE_TEMPLATE = """
+            SELECT n.path, l.target, l.kind, l.anchor
+            FROM {note} n LEFT JOIN {link} l ON l.note_path = n.path
+            ORDER BY n.path, l.ordinal""";
+
     /** A Note indexed before its text was stored has none, so it is not found until it is indexed again. */
     private static final String NOTE_TEXT_TEMPLATE = "SELECT text FROM {note} WHERE path = ? AND text IS NOT NULL";
 
@@ -82,12 +94,14 @@ record Statements(
                 inSchema(DELETE_NOTE_TEMPLATE, schema),
                 inSchema(INSERT_NOTE_TEMPLATE, schema),
                 inSchema(INSERT_CHUNK_TEMPLATE, schema),
+                inSchema(INSERT_LINK_TEMPLATE, schema),
                 inSchema(CONTENT_HASHES_TEMPLATE, schema),
                 inSchema(REMOVE_NOTES_TEMPLATE, schema),
                 inSchema(NEAREST_TEMPLATE, schema),
                 inSchema(MATCHING_TEMPLATE, schema),
                 inSchema(TOPICS_TEMPLATE, schema),
                 inSchema(SOURCE_NOTES_TEMPLATE, schema),
+                inSchema(LINKS_OF_EVERY_NOTE_TEMPLATE, schema),
                 inSchema(NOTE_TEXT_TEMPLATE, schema));
     }
 
@@ -95,6 +109,7 @@ record Statements(
         return template
                 .replace("{note}", schema + ".note")
                 .replace("{chunk}", schema + ".chunk")
+                .replace("{link}", schema + ".link")
                 .replace("{schema}", schema);
     }
 }
