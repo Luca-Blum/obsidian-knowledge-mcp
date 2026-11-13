@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.lucablum.knowledge.FakeEmbedding;
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
 import io.github.lucablum.knowledge.application.indexing.IndexVault;
+import io.github.lucablum.knowledge.application.indexing.ReIndexCollection;
 import io.github.lucablum.knowledge.application.indexing.Reconciled;
 import io.github.lucablum.knowledge.application.indexing.Vault;
 import io.github.lucablum.knowledge.application.indexing.VaultNote;
@@ -23,8 +24,9 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 /**
  * Measures a Collection's retrieval quality against its Evaluation Set, with the real embedding model served by a
- * local Ollama and a local copy of the Vault. It indexes the Vault from scratch, asks the search use case every
- * question and writes {@code summary.md} and {@code details.md}. The name does not end in {@code Test}, so a normal
+ * local Ollama and a local copy of the Vault. It indexes the Vault, the whole of it if the model or the chunking rules
+ * differ from the last run, asks the search use case every question and writes {@code summary.md} and
+ * {@code details.md}. The name does not end in {@code Test}, so a normal
  * build never runs it; see the README for how to start it.
  */
 @QuarkusTest
@@ -39,6 +41,9 @@ class EvaluationRun {
     IndexVault indexVault;
 
     @Inject
+    ReIndexCollection reIndex;
+
+    @Inject
     SearchChunks search;
 
     @Inject
@@ -50,6 +55,7 @@ class EvaluationRun {
         assertThat(set.missingNotes(vault.notes().stream().map(VaultNote::path).toList()))
                 .as("Expected Notes that are not in %s", collection.vaultPath())
                 .isEmpty();
+        reIndex.reIndexIfOutdated();
         Reconciled reconciled = indexVault.run();
         assertThat(reconciled.failed()).as("Notes that could not be indexed").isEmpty();
         int notes = reconciled.indexed() + reconciled.unchanged();

@@ -2,6 +2,7 @@ package io.github.lucablum.knowledge.adapter.reconciliation;
 
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
 import io.github.lucablum.knowledge.application.indexing.IndexVault;
+import io.github.lucablum.knowledge.application.indexing.ReIndexCollection;
 import io.github.lucablum.knowledge.application.indexing.Reconciled;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
@@ -17,7 +18,8 @@ import org.jmolecules.architecture.hexagonal.PrimaryAdapter;
 
 /**
  * Runs Reconciliation in the background: right after start-up, then at the configured interval, and a quiet period
- * after a file in the Vault changed. All runs share one thread, so they never overlap.
+ * after a file in the Vault changed. All runs share one thread, so they never overlap. Before the first one, a Re-Index
+ * rebuilds an index whose fingerprint differs from the configuration, so no Reconciliation ever mixes two models.
  */
 @ApplicationScoped
 @PrimaryAdapter
@@ -26,13 +28,15 @@ public class ScheduledReconciliation {
     private static final Logger LOG = Logger.getLogger(ScheduledReconciliation.class);
 
     private final IndexVault indexVault;
+    private final ReIndexCollection reIndex;
     private final CollectionConfig collection;
     private ScheduledExecutorService executor;
     private VaultWatcher watcher;
     private ScheduledFuture<?> afterChange;
 
-    public ScheduledReconciliation(IndexVault indexVault, CollectionConfig collection) {
+    public ScheduledReconciliation(IndexVault indexVault, ReIndexCollection reIndex, CollectionConfig collection) {
         this.indexVault = indexVault;
+        this.reIndex = reIndex;
         this.collection = collection;
     }
 
@@ -43,6 +47,7 @@ public class ScheduledReconciliation {
         }
         executor = Executors.newSingleThreadScheduledExecutor(
                 Thread.ofPlatform().name("reconcile-" + collection.name()).daemon().factory());
+        executor.execute(this::reIndexIfOutdated);
         executor.scheduleWithFixedDelay(this::reconcile, 0, config.interval().toMillis(), TimeUnit.MILLISECONDS);
         watch();
     }
@@ -88,6 +93,17 @@ public class ScheduledReconciliation {
         }
         long quietPeriod = collection.reconciliation().quietPeriod().toMillis();
         afterChange = executor.schedule(this::reconcile, quietPeriod, TimeUnit.MILLISECONDS);
+    }
+
+    /** A failure is only logged; the fingerprint stays unrecorded, so the next start-up tries again. */
+    private void reIndexIfOutdated() {
+        try {
+            reIndex.reIndexIfOutdated().ifPresent(reconciled -> LOG.infof(
+                    "Re-Indexed Collection %s: indexed %d, removed %d, failed %d Notes", collection.name(),
+                    reconciled.indexed(), reconciled.removed(), reconciled.failed().size()));
+        } catch (RuntimeException e) {
+            LOG.errorf(e, "Re-Index of Collection %s failed", collection.name());
+        }
     }
 
     /** A failure is only logged, because a scheduled task that throws is never run again. */

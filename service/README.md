@@ -39,6 +39,22 @@ A Collection is defined only by configuration:
 In the `prod` profile the database and Ollama come from `DATABASE_URL`, `DATABASE_USER`, `DATABASE_PASSWORD` and
 `OLLAMA_BASE_URL`; `/q/health/ready` reports readiness. See [`deploy/`](../deploy/README.md).
 
+## Re-Index
+
+The index records its fingerprint: the embedding model, the dimension and the four `collection.chunking` values. At
+start-up, before the first Reconciliation, the service compares it with the configuration and on any difference
+re-indexes the whole Vault, so changing the model or the chunking rules is a configuration change only. An index
+without a fingerprint, such as one from before fingerprints were stored, is re-indexed too.
+
+While a Re-Index runs, `search` answers with an error that says how far it has come (`12 of 340 Notes`), and the
+`Re-Index` check of `/q/health/ready` reports `state` `running` with the same `progress`. The instance stays ready,
+as `read_note`, `related` and the lists keep working. `POST /admin/re-index` forces a Re-Index (`202`, or `409` while
+one runs):
+
+```shell
+curl -X POST http://localhost:8081/admin/re-index
+```
+
 In development, Ollama is expected at `http://localhost:11434` (`quarkus.langchain4j.ollama.base-url`).
 
 ## Run locally and connect Claude Code
@@ -50,7 +66,8 @@ COLLECTION_VAULT_PATH=/path/to/Engineering ./service/mvnw -f service/pom.xml qua
 
 The `dev` profile configures the engineering Collection on port 8081. In the background the service reconciles the
 Vault with the index: right after start-up, every `collection.reconciliation.interval`, and seconds after a file
-changes. Only Notes whose content hash differs from the indexed one are embedded again, so a restart is cheap. Then connect Claude Code:
+changes. Only Notes whose content hash differs from the indexed one are embedded again, so a restart is cheap,
+unless the configuration changed the index fingerprint (see [Re-Index](#re-index)). Then connect Claude Code:
 
 ```shell
 claude mcp add --transport http knowledge-engineering http://localhost:8081/mcp
@@ -95,7 +112,8 @@ COLLECTION_VAULT_PATH=/path/to/Engineering \
 
 `COLLECTION_EMBEDDING_MODEL` and `COLLECTION_EMBEDDING_DIMENSION` select another model, and `COLLECTION_NAME`
 another Collection (default `engineering`). The run indexes the whole Vault into a Dev Services database, so the first
-run takes as long as a Re-Index (about two hours for the engineering Vault on the Mac). Testcontainers removes that
+run, and every run after a change of the model or the chunking rules, takes as long as a Re-Index (about two hours
+for the engineering Vault on the Mac). Testcontainers removes that
 database after the run unless you allow reuse with `testcontainers.reuse.enable=true` in
 `~/.testcontainers.properties`; then the container stays up, later runs skip every unchanged Note and take seconds,
 and `docker rm -f` removes it. The run asks each question for the top 5 Search Hits and writes two files to

@@ -2,6 +2,8 @@ package io.github.lucablum.knowledge;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.lucablum.knowledge.application.indexing.IndexBuild;
+import io.github.lucablum.knowledge.application.indexing.IndexFingerprint;
 import io.github.lucablum.knowledge.application.search.SearchChunks;
 import io.github.lucablum.knowledge.application.search.SearchRequest;
 import io.github.lucablum.knowledge.domain.search.SearchHit;
@@ -17,9 +19,13 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-/** Reconciliation runs on its own: once at start-up, and within seconds of a file change in the Vault. */
+/**
+ * Reconciliation runs on its own: once at start-up, and within seconds of a file change in the Vault. Before it, at
+ * start-up, an index built with another fingerprint is re-indexed.
+ */
 @QuarkusTest
 @TestProfile(BackgroundReconciliationTest.Enabled.class)
 class BackgroundReconciliationTest {
@@ -27,12 +33,17 @@ class BackgroundReconciliationTest {
     /** Far longer than any test waits, so only start-up and the file watcher can trigger a Reconciliation. */
     private static final String INTERVAL = "1h";
     private static final Duration TIMEOUT = Duration.ofSeconds(20);
+    /** No other test configures it, so whatever an earlier test left in the index has another fingerprint. */
+    private static final int OVERLAP = 7;
 
     @Inject
     TestVault vault;
 
     @Inject
     SearchChunks search;
+
+    @Inject
+    IndexBuild build;
 
     @Test
     void whenServiceStarts_givenNoteWrittenWhileStopped_thenIndexIt() {
@@ -48,6 +59,21 @@ class BackgroundReconciliationTest {
 
         assertThat(notePathsFoundWithin(TIMEOUT, "Cycling/Indoor/Sweet Spot.md", "sweet spot trainer"))
                 .contains("Cycling/Indoor/Sweet Spot.md");
+    }
+
+    @Test
+    void whenServiceStarts_givenIndexBuiltWithOtherChunkingRules_thenReIndexAndRecordTheConfiguredOnes() {
+        assertThat(fingerprintWithin(TIMEOUT)).hasValueSatisfying(
+                fingerprint -> assertThat(fingerprint.chunking().overlapCharacters()).isEqualTo(OVERLAP));
+    }
+
+    /** Polls until the index has a fingerprint, or {@code timeout} has passed. */
+    private Optional<IndexFingerprint> fingerprintWithin(Duration timeout) {
+        Instant deadline = Instant.now().plus(timeout);
+        while (build.fingerprint().isEmpty() && Instant.now().isBefore(deadline)) {
+            pause();
+        }
+        return build.fingerprint();
     }
 
     private void awaitStartupReconciliation() {
@@ -91,7 +117,8 @@ class BackgroundReconciliationTest {
                         "collection.vault-path", vault.toString(),
                         "collection.reconciliation.enabled", "true",
                         "collection.reconciliation.interval", INTERVAL,
-                        "collection.reconciliation.quiet-period", "200ms");
+                        "collection.reconciliation.quiet-period", "200ms",
+                        "collection.chunking.overlap-characters", String.valueOf(OVERLAP));
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }

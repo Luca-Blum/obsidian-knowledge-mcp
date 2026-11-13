@@ -3,9 +3,12 @@ package io.github.lucablum.knowledge;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.lucablum.knowledge.application.indexing.IndexVault;
+import io.github.lucablum.knowledge.application.indexing.Progress;
+import io.github.lucablum.knowledge.application.indexing.ReIndexCollection;
 import io.quarkiverse.mcp.server.TextContent;
 import io.quarkiverse.mcp.server.test.McpAssured;
 import io.quarkiverse.mcp.server.test.McpAssured.McpStreamableTestClient;
+import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -94,6 +97,18 @@ class SearchToolTest {
     void whenCallSearchTool_givenKNotAWholeNumber_thenReturnError() {
         client.when()
                 .toolsCall("search", Map.of("query", "interval training", "k", "ten"), response -> assertThat(response.isError()).isTrue())
+                .thenAssertResults();
+    }
+
+    @Test
+    void whenCallSearchTool_givenReIndexRunning_thenReturnErrorNamingHowManyNotesAreDone() {
+        QuarkusMock.installMockForType(new RunningReIndex(new Progress(12, 340)), ReIndexCollection.class);
+
+        client.when()
+                .toolsCall("search", Map.of("query", "interval training"), response -> {
+                    assertThat(response.isError()).isTrue();
+                    assertThat(((TextContent) response.firstContent()).text()).contains("Re-Index", "12 of 340 Notes");
+                })
                 .thenAssertResults();
     }
 }
