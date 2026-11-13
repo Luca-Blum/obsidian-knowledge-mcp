@@ -9,6 +9,7 @@ import io.github.lucablum.knowledge.domain.note.Frontmatter;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.jmolecules.ddd.annotation.Service;
@@ -28,25 +29,30 @@ public class LinkParser {
     public List<Link> parse(String markdown) {
         LinkedHashSet<Link> links = new LinkedHashSet<>();
         source(markdown).ifPresent(links::add);
-        for (MarkdownLine line : MarkdownLines.of(markdown)) {
-            Matcher wikilink = WIKILINK.matcher(INLINE_CODE.matcher(text(line)).replaceAll(""));
-            while (wikilink.find()) {
-                LinkKind kind = wikilink.group("embed").isEmpty() ? LinkKind.NOTE : LinkKind.EMBED;
-                Link link = link(wikilink.group("target"), kind);
-                if (!link.target().isBlank()) {
-                    links.add(link);
-                }
-            }
-        }
+        MarkdownLines.of(markdown).forEach(line -> links.addAll(wikilinks(line)));
         return List.copyOf(links);
     }
 
-    private static String text(MarkdownLine line) {
-        return switch (line) {
+    /** The wikilinks and embeds of one line; one with an empty target points into the Note itself and is left out. */
+    private static List<Link> wikilinks(MarkdownLine line) {
+        return WIKILINK.matcher(withoutCode(line)).results()
+                .map(LinkParser::link)
+                .filter(link -> !link.target().isBlank())
+                .toList();
+    }
+
+    private static String withoutCode(MarkdownLine line) {
+        String text = switch (line) {
             case HeadingLine heading -> heading.line();
-            case TextLine text -> text.value();
+            case TextLine textLine -> textLine.value();
             case CodeBlock code -> "";
         };
+        return INLINE_CODE.matcher(text).replaceAll("");
+    }
+
+    private static Link link(MatchResult wikilink) {
+        LinkKind kind = wikilink.group("embed").isEmpty() ? LinkKind.NOTE : LinkKind.EMBED;
+        return link(wikilink.group("target"), kind);
     }
 
     /** The {@code source:} field as a file Link, bracketed or not; frontmatter that cannot be read has none. */
@@ -63,16 +69,24 @@ public class LinkParser {
         });
     }
 
-    /**
-     * A note link to an attachment is a file link; an embed stays an embed, whatever it shows. In a table the pipe
-     * before an alias is escaped ({@code [[Note\\|alias]]}), and that backslash is no part of the target.
-     */
+    /** {@code written} is the target with its anchor, as in {@code Note#Heading}. */
     private static Link link(String written, LinkKind kind) {
-        String unescaped = written.endsWith("\\") ? written.substring(0, written.length() - 1) : written;
-        int hash = unescaped.indexOf('#');
-        String target = hash < 0 ? unescaped : unescaped.substring(0, hash);
-        Optional<String> anchor = hash < 0 ? Optional.empty() : Optional.of(unescaped.substring(hash + 1));
-        boolean toFile = kind == LinkKind.NOTE && Attachments.isAttachment(target);
-        return new Link(target, toFile ? LinkKind.FILE : kind, anchor);
+        String[] targetAndAnchor = withoutTableEscape(written).split("#", 2);
+        String target = targetAndAnchor[0];
+        Optional<String> anchor = targetAndAnchor.length == 2 ? Optional.of(targetAndAnchor[1]) : Optional.empty();
+        return new Link(target, kindOf(target, kind), anchor);
+    }
+
+    /**
+     * In a table the pipe before an alias is escaped ({@code [[Note\\|alias]]}), and that backslash is no part of the
+     * target.
+     */
+    private static String withoutTableEscape(String written) {
+        return written.endsWith("\\") ? written.substring(0, written.length() - 1) : written;
+    }
+
+    /** A note link to an attachment is a file link; an embed stays an embed, whatever it shows. */
+    private static LinkKind kindOf(String target, LinkKind written) {
+        return written == LinkKind.NOTE && Attachments.isAttachment(target) ? LinkKind.FILE : written;
     }
 }

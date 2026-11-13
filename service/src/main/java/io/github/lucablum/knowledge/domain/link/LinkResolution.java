@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.jmolecules.ddd.annotation.Service;
 
@@ -25,23 +26,24 @@ public class LinkResolution {
      * otherwise several matches are all returned, never guessed between.
      */
     public List<NotePath> resolve(String target) {
-        String path = withoutExtension(lowerCase(new NotePath(target.strip()).value()));
-        while (path.startsWith("/")) {
-            path = path.substring(1);
-        }
-        String wholePath = path;
-        String suffix = "/" + path;
-        List<NotePath> candidates = notesByFileName.getOrDefault(path.substring(path.lastIndexOf('/') + 1), List.of());
-        List<NotePath> exact = candidates.stream()
-                .filter(note -> withoutExtension(lowerCase(note.value())).equals(wholePath))
-                .toList();
-        return !exact.isEmpty() ? exact : candidates.stream()
-                .filter(note -> withoutExtension(lowerCase(note.value())).endsWith(suffix))
-                .toList();
+        String path = comparable(new NotePath(target.strip()).value());
+        List<NotePath> candidates = notesByFileName.getOrDefault(fileName(path), List.of());
+        List<NotePath> wholePath = matching(candidates, note -> note.equals(path));
+        return !wholePath.isEmpty() ? wholePath : matching(candidates, note -> note.endsWith("/" + path));
     }
 
-    private static String withoutExtension(String path) {
-        return path.endsWith(".md") ? path.substring(0, path.length() - ".md".length()) : path;
+    private static List<NotePath> matching(List<NotePath> candidates, Predicate<String> path) {
+        return candidates.stream().filter(note -> path.test(comparable(note.value()))).toList();
+    }
+
+    /** A path in lower case, without {@code .md} and leading slashes, as targets and Notes are compared. */
+    private static String comparable(String path) {
+        String lowerCase = lowerCase(path).replaceFirst("^/+", "");
+        return lowerCase.endsWith(".md") ? lowerCase.substring(0, lowerCase.length() - ".md".length()) : lowerCase;
+    }
+
+    private static String fileName(String path) {
+        return path.substring(path.lastIndexOf('/') + 1);
     }
 
     private static String lowerCase(String text) {
