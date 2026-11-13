@@ -6,7 +6,7 @@ import io.github.lucablum.knowledge.domain.note.Topic;
 import java.util.List;
 import org.jmolecules.architecture.hexagonal.PrimaryPort;
 
-/** What the Collection holds, so Claude can choose where to search. */
+/** What the Collection holds, so the AI Agent can choose where to search. */
 @PrimaryPort
 public interface BrowseCollection {
 

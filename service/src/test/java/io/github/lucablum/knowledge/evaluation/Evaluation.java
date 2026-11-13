@@ -5,7 +5,7 @@ import io.github.lucablum.knowledge.application.search.SearchChunks;
 /** Asks the search every question of an Evaluation Set and judges what it returns. */
 final class Evaluation {
 
-    /** Hit@5, Recall@5 and MRR look at the top 5, the number of Search Hits Claude gets by default. */
+    /** Hit@5, Recall@5 and MRR look at the top 5, the number of Search Hits the AI Agent gets by default. */
     static final int TOP = 5;
 
     private final SearchChunks search;

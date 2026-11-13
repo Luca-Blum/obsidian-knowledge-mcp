@@ -96,7 +96,8 @@ class ArchitectureTest {
     static final ArchRule noteDependsOnNoOtherDomainConcept = noClasses()
             .that().resideInAPackage("..knowledge.domain.note..")
             .should().dependOnClassesThat().resideInAnyPackage(
-                    "..knowledge.domain.chunk..", "..knowledge.domain.search..", "..knowledge.domain.catalog..");
+                    "..knowledge.domain.chunk..", "..knowledge.domain.search..", "..knowledge.domain.catalog..",
+                    "..knowledge.domain.link..");
 
     @ArchTest
     static final ArchRule domainConceptsAreFreeOfCycles = slices()

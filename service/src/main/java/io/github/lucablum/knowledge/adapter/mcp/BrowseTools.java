@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 import org.jmolecules.architecture.hexagonal.PrimaryAdapter;
 
-/** The {@code list_topics} and {@code list_sources} tools, which show Claude what the Collection holds. */
+/** The {@code list_topics} and {@code list_sources} tools, which show the AI Agent what the Collection holds. */
 @ApplicationScoped
 @PrimaryAdapter
 public class BrowseTools {
@@ -62,7 +62,7 @@ public class BrowseTools {
         }
     }
 
-    /** A Source Note as Claude reads it; a date or author that is not known is left out rather than guessed. */
+    /** A Source Note as the AI Agent reads it; a date or author that is not known is left out rather than guessed. */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private record SourceEntry(String notePath, String title, String date, String author) {
 

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.lucablum.knowledge.application.Embedding;
 import io.github.lucablum.knowledge.domain.chunk.ChunkingRules;
 import io.github.lucablum.knowledge.domain.chunk.Splitter;
+import io.github.lucablum.knowledge.domain.link.Link;
 import io.github.lucablum.knowledge.domain.note.ContentHash;
 import io.github.lucablum.knowledge.domain.note.Note;
 import io.github.lucablum.knowledge.domain.note.NoteLanguage;
@@ -168,7 +169,8 @@ class ContentHashReconciliationTest {
         }
 
         @Override
-        public void replace(Note note, ContentHash hash, List<EmbeddedChunk> chunks, String embeddingModel) {
+        public void replace(
+                Note note, ContentHash hash, List<Link> links, List<EmbeddedChunk> chunks, String embeddingModel) {
             replaced.add(note.path());
             hashes.put(note.path(), hash);
             this.chunks.put(note.path(), chunks);
