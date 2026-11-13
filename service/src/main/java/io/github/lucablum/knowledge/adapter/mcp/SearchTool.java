@@ -3,23 +3,27 @@ package io.github.lucablum.knowledge.adapter.mcp;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
+import io.github.lucablum.knowledge.application.indexing.ReIndexCollection;
+import io.github.lucablum.knowledge.application.indexing.ReconciliationProgress;
 import io.github.lucablum.knowledge.application.search.SearchChunks;
 import io.github.lucablum.knowledge.application.search.SearchRequest;
 import io.github.lucablum.knowledge.domain.note.Topic;
 import io.github.lucablum.knowledge.domain.search.SearchHit;
-import io.quarkiverse.mcp.server.ToolManager;
 import io.quarkiverse.mcp.server.ToolManager.ToolArguments;
+import io.quarkiverse.mcp.server.ToolManager;
 import io.quarkiverse.mcp.server.ToolResponse;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.jmolecules.architecture.hexagonal.PrimaryAdapter;
 
 /**
  * Registers the {@code search} tool programmatically, because its description comes from the Collection's
- * configuration and annotation values must be constants.
+ * configuration and annotation values must be constants. While a Re-Index runs, it answers with an error that says
+ * how far the Re-Index has come.
  */
 @ApplicationScoped
 @PrimaryAdapter
@@ -27,12 +31,15 @@ public class SearchTool {
 
     private final ToolManager tools;
     private final SearchChunks search;
+    private final ReIndexCollection reIndex;
     private final CollectionConfig.Search config;
     private final ObjectMapper json;
 
-    public SearchTool(ToolManager tools, SearchChunks search, CollectionConfig collection, ObjectMapper json) {
+    public SearchTool(ToolManager tools, SearchChunks search, ReIndexCollection reIndex, CollectionConfig collection,
+            ObjectMapper json) {
         this.tools = tools;
         this.search = search;
+        this.reIndex = reIndex;
         this.config = collection.search();
         this.json = json;
     }
@@ -55,6 +62,11 @@ public class SearchTool {
     }
 
     private ToolResponse search(ToolArguments arguments) {
+        Optional<ReconciliationProgress> reIndexing = reIndex.progress();
+        if (reIndexing.isPresent()) {
+            return ToolResponse.error(("The Collection is being re-indexed (progress: %s) and answers no searches "
+                    + "until the Re-Index is through. Try again later.").formatted(reIndexing.get().describe()));
+        }
         Map<String, Object> args = arguments.args();
         try {
             SearchRequest request = request((String) args.get("query"), (String) args.get("keywords"),

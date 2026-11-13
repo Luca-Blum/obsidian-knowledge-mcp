@@ -140,7 +140,7 @@ If Docling returns Markdown without usable headings, the importer corrects nothi
 4. It computes the embeddings and, in one transaction, replaces all Chunks, the raw text and the Links of that Note.
 5. Deleted Notes are removed from the index.
 
-At startup the instance also compares the index fingerprint (embedding model, dimension, chunking parameters) with the configuration. If they differ, a full Re-Index starts automatically. Until it finishes, the Collection answers no searches and reports its progress (x/y Notes) through health and the MCP error text.
+At startup the instance also compares the index fingerprint (embedding model, dimension, chunking parameters) with the configuration. If they differ, a full Re-Index starts automatically. Until it finishes, the Collection answers no searches and reports its progress (x/y Notes) through health and the MCP error text. The instance stays ready meanwhile, because reading and browsing still work and a Re-Index takes far longer than a deployment waits.
 
 ### A Question from the AI Coach
 

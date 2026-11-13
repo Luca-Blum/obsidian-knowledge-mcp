@@ -2,6 +2,7 @@ package io.github.lucablum.knowledge.adapter.reconciliation;
 
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
 import io.github.lucablum.knowledge.application.indexing.IndexVault;
+import io.github.lucablum.knowledge.application.indexing.ReIndexCollection;
 import io.github.lucablum.knowledge.application.indexing.Reconciled;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
@@ -17,7 +18,8 @@ import org.jmolecules.architecture.hexagonal.PrimaryAdapter;
 
 /**
  * Runs Reconciliation in the background: right after start-up, then at the configured interval, and a quiet period
- * after a file in the Vault changed. All runs share one thread, so they never overlap.
+ * after a file in the Vault changed. All runs share one thread, so they never overlap. Each run first re-indexes an
+ * index whose fingerprint differs from the configuration, so no Reconciliation ever mixes two models.
  */
 @ApplicationScoped
 @PrimaryAdapter
@@ -26,13 +28,15 @@ public class ScheduledReconciliation {
     private static final Logger LOG = Logger.getLogger(ScheduledReconciliation.class);
 
     private final IndexVault indexVault;
+    private final ReIndexCollection reIndex;
     private final CollectionConfig collection;
     private ScheduledExecutorService executor;
     private VaultWatcher watcher;
     private ScheduledFuture<?> afterChange;
 
-    public ScheduledReconciliation(IndexVault indexVault, CollectionConfig collection) {
+    public ScheduledReconciliation(IndexVault indexVault, ReIndexCollection reIndex, CollectionConfig collection) {
         this.indexVault = indexVault;
+        this.reIndex = reIndex;
         this.collection = collection;
     }
 
@@ -90,14 +94,22 @@ public class ScheduledReconciliation {
         afterChange = executor.schedule(this::reconcile, quietPeriod, TimeUnit.MILLISECONDS);
     }
 
-    /** A failure is only logged, because a scheduled task that throws is never run again. */
+    /**
+     * A failure is only logged, because a scheduled task that throws is never run again. An index that is still
+     * outdated after the Re-Index is not reconciled, so it never mixes two models; the next run tries again.
+     */
     private void reconcile() {
         try {
+            reIndex.reIndexIfOutdated().ifPresent(reconciled ->
+                    LOG.infof("Re-Indexed Collection %s: %s", collection.name(), reconciled.summary()));
+            if (reIndex.progress().isPresent()) {
+                LOG.warnf("Collection %s is still outdated; the next Reconciliation tries the Re-Index again",
+                        collection.name());
+                return;
+            }
             Reconciled reconciled = indexVault.run();
             if (reconciled.indexed() > 0 || reconciled.removed() > 0 || !reconciled.failed().isEmpty()) {
-                LOG.infof("Reconciled Collection %s: indexed %d, removed %d, unchanged %d, failed %d Notes",
-                        collection.name(), reconciled.indexed(), reconciled.removed(), reconciled.unchanged(),
-                        reconciled.failed().size());
+                LOG.infof("Reconciled Collection %s: %s", collection.name(), reconciled.summary());
             }
         } catch (RuntimeException e) {
             LOG.errorf(e, "Reconciliation of Collection %s failed", collection.name());

@@ -1,5 +1,6 @@
 package io.github.lucablum.knowledge.adapter.postgres;
 
+import java.util.function.IntFunction;
 import java.util.regex.Pattern;
 
 /**
@@ -19,7 +20,13 @@ record Statements(
         String topics,
         String sourceNotes,
         String linksOfEveryNote,
-        String noteText) {
+        String noteText,
+        String fingerprint,
+        String forgetFingerprint,
+        String insertFingerprint,
+        String removeChunks,
+        IntFunction<String> resizeEmbedding,
+        String markNotesChanged) {
 
     private static final Pattern IDENTIFIER = Pattern.compile("[a-z_][a-z0-9_]*");
 
@@ -86,6 +93,29 @@ record Statements(
     /** A Note indexed before its text was stored has none, so it is not found until it is indexed again. */
     private static final String NOTE_TEXT_TEMPLATE = "SELECT text FROM {note} WHERE path = ? AND text IS NOT NULL";
 
+    private static final String FINGERPRINT_TEMPLATE = """
+            SELECT embedding_model, dimension, heading_level, minimum_characters, maximum_characters, overlap_characters
+            FROM {schema}.index_fingerprint""";
+
+    private static final String FORGET_FINGERPRINT_TEMPLATE = "DELETE FROM {schema}.index_fingerprint";
+
+    private static final String INSERT_FINGERPRINT_TEMPLATE = """
+            INSERT INTO {schema}.index_fingerprint (embedding_model, dimension, heading_level, minimum_characters,
+                maximum_characters, overlap_characters)
+            VALUES (?, ?, ?, ?, ?, ?)""";
+
+    private static final String REMOVE_CHUNKS_TEMPLATE = "DELETE FROM {chunk}";
+
+    /**
+     * Only possible on an empty table, as a vector cannot change its dimension. A type modifier cannot be bound as a
+     * parameter either, but a number cannot smuggle in any SQL.
+     */
+    private static final String RESIZE_EMBEDDING_TEMPLATE =
+            "ALTER TABLE {chunk} ALTER COLUMN embedding TYPE public.vector({dimension})";
+
+    /** A value no SHA-256 can equal, as in the migrations V4 and V8. */
+    private static final String MARK_NOTES_CHANGED_TEMPLATE = "UPDATE {note} SET content_hash = 're-index'";
+
     static Statements forSchema(String schema) {
         if (!IDENTIFIER.matcher(schema).matches()) {
             throw new IllegalArgumentException("Invalid schema name: " + schema);
@@ -102,7 +132,18 @@ record Statements(
                 inSchema(TOPICS_TEMPLATE, schema),
                 inSchema(SOURCE_NOTES_TEMPLATE, schema),
                 inSchema(LINKS_OF_EVERY_NOTE_TEMPLATE, schema),
-                inSchema(NOTE_TEXT_TEMPLATE, schema));
+                inSchema(NOTE_TEXT_TEMPLATE, schema),
+                inSchema(FINGERPRINT_TEMPLATE, schema),
+                inSchema(FORGET_FINGERPRINT_TEMPLATE, schema),
+                inSchema(INSERT_FINGERPRINT_TEMPLATE, schema),
+                inSchema(REMOVE_CHUNKS_TEMPLATE, schema),
+                resizeEmbedding(schema),
+                inSchema(MARK_NOTES_CHANGED_TEMPLATE, schema));
+    }
+
+    private static IntFunction<String> resizeEmbedding(String schema) {
+        String statement = inSchema(RESIZE_EMBEDDING_TEMPLATE, schema);
+        return dimension -> statement.replace("{dimension}", Integer.toString(dimension));
     }
 
     private static String inSchema(String template, String schema) {

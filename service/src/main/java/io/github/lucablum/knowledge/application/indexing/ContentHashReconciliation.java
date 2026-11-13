@@ -7,11 +7,12 @@ import io.github.lucablum.knowledge.domain.note.ContentHash;
 import io.github.lucablum.knowledge.domain.note.NoteParser;
 import io.github.lucablum.knowledge.domain.note.NotePath;
 import io.github.lucablum.knowledge.domain.note.ParsedNote;
-import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
+import java.lang.System.Logger;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import org.jmolecules.architecture.hexagonal.Application;
 
 /**
@@ -45,11 +46,15 @@ public class ContentHashReconciliation implements IndexVault {
      * not hold up the others, so one broken Note never stops the index from following the rest of the Vault.
      */
     @Override
-    public synchronized Reconciled run() {
+    public synchronized Reconciled run(Consumer<ReconciliationProgress> progress) {
         Map<NotePath, ContentHash> notInVault = new HashMap<>(indexedNotes.contentHashes());
+        List<VaultNote> notes = vault.notes();
         Reconciled reconciled = Reconciled.NOTHING;
-        for (VaultNote note : vault.notes()) {
+        int done = 0;
+        progress.accept(new ReconciliationProgress(done, notes.size()));
+        for (VaultNote note : notes) {
             reconciled = reconciled.plus(reconcile(note, notInVault.remove(note.path())));
+            progress.accept(new ReconciliationProgress(++done, notes.size()));
         }
         indexedNotes.remove(notInVault.keySet());
         return reconciled.plus(Reconciled.ofRemovedNotes(notInVault.size()));

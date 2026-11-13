@@ -42,4 +42,10 @@ public record Reconciled(int indexed, int removed, int unchanged, List<NotePath>
                 unchanged + other.unchanged,
                 Stream.concat(failed.stream(), other.failed.stream()).toList());
     }
+
+    /** For the log, e.g. "indexed 3, removed 0, unchanged 120, failed 1 Notes". */
+    public String summary() {
+        return "indexed %d, removed %d, unchanged %d, failed %d Notes"
+                .formatted(indexed, removed, unchanged, failed.size());
+    }
 }

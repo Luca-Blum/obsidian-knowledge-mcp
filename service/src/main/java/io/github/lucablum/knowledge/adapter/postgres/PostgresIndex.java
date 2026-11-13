@@ -4,6 +4,8 @@ import io.agroal.api.AgroalDataSource;
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
 import io.github.lucablum.knowledge.application.catalog.Catalog;
 import io.github.lucablum.knowledge.application.indexing.EmbeddedChunk;
+import io.github.lucablum.knowledge.application.indexing.IndexBuild;
+import io.github.lucablum.knowledge.application.indexing.IndexFingerprint;
 import io.github.lucablum.knowledge.application.indexing.IndexedNotes;
 import io.github.lucablum.knowledge.application.link.IndexedLinks;
 import io.github.lucablum.knowledge.application.reading.NoteTexts;
@@ -12,6 +14,7 @@ import io.github.lucablum.knowledge.application.search.ChunkVectors;
 import io.github.lucablum.knowledge.domain.catalog.SourceNoteListing;
 import io.github.lucablum.knowledge.domain.catalog.TopicCount;
 import io.github.lucablum.knowledge.domain.chunk.Chunk;
+import io.github.lucablum.knowledge.domain.chunk.ChunkingRules;
 import io.github.lucablum.knowledge.domain.link.Link;
 import io.github.lucablum.knowledge.domain.link.LinkKind;
 import io.github.lucablum.knowledge.domain.note.ContentHash;
@@ -41,13 +44,13 @@ import java.util.stream.Collectors;
 import org.jmolecules.architecture.hexagonal.SecondaryAdapter;
 
 /**
-/**
  * Stores Notes, their text, Links and Chunks in the Collection's own schema; vectors live in pgvector columns, full
- * text in {@code tsvector} columns built in each Note's language.
+ * text in {@code tsvector} columns built in each Note's language. A table of its own records how the index was built.
  */
 @ApplicationScoped
 @SecondaryAdapter
-public class PostgresIndex implements IndexedNotes, ChunkVectors, ChunkFullText, Catalog, IndexedLinks, NoteTexts {
+public class PostgresIndex
+        implements IndexedNotes, IndexBuild, ChunkVectors, ChunkFullText, Catalog, IndexedLinks, NoteTexts {
 
     private final AgroalDataSource dataSource;
     private final Statements sql;
@@ -81,6 +84,30 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, ChunkFullText,
                 delete.setArray(1, textArray(connection, notes.stream().map(NotePath::value).toList()));
                 delete.executeUpdate();
             }
+        });
+    }
+
+    @Override
+    public Optional<IndexFingerprint> fingerprint() {
+        return query(sql.fingerprint(), select -> {}, PostgresIndex::toFingerprint).stream().findFirst();
+    }
+
+    /** One transaction, so a crash leaves either the old index with its fingerprint or an empty one without. */
+    @Override
+    public void startOver(int dimension) {
+        Transaction.run(dataSource, connection -> {
+            execute(connection, sql.forgetFingerprint());
+            execute(connection, sql.removeChunks());
+            execute(connection, sql.resizeEmbedding().apply(dimension));
+            execute(connection, sql.markNotesChanged());
+        });
+    }
+
+    @Override
+    public void complete(IndexFingerprint fingerprint) {
+        Transaction.run(dataSource, connection -> {
+            execute(connection, sql.forgetFingerprint());
+            insertFingerprint(connection, fingerprint);
         });
     }
 
@@ -155,6 +182,25 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, ChunkFullText,
     public Optional<NoteText> text(NotePath path) {
         return query(sql.noteText(), select -> select.setString(1, path.value()),
                 row -> new NoteText(row.getString("text"))).stream().findFirst();
+    }
+
+    private static void execute(Connection connection, String statement) throws SQLException {
+        try (PreparedStatement update = connection.prepareStatement(statement)) {
+            update.executeUpdate();
+        }
+    }
+
+    private void insertFingerprint(Connection connection, IndexFingerprint fingerprint) throws SQLException {
+        ChunkingRules chunking = fingerprint.chunking();
+        try (PreparedStatement insert = connection.prepareStatement(sql.insertFingerprint())) {
+            insert.setString(1, fingerprint.embeddingModel());
+            insert.setInt(2, fingerprint.dimension());
+            insert.setInt(3, chunking.headingLevel());
+            insert.setInt(4, chunking.minimumCharacters());
+            insert.setInt(5, chunking.maximumCharacters());
+            insert.setInt(6, chunking.overlapCharacters());
+            insert.executeUpdate();
+        }
     }
 
     private void deleteNote(Connection connection, NotePath path) throws SQLException {
@@ -261,6 +307,12 @@ public class PostgresIndex implements IndexedNotes, ChunkVectors, ChunkFullText,
 
     private static Map.Entry<NotePath, ContentHash> toContentHash(ResultSet row) throws SQLException {
         return Map.entry(new NotePath(row.getString("path")), new ContentHash(row.getString("content_hash")));
+    }
+
+    private static IndexFingerprint toFingerprint(ResultSet row) throws SQLException {
+        return new IndexFingerprint(row.getString("embedding_model"), row.getInt("dimension"), new ChunkingRules(
+                row.getInt("heading_level"), row.getInt("minimum_characters"), row.getInt("maximum_characters"),
+                row.getInt("overlap_characters")));
     }
 
     private static SourceNoteListing toSourceNoteListing(ResultSet row) throws SQLException {

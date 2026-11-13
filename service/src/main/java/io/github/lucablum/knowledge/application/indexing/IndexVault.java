@@ -1,5 +1,6 @@
 package io.github.lucablum.knowledge.application.indexing;
 
+import java.util.function.Consumer;
 import org.jmolecules.architecture.hexagonal.PrimaryPort;
 
 /**
@@ -9,5 +10,10 @@ import org.jmolecules.architecture.hexagonal.PrimaryPort;
 @PrimaryPort
 public interface IndexVault {
 
-    Reconciled run();
+    default Reconciled run() {
+        return run(progress -> {});
+    }
+
+    /** Tells {@code progress} how many Notes are done before the first and after every Note. */
+    Reconciled run(Consumer<ReconciliationProgress> progress);
 }
