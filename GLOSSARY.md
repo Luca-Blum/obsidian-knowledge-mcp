@@ -1,6 +1,6 @@
 # Obsidian Knowledge
 
-A self-hosted knowledge base built from Obsidian vaults. Claude searches it for the places in its owner's notes and sources that bear on a question. Retrieval happens here; Claude writes the answer.
+A self-hosted knowledge base built from Obsidian vaults. An AI Agent searches it for the places in its owner's notes and sources that bear on a question. Retrieval happens here; the AI Agent writes the answer.
 
 ## Language
 
@@ -19,7 +19,7 @@ The first folder below the Vault root that contains a Note. Deeper folders inher
 _Avoid_: Thema, category, subject
 
 **Note**:
-A Markdown file in a Vault that is not inside a folder prefixed with `_` or `.`. A Note is identified by its path relative to the Vault root and is always replaced as a whole. Claude can read only Notes that are indexed.
+A Markdown file in a Vault that is not inside a folder prefixed with `_` or `.`. A Note is identified by its path relative to the Vault root and is always replaced as a whole. The AI Agent can read only Notes that are indexed.
 _Avoid_: Document, page, file
 
 **Note Kind**:
@@ -48,6 +48,10 @@ _Avoid_: Date
 The language a Note is written in, taken from its frontmatter `lang` or else from the Collection's default.
 
 ### Retrieval
+
+**AI Agent**:
+The language model that calls a Collection's tools over MCP. It writes the queries, decides which Notes to read and writes the answer; the knowledge service only returns text.
+_Avoid_: Claude, LLM, client
 
 **Chunk**:
 A section of a Note's content that can be searched on its own, with its heading path as context. Small neighbouring sections are merged into one Chunk and a large section is split into several, which repeat a little of each other's text. Its identity is only its position in the current version of the Note.

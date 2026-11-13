@@ -5,7 +5,7 @@ import java.time.LocalDate;
 import java.util.Optional;
 import org.jmolecules.ddd.annotation.ValueObject;
 
-/** A Source Note as listed for its Topic, before Claude decides whether to search or read it. */
+/** A Source Note as listed for its Topic, before the AI Agent decides whether to search or read it. */
 @ValueObject
 public record SourceNoteListing(
         String notePath,

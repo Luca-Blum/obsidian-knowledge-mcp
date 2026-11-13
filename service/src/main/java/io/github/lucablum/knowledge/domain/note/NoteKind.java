@@ -19,7 +19,7 @@ public enum NoteKind {
         return SOURCE.label.equals(type) ? SOURCE : OWN;
     }
 
-    /** The name Claude sees, {@code source} or {@code own}. */
+    /** The name the AI Agent sees, {@code source} or {@code own}. */
     public String label() {
         return label;
     }

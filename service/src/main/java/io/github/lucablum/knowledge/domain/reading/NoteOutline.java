@@ -6,7 +6,7 @@ import java.util.Objects;
 import org.jmolecules.ddd.annotation.ValueObject;
 
 /**
- * A Note too long to be read in full: the heading path of every heading, in order, so Claude can pick a section,
+ * A Note too long to be read in full: the heading path of every heading, in order, so the AI Agent can pick a section,
  * and the beginning of its text.
  */
 @ValueObject

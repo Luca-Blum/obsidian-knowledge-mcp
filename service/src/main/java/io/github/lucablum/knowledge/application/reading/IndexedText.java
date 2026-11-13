@@ -8,7 +8,7 @@ import io.github.lucablum.knowledge.domain.reading.ReadingRules;
 import java.util.Optional;
 import org.jmolecules.architecture.hexagonal.Application;
 
-/** Reads the text the index stored for a Note, never the Vault, so Claude sees what search sees. */
+/** Reads the text the index stored for a Note, never the Vault, so the AI Agent sees what search sees. */
 @Application
 public class IndexedText implements ReadNote {
 

@@ -17,7 +17,9 @@ import java.util.List;
 import java.util.Optional;
 import org.jmolecules.architecture.hexagonal.PrimaryAdapter;
 
-/** The {@code read_note} tool, which lets Claude read a Note, or a section of it, after a promising Search Hit. */
+/**
+ * The {@code read_note} tool, which lets the AI Agent read a Note, or a section of it, after a promising Search Hit.
+ */
 @ApplicationScoped
 @PrimaryAdapter
 public class ReadNoteTool {

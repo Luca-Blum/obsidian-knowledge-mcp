@@ -4,11 +4,11 @@ Terms are defined in [`GLOSSARY.md`](../GLOSSARY.md), and decisions with their r
 
 ## Goal and Guiding Principles
 
-A self-hosted knowledge service on the Raspberry Pi 5 replaces the NotebookLM MCP. Claude (AI Coach, Claude Code) asks questions about a subject area and gets back the matching passages from your own Obsidian Notes and sources. There are no limits, and you manage all of it yourself.
+A self-hosted knowledge service on the Raspberry Pi 5 replaces the NotebookLM MCP. An AI Agent (the AI Coach in claude.ai, Claude Code) asks questions about a subject area and gets back the matching passages from your own Obsidian Notes and sources. There are no limits, and you manage all of it yourself.
 
 1. **Obsidian is the only source of truth.** Notes, PDFs and links live in the Vaults on the Mac. Everything else is derived.
 2. **The Pi is a pure read model.** It receives the Vaults one way and builds search indexes from them. Every index can be deleted and rebuilt at any time, and the Pi never writes to a Vault.
-3. **Agentic RAG: retrieval on the Pi, generation by Claude.** The service only returns facts (Chunks, Notes, Links). Claude decides when and how often it searches, reads and answers. No language model runs on the Pi to write answers.
+3. **Agentic RAG: retrieval on the Pi, generation by the AI Agent.** The service only returns facts (Chunks, Notes, Links). The AI Agent decides when and how often it searches, reads and answers. No language model runs on the Pi to write answers.
 4. **Heavy work runs where the compute is.** PDF conversion with Docling runs on the Mac, not on the Pi.
 5. **Models are replaceable.** The embedding model, and later a re-ranker, sit behind ports and are chosen only through configuration. A switch means changing the configuration, rebuilding the index and measuring against the Evaluation Set.
 6. **Collections are isolated.** Engineering and Training are separate knowledge bases, each with its own Vault, DB schema and service instance with its own MCP endpoint. A client sees only the Collections it has a connector for. Only infrastructure is shared (code, Postgres instance, Ollama). The isolation serves relevance and per-Collection configuration, not access control.
@@ -22,7 +22,7 @@ flowchart TB
         vaults["Obsidian Vaults<br/><small>Engineering, Training</small>"]
         docling --> vaults
     end
-    subgraph Clients["Claude (MCP clients)"]
+    subgraph Clients["AI Agents (MCP clients)"]
         coach["AI Coach<br/><small>claude.ai</small>"]
         code["Claude Code"]
     end
@@ -45,7 +45,7 @@ flowchart TB
     Clients <-- "MCP, one endpoint per Collection" --> Instances
 ```
 
-The Mac is the master: Syncthing mirrors both Vaults one way to the Pi. There, a separate service instance per Collection indexes its Vault into its own schema. Over MCP it returns only Search Hits to Claude, and Claude writes the answer itself. Both instances share Postgres and Ollama.
+The Mac is the master: Syncthing mirrors both Vaults one way to the Pi. There, a separate service instance per Collection indexes its Vault into its own schema. Over MCP it returns only Search Hits to the AI Agent, and the AI Agent writes the answer itself. Both instances share Postgres and Ollama.
 
 ## Components
 
@@ -59,7 +59,7 @@ The Mac is the master: Syncthing mirrors both Vaults one way to the Pi. There, a
 | Embedding model | Pi (Ollama, model replaceable through configuration) | Text → vector for Chunks and queries; multilingual (DE/EN) | – |
 | Tailscale | Mac, Pi | Private network access for Claude Code to the MCP endpoint | – |
 | Tunnel with auth | Pi | Publicly reachable HTTPS endpoint for the custom connector in claude.ai (AI Coach) | – |
-| Claude (AI Coach, Claude Code) | Anthropic / Mac | Call tools, read sources, write the answer with citations | No |
+| AI Agent (AI Coach, Claude Code) | Anthropic / Mac | Call tools, read sources, write the answer with citations | No |
 
 So the Pi holds two things: a copy of all sources (the Vault, PDFs included) and the index derived from it. Only the Markdown files are indexed, and the PDFs sit next to them as originals.
 
@@ -147,22 +147,22 @@ At startup the instance also compares the index fingerprint (embedding model, di
 ```mermaid
 sequenceDiagram
     actor You
-    participant Claude as Claude (AI Coach)
+    participant Agent as AI Agent (AI Coach)
     participant KS as Knowledge service
     participant Index as Search index
-    You->>Claude: Question about a Topic
-    Claude->>KS: search(query, keywords?, topic?)
+    You->>Agent: Question about a Topic
+    Agent->>KS: search(query, keywords?, topic?)
     KS->>Index: Hybrid search
     Index-->>KS: Top hits
-    KS-->>Claude: Search Hits (Chunk, paths, Note Kind)
-    loop repeated as often as Claude wants
-        Claude->>KS: read_note / related
-        KS-->>Claude: whole Notes, sections, Links
+    KS-->>Agent: Search Hits (Chunk, paths, Note Kind)
+    loop repeated as often as the AI Agent wants
+        Agent->>KS: read_note / related
+        KS-->>Agent: whole Notes, sections, Links
     end
-    Claude-->>You: Answer with sources
+    Agent-->>You: Answer with sources
 ```
 
-Claude decides itself how often it searches and which Notes it reads in full. The service only returns text, and the answer comes from a single LLM call.
+The AI Agent decides itself how often it searches and which Notes it reads in full. The service only returns text, and the answer comes from a single LLM call.
 
 ## Inside the Quarkus Service
 
@@ -225,7 +225,7 @@ The Markdown is parsed into a syntax tree (e.g. with commonmark-java or flexmark
 - `ChunkId` = Note path plus a running number. It is unique even with duplicate headings and split sections, and deliberately not stable across changes. The unit of replacement is the Note. The heading path stays an attribute for embedding context and citations.
 - Changed chunking parameters require a full Re-Index and are measured as an experiment of their own.
 
-The most important lever is separating the embedding text from the display text: the text is embedded with a context prefix, and Claude gets back only the content plus the path.
+The most important lever is separating the embedding text from the display text: the text is embedded with a context prefix, and the AI Agent gets back only the content plus the path.
 
 ```java
 public record Chunk(ChunkId id, NotePath note, HeadingPath headings, String content) {
@@ -281,7 +281,7 @@ negative-questions:
 
 The test computes three metrics, counted on Notes in the result actually returned (not on a list deduplicated afterwards):
 
-- **Hit@5** (main metric): at least one expected Note in the top 5, because Claude reads on from a good starting point.
+- **Hit@5** (main metric): at least one expected Note in the top 5, because the AI Agent reads on from a good starting point.
 - **Recall@5**: the share of expected Notes in the top 5. It measures the coverage of broad questions.
 - **MRR**: the rank of the first expected Note.
 
@@ -291,7 +291,7 @@ Every Collection has its own Evaluation Set. On top of that there are Negative Q
 
 ### 4. Tool Descriptions
 
-Claude writes the queries itself, and the `@Tool` descriptions steer how thoroughly it searches:
+The AI Agent writes the queries itself, and the `@Tool` descriptions steer how thoroughly it searches:
 
 ```java
 @Tool(description = """
@@ -393,7 +393,7 @@ Syncthing and Tailscale run natively because they work closely with the host's n
 | Decision | Instead of | Trade-off |
 | --- | --- | --- |
 | Our own Quarkus service | RAGFlow | More to build; in return Obsidian stays the master, it runs lightly on the Pi, and there is a Java learning effect |
-| Retrieval-only MCP (Agentic RAG) | The server calls an LLM itself | Quality depends on the client model; in return one LLM call instead of two, and Claude sees the original sources |
+| Retrieval-only MCP (Agentic RAG) | The server calls an LLM itself | Quality depends on the client model; in return one LLM call instead of two, and the AI Agent sees the original sources |
 | Vault master on the Mac, one-way sync | Pi as master | The Pi is only as current as the last sync (the Mac has to be running) |
 | Docling on the Mac | docling-serve on the Pi | Import works only on the Mac; in return it is fast and the Pi stays lean |
 | Two Collections: own Vault, own schema, own instance | One index with a `topic` filter | A bit more RAM (a second JVM) and no links between Engineering and Training; in return real isolation and configuration per Collection (language, chunking, model) |
