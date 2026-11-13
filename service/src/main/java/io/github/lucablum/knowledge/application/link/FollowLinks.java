@@ -5,7 +5,7 @@ import io.github.lucablum.knowledge.domain.note.NotePath;
 import java.util.Optional;
 import org.jmolecules.architecture.hexagonal.PrimaryPort;
 
-/** Lets Claude follow the Links between Notes in both directions. */
+/** Lets the AI Agent follow the Links between Notes in both directions. */
 @PrimaryPort
 public interface FollowLinks {
 

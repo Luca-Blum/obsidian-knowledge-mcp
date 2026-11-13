@@ -74,13 +74,13 @@ public interface CollectionConfig {
 
     interface Search {
 
-        /** The description Claude reads for the {@code search} tool. */
+        /** The description the AI Agent reads for the {@code search} tool. */
         String toolDescription();
 
         @WithDefault("5")
         int defaultK();
 
-        /** Caps {@code k}, so one call cannot pull the whole Collection into Claude's context. */
+        /** Caps {@code k}, so one call cannot pull the whole Collection into the AI Agent's context. */
         @WithDefault("20")
         int maxK();
 

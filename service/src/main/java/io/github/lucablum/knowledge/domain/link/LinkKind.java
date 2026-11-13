@@ -15,7 +15,7 @@ public enum LinkKind {
         this.label = label;
     }
 
-    /** The name Claude sees and the index stores. */
+    /** The name the AI Agent sees and the index stores. */
     public String label() {
         return label;
     }

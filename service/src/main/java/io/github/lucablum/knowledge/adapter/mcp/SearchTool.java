@@ -73,7 +73,7 @@ public class SearchTool {
         return k == null ? request : request.withK(wholeNumber(k));
     }
 
-    /** A Search Hit as Claude reads it, with the Note Kind as {@code source} or {@code own}. */
+    /** A Search Hit as the AI Agent reads it, with the Note Kind as {@code source} or {@code own}. */
     private record Hit(
             String content, String notePath, List<String> headingPath, String noteKind, double score, int moreInNote) {
 
@@ -83,7 +83,7 @@ public class SearchTool {
         }
     }
 
-    /** A wrong {@code k} is an error rather than the default, so Claude sees it and can correct the call. */
+    /** A wrong {@code k} is an error rather than the default, so the AI Agent sees it and can correct the call. */
     private int wholeNumber(Object value) {
         if (value instanceof Integer || value instanceof Long) {
             return Math.clamp(((Number) value).longValue(), Integer.MIN_VALUE, Integer.MAX_VALUE);

@@ -14,14 +14,14 @@ Possibilities that are not tickets yet. Each entry says why it waits and what wo
 
 **Idea:** Replace the bare `<!-- image -->` with a visible hint that names the PDF page, for example `> [Figure on page 229 of the source PDF]`. Docling records the page of every picture, so the importer could read it per picture. Consecutive pictures collapse into one hint. Formats without pages (EPUB, DOCX) keep a hint without a page.
 
-**Why it waits:** Claude can already tell from the placeholder that a picture was there, and the PDF behind the Note's `source` link holds the picture for a human. There is no case yet where the missing page number hurt.
+**Why it waits:** The AI Agent can already tell from the placeholder that a picture was there, and the PDF behind the Note's `source` link holds the picture for a human. There is no case yet where the missing page number hurt.
 
 **Look again when:** Reading a Chunk regularly leaves a question about a picture, or the idea below gets built, because it needs the page. Note that the page is the PDF's page, not the number printed in the book.
 
 ## MCP tool that returns a PDF page
 
-**Idea:** A tool in the knowledge service that returns one page of the PDF behind a Source Note, so Claude can look at a picture itself. It follows the Note's `source` link and needs the PDF on the Pi, which Syncthing already carries there.
+**Idea:** A tool in the knowledge service that returns one page of the PDF behind a Source Note, so the AI Agent can look at a picture itself. It follows the Note's `source` link and needs the PDF on the Pi, which Syncthing already carries there.
 
-**Why it waits:** It depends on the page number in the placeholder (previous idea), and there is no evidence yet that Claude needs pictures to answer from the Vaults. It also touches the knowledge service's API and its read-only handling of Vaults.
+**Why it waits:** It depends on the page number in the placeholder (previous idea), and there is no evidence yet that the AI Agent needs pictures to answer from the Vaults. It also touches the knowledge service's API and its read-only handling of Vaults.
 
 **Look again when:** The page number in the placeholder exists and the Evaluation Set or everyday use shows answers that fail for lack of a picture.

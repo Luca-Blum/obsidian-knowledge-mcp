@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Optional;
 import org.jmolecules.architecture.hexagonal.PrimaryAdapter;
 
-/** The {@code related} tool, which lets Claude follow the Links between Notes in both directions. */
+/** The {@code related} tool, which lets the AI Agent follow the Links between Notes in both directions. */
 @ApplicationScoped
 @PrimaryAdapter
 public class RelatedTool {
@@ -69,8 +69,8 @@ public class RelatedTool {
     }
 
     /**
-     * A Link as Claude reads it, with its target as written. {@code notePath} is the Note it resolves to, or for a
-     * Backlink the Note it is written in; an anchor or a field that does not apply is left out.
+     * A Link as the AI Agent reads it, with its target as written. {@code notePath} is the Note it resolves to, or for
+     * a Backlink the Note it is written in; an anchor or a field that does not apply is left out.
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private record LinkEntry(String notePath, String target, String kind, String anchor, List<String> candidates) {

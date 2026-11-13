@@ -24,3 +24,7 @@ Hexagonal with jMolecules annotations; ADR `docs/adr/0003-ports-are-interfaces-a
 ## Testing
 
 Name test methods `when<Action>_given<Context>_then<Outcome>`, three parts separated by underscores, e.g. `whenIndexVault_givenNoFiles_thenReturnZero`. Setup methods (`@BeforeEach`) and ArchUnit rules are exempt.
+
+## Wording
+
+Call whatever uses the service the AI Agent (see `GLOSSARY.md`), never Claude: in code, comments, docs and tool descriptions. Name a concrete product such as Claude Code or claude.ai only where the text is about setting up that client.
