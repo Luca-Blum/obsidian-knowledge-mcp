@@ -34,7 +34,7 @@ class SearchToolTest {
     void connect() {
         vault.clear();
         reIndex.reIndexIfOutdated();
-        client = McpClients.connect();
+        client = TestClients.connect();
     }
 
     @Test

@@ -82,8 +82,8 @@ claude mcp add --transport http knowledge-engineering http://localhost:8081/mcp 
 
 ## Authentication
 
-Every request to `/mcp` and `/admin` needs `Authorization: Bearer <token>` with the token of a configured client;
-anything else gets `401`. Health (`/q/health`) stays open. Each client has its own token per Collection, set only in the
+Every request, `/mcp` and `/admin` included, needs `Authorization: Bearer <token>` with the token of a configured
+Client; anything else gets `401`. Only health (`/q/health`) stays open. Each client has its own token per Collection, set only in the
 environment as `COLLECTION_AUTH_TOKENS_<CLIENT>`, for example `COLLECTION_AUTH_TOKENS_CLAUDE_CODE`. Removing one, or
 leaving it empty, locks out that client alone. An instance with no token at all refuses to start.
 

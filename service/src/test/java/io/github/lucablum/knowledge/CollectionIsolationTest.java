@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.configuration.FluentConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -69,7 +70,16 @@ class CollectionIsolationTest {
     }
 
     @Test
-    void whenIsolate_givenSchemaBuiltBeforeTheRoleExisted_thenHandItsIndexToTheRole() throws Exception {
+    void whenCreateTableInPublic_givenIsolatedCollection_thenPermissionDenied() throws Exception {
+        isolate("isolation_engineering");
+
+        assertThatThrownBy(() -> executeAs("isolation_engineering", "CREATE TABLE public.leak (id INT)"))
+                .isInstanceOf(SQLException.class)
+                .hasMessageContaining("permission denied");
+    }
+
+    @Test
+    void whenIsolateTwice_givenSchemaBuiltBeforeTheRoleExisted_thenHandItsIndexToTheRole() throws Exception {
         try (Connection connection = superuser.getConnection(); Statement statement = connection.createStatement()) {
             statement.execute("CREATE SCHEMA isolation_engineering");
         }
@@ -98,7 +108,7 @@ class CollectionIsolationTest {
         migrate(Flyway.configure().dataSource(dataSource), schema);
     }
 
-    private static void migrate(org.flywaydb.core.api.configuration.FluentConfiguration flyway, String schema) {
+    private static void migrate(FluentConfiguration flyway, String schema) {
         flyway.schemas(schema)
                 .defaultSchema(schema)
                 .locations("classpath:db/migration")
@@ -107,13 +117,23 @@ class CollectionIsolationTest {
                 .migrate();
     }
 
-    private int countNotesAs(String role, String schema) throws SQLException {
-        try (Connection connection = DriverManager.getConnection(url, role, password(role));
+    private int countNotesAs(String collection, String schema) throws SQLException {
+        try (Connection connection = connectAs(collection);
                 ResultSet count = connection.createStatement()
                         .executeQuery("SELECT count(*) FROM %s.note".formatted(schema))) {
             count.next();
             return count.getInt(1);
         }
+    }
+
+    private void executeAs(String collection, String sql) throws SQLException {
+        try (Connection connection = connectAs(collection); Statement statement = connection.createStatement()) {
+            statement.execute(sql);
+        }
+    }
+
+    private Connection connectAs(String collection) throws SQLException {
+        return DriverManager.getConnection(url, collection, password(collection));
     }
 
     private static String password(String collection) {

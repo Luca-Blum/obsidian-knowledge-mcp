@@ -3,9 +3,9 @@ package io.github.lucablum.knowledge;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.quarkiverse.mcp.server.test.McpAssured;
-import io.quarkiverse.mcp.server.test.McpAssured.McpStreamableTestClient;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
+import io.vertx.core.MultiMap;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -14,36 +14,33 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-/** The MCP endpoint as a client reaches it over HTTP: who gets in, and which tools it finds. */
+/** The MCP endpoint as a Client reaches it over HTTP: who gets in, and which tools it finds. */
 @QuarkusTest
 class McpEndpointTest {
 
     @TestHTTPResource("/admin/re-index")
     URI adminReIndex;
 
+    @TestHTTPResource("/q/health/ready")
+    URI readiness;
+
+    private final HttpClient http = HttpClient.newHttpClient();
+
     @Test
     void whenConnect_givenNoToken_thenRejectAsUnauthorized() {
-        McpAssured.newStreamableClient()
-                .setExpectConnectFailure(failure -> assertThat(failure.statusCode()).isEqualTo(401))
-                .build()
-                .connect();
+        TestClients.expectRejected(null);
     }
 
     @Test
     void whenConnect_givenWrongToken_thenRejectAsUnauthorized() {
-        McpAssured.newStreamableClient()
-                .setBearerToken("not-a-client-token")
-                .setExpectConnectFailure(failure -> assertThat(failure.statusCode()).isEqualTo(401))
-                .build()
-                .connect();
+        TestClients.expectRejected("not-a-client-token");
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"test-token-claude-ai", "test-token-claude-code"})
+    @ValueSource(strings = {TestClients.FIRST_TOKEN, TestClients.SECOND_TOKEN})
     void whenListTools_givenAnyClientsToken_thenFindEveryTool(String token) {
-        McpStreamableTestClient client = McpAssured.newStreamableClient().setBearerToken(token).build().connect();
-
-        client.when()
+        TestClients.connectWith(token)
+                .when()
                 .toolsList(page -> assertThat(page.tools()).extracting(McpAssured.ToolInfo::name)
                         .containsExactlyInAnyOrder("search", "read_note", "related", "list_sources", "list_topics"))
                 .thenAssertResults();
@@ -51,9 +48,8 @@ class McpEndpointTest {
 
     @Test
     void whenListTools_givenCollectionDescription_thenSearchToolCarriesIt() {
-        McpStreamableTestClient client = McpClients.connect();
-
-        client.when()
+        TestClients.connect()
+                .when()
                 .toolsList(page -> assertThat(page.findByName("search").description())
                         .isEqualTo("Searches the test Collection."))
                 .thenAssertResults();
@@ -61,10 +57,27 @@ class McpEndpointTest {
 
     @Test
     void whenPostAdminReIndex_givenNoToken_thenRejectAsUnauthorized() throws Exception {
-        HttpResponse<Void> response = HttpClient.newHttpClient().send(
-                HttpRequest.newBuilder(adminReIndex).POST(HttpRequest.BodyPublishers.noBody()).build(),
-                HttpResponse.BodyHandlers.discarding());
+        HttpRequest request = HttpRequest.newBuilder(adminReIndex).POST(HttpRequest.BodyPublishers.noBody()).build();
 
-        assertThat(response.statusCode()).isEqualTo(401);
+        assertThat(http.send(request, HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(401);
+    }
+
+    @Test
+    void whenListTools_givenLowerCaseBearerScheme_thenAccept() {
+        McpAssured.newStreamableClient()
+                .setAdditionalHeaders(message -> MultiMap.caseInsensitiveMultiMap()
+                        .add("Authorization", "bearer " + TestClients.FIRST_TOKEN))
+                .build()
+                .connect()
+                .when()
+                .toolsList(page -> assertThat(page.findByName("search")).isNotNull())
+                .thenAssertResults();
+    }
+
+    @Test
+    void whenGetReadiness_givenNoToken_thenAnswer() throws Exception {
+        HttpRequest request = HttpRequest.newBuilder(readiness).build();
+
+        assertThat(http.send(request, HttpResponse.BodyHandlers.discarding()).statusCode()).isEqualTo(200);
     }
 }

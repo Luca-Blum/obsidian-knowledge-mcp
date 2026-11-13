@@ -5,6 +5,13 @@
 -- A Collection role may not create extensions, so the index's migration finds pgvector already there
 CREATE EXTENSION IF NOT EXISTS vector SCHEMA public;
 
+-- Postgres 15 and later already behave like this; stated here so isolation does not hang on the version.
+-- Collection roles still use public for pgvector's type, but create nothing outside their own schema.
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+DO $$ BEGIN
+    EXECUTE format('REVOKE CREATE, TEMPORARY ON DATABASE %I FROM PUBLIC', current_database());
+END $$;
+
 CREATE OR REPLACE PROCEDURE pg_temp.isolate_collection(collection name, password text)
 LANGUAGE plpgsql AS $$
 DECLARE

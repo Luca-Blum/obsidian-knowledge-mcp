@@ -39,8 +39,8 @@ public interface CollectionConfig {
     interface Auth {
 
         /**
-         * The bearer token of every client allowed to reach this Collection, keyed by the client's name. Each client
-         * has its own, so removing one token locks out that client alone; an empty token counts as removed.
+         * The bearer token of every Client allowed to reach this Collection, keyed by the Client's name. Each Client
+         * has its own, so removing one token locks out that Client alone; an empty token counts as removed.
          */
         Map<String, Optional<String>> tokens();
     }

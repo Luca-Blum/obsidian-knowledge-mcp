@@ -29,7 +29,7 @@ class ReadNoteToolTest {
     @BeforeEach
     void connect() {
         vault.clear();
-        client = McpClients.connect();
+        client = TestClients.connect();
     }
 
     @Test

@@ -65,8 +65,8 @@ anywhere. Keep the file: if you lose it, the Postgres volume can no longer be op
 - `ENGINEERING_DB_PASSWORD` belongs to the role `engineering`. `postgres-init` creates it on every deploy (or sets its
   password again) and makes it the owner of the schema `engineering`, which no other Collection's role can read. The
   instance connects as this role.
-- `ENGINEERING_TOKEN_<CLIENT>` is the bearer token one client sends to the Engineering Collection. Every request to
-  `/mcp` and `/admin` without a configured token gets `401`; health stays open. At least one token must be set, or the
+- `ENGINEERING_TOKEN_<CLIENT>` is the bearer token one Client sends to the Engineering Collection. Every request
+  without a configured token gets `401`, except health (`/q/health`). At least one token must be set, or the
   instance refuses to start.
 
 An existing installation needs the three new values in `.env` before its next deploy. `postgres-init` then hands the

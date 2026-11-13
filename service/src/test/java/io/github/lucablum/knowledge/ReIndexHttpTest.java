@@ -105,7 +105,7 @@ class ReIndexHttpTest {
 
     private static HttpRequest post(URI uri) {
         return HttpRequest.newBuilder(uri)
-                .header("Authorization", "Bearer " + McpClients.TOKEN)
+                .header("Authorization", TestClients.authorization())
                 .POST(HttpRequest.BodyPublishers.noBody())
                 .build();
     }
