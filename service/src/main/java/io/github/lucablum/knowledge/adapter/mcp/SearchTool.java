@@ -3,8 +3,7 @@ package io.github.lucablum.knowledge.adapter.mcp;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
-import io.github.lucablum.knowledge.application.indexing.ReIndexCollection;
-import io.github.lucablum.knowledge.application.indexing.ReconciliationProgress;
+import io.github.lucablum.knowledge.application.indexing.ReIndexRunning;
 import io.github.lucablum.knowledge.application.search.SearchChunks;
 import io.github.lucablum.knowledge.application.search.SearchRequest;
 import io.github.lucablum.knowledge.domain.note.Topic;
@@ -17,7 +16,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.jmolecules.architecture.hexagonal.PrimaryAdapter;
 
 /**
@@ -31,15 +29,12 @@ public class SearchTool {
 
     private final ToolManager tools;
     private final SearchChunks search;
-    private final ReIndexCollection reIndex;
     private final CollectionConfig.Search config;
     private final ObjectMapper json;
 
-    public SearchTool(ToolManager tools, SearchChunks search, ReIndexCollection reIndex, CollectionConfig collection,
-            ObjectMapper json) {
+    public SearchTool(ToolManager tools, SearchChunks search, CollectionConfig collection, ObjectMapper json) {
         this.tools = tools;
         this.search = search;
-        this.reIndex = reIndex;
         this.config = collection.search();
         this.json = json;
     }
@@ -62,11 +57,6 @@ public class SearchTool {
     }
 
     private ToolResponse search(ToolArguments arguments) {
-        Optional<ReconciliationProgress> reIndexing = reIndex.progress();
-        if (reIndexing.isPresent()) {
-            return ToolResponse.error(("The Collection is being re-indexed (progress: %s) and answers no searches "
-                    + "until the Re-Index is through. Try again later.").formatted(reIndexing.get().describe()));
-        }
         Map<String, Object> args = arguments.args();
         try {
             SearchRequest request = request((String) args.get("query"), (String) args.get("keywords"),
@@ -75,6 +65,9 @@ public class SearchTool {
                     .map(Hit::of)
                     .toList();
             return ToolResponse.success(json.writeValueAsString(Map.of("hits", hits)));
+        } catch (ReIndexRunning e) {
+            return ToolResponse.error(("The Collection is being re-indexed (progress: %s) and answers no searches "
+                    + "until the Re-Index is through. Try again later.").formatted(e.progress().describe()));
         } catch (IllegalArgumentException e) {
             return ToolResponse.error(e.getMessage());
         } catch (JsonProcessingException e) {

@@ -6,11 +6,15 @@ import static org.assertj.core.api.Assertions.tuple;
 
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
 import io.github.lucablum.knowledge.application.indexing.IndexVault;
+import io.github.lucablum.knowledge.application.indexing.ReIndexCollection;
+import io.github.lucablum.knowledge.application.indexing.ReIndexRunning;
+import io.github.lucablum.knowledge.application.indexing.ReconciliationProgress;
 import io.github.lucablum.knowledge.application.search.SearchChunks;
 import io.github.lucablum.knowledge.application.search.SearchRequest;
 import io.github.lucablum.knowledge.domain.note.NoteKind;
 import io.github.lucablum.knowledge.domain.note.Topic;
 import io.github.lucablum.knowledge.domain.search.SearchHit;
+import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.util.List;
@@ -326,5 +330,15 @@ class SearchTest {
         assertThatThrownBy(() -> search.search(SearchRequest.of("interval training").withK(maxK + 1)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("k must be between 1 and " + maxK);
+    }
+
+    /** Not only the search tool but every caller, such as the evaluation, must never search a mixed index. */
+    @Test
+    void whenSearch_givenReIndexRunning_thenRefuseNamingHowManyNotesAreDone() {
+        QuarkusMock.installMockForType(new RunningReIndex(12, 340), ReIndexCollection.class);
+
+        assertThatThrownBy(() -> search.search(SearchRequest.of("interval training")))
+                .isInstanceOfSatisfying(ReIndexRunning.class,
+                        refused -> assertThat(refused.progress()).isEqualTo(new ReconciliationProgress(12, 340)));
     }
 }

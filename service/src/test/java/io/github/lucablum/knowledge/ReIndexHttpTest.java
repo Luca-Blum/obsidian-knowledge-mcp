@@ -48,7 +48,7 @@ class ReIndexHttpTest {
     @BeforeEach
     void emptyVaultAndIndexUpToDate() {
         vault.clear();
-        reIndex.reIndexIfOutdated();
+        indexVault.run();
     }
 
     @Test

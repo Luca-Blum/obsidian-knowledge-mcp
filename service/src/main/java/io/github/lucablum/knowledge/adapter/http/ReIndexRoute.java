@@ -2,8 +2,8 @@ package io.github.lucablum.knowledge.adapter.http;
 
 import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
 import io.github.lucablum.knowledge.application.indexing.ReIndexCollection;
+import io.github.lucablum.knowledge.application.indexing.ReIndexRunning;
 import io.github.lucablum.knowledge.application.indexing.Reconciled;
-import io.github.lucablum.knowledge.application.indexing.ReconciliationProgress;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -34,22 +34,25 @@ public class ReIndexRoute {
     }
 
     private void reIndex(RoutingContext request) {
-        if (reIndex.running()) {
-            String progress = reIndex.progress().map(ReconciliationProgress::describe).orElse("");
-            request.response().setStatusCode(409).end("A Re-Index is already running: " + progress + " done.\n");
-            return;
+        try {
+            reIndex.reIndex(this::inBackground).whenComplete(this::log);
+            request.response().setStatusCode(202).end("Re-Index started; /q/health/ready reports its progress.\n");
+        } catch (ReIndexRunning e) {
+            request.response().setStatusCode(409)
+                    .end("A Re-Index is already running: " + e.progress().describe() + " done.\n");
         }
-        Thread.ofVirtual().name("re-index-" + collection.name()).start(this::reIndexInBackground);
-        request.response().setStatusCode(202).end("Re-Index started; /q/health/ready reports its progress.\n");
     }
 
-    /** Nothing waits for the thread, so its outcome is only logged. */
-    private void reIndexInBackground() {
-        try {
-            Reconciled reconciled = reIndex.reIndex();
+    private void inBackground(Runnable reIndexing) {
+        Thread.ofVirtual().name("re-index-" + collection.name()).start(reIndexing);
+    }
+
+    /** Nothing waits for the Re-Index, so its outcome is only logged. */
+    private void log(Reconciled reconciled, Throwable failure) {
+        if (failure != null) {
+            LOG.errorf(failure, "Re-Index of Collection %s failed", collection.name());
+        } else {
             LOG.infof("Re-Indexed Collection %s: %s", collection.name(), reconciled.summary());
-        } catch (RuntimeException e) {
-            LOG.errorf(e, "Re-Index of Collection %s failed", collection.name());
         }
     }
 }

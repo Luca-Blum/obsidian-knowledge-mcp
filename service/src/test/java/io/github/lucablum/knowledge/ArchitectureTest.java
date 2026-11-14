@@ -74,6 +74,7 @@ class ArchitectureTest {
             .that().resideInAPackage("..knowledge.application..")
             .and().areNotInterfaces()
             .and().areNotAnnotatedWith(ValueObject.class)
+            .and().areNotAssignableTo(Throwable.class)
             .should().beAnnotatedWith(Application.class)
             .andShould().implement(CanBeAnnotated.Predicates.annotatedWith(PrimaryPort.class));
 

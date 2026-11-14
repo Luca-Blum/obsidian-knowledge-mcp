@@ -1,6 +1,8 @@
 package io.github.lucablum.knowledge.application.search;
 
 import io.github.lucablum.knowledge.application.Embedding;
+import io.github.lucablum.knowledge.application.indexing.ReIndexCollection;
+import io.github.lucablum.knowledge.application.indexing.ReIndexRunning;
 import io.github.lucablum.knowledge.domain.search.ReciprocalRankFusion;
 import io.github.lucablum.knowledge.domain.search.SearchHit;
 import java.util.ArrayList;
@@ -16,7 +18,7 @@ import org.jmolecules.architecture.hexagonal.Application;
  * and fuses both rankings. Vector candidates below the Minimum Similarity are left out before the fusion, so a
  * question with nothing relevant in the Collection gets only what the full-text search matches; the fused score is
  * never thresholded (ADR 0002). Each Note gets at most a fixed number of Search Hits, and each Search Hit says how
- * many more candidates its Note had.
+ * many more candidates its Note had. While a Re-Index runs, it refuses to search, so no caller ever sees a mixed index.
  */
 @Application
 public class HybridSearch implements SearchChunks {
@@ -24,20 +26,23 @@ public class HybridSearch implements SearchChunks {
     private final Embedding embedding;
     private final ChunkVectors vectors;
     private final ChunkFullText fullText;
+    private final ReIndexCollection reIndex;
     private final ReciprocalRankFusion fusion;
     private final SearchSettings settings;
 
-    public HybridSearch(Embedding embedding, ChunkVectors vectors, ChunkFullText fullText,
+    public HybridSearch(Embedding embedding, ChunkVectors vectors, ChunkFullText fullText, ReIndexCollection reIndex,
             ReciprocalRankFusion fusion, SearchSettings settings) {
         this.embedding = embedding;
         this.vectors = vectors;
         this.fullText = fullText;
+        this.reIndex = reIndex;
         this.fusion = fusion;
         this.settings = settings;
     }
 
     @Override
     public List<SearchHit> search(SearchRequest request) {
+        refuseWhileReIndexing();
         int k = request.k().orElse(settings.defaultK());
         validate(request.query(), k);
         List<SearchHit> candidates = fusion.fuse(vectorCandidates(request), fullTextCandidates(request));
@@ -91,6 +96,12 @@ public class HybridSearch implements SearchChunks {
 
     private static Map<String, Long> countPerNote(List<SearchHit> hits) {
         return hits.stream().collect(Collectors.groupingBy(SearchHit::notePath, Collectors.counting()));
+    }
+
+    private void refuseWhileReIndexing() {
+        reIndex.progress().ifPresent(progress -> {
+            throw new ReIndexRunning(progress);
+        });
     }
 
     private void validate(String query, int k) {

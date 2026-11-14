@@ -9,6 +9,7 @@ import io.github.lucablum.knowledge.application.indexing.IndexFingerprint;
 import io.github.lucablum.knowledge.application.indexing.IndexVault;
 import io.github.lucablum.knowledge.application.indexing.IndexedNotes;
 import io.github.lucablum.knowledge.application.indexing.ReIndexCollection;
+import io.github.lucablum.knowledge.application.indexing.Reconciled;
 import io.github.lucablum.knowledge.application.search.SearchChunks;
 import io.github.lucablum.knowledge.application.search.SearchRequest;
 import io.github.lucablum.knowledge.domain.chunk.Chunk;
@@ -78,7 +79,7 @@ class ReIndexTest {
         indexVault.run();
         index.markEveryChunkAsEmbeddedBy(OLD_MODEL);
 
-        reIndex.reIndex();
+        reIndex.reIndex(Runnable::run).join();
 
         assertThat(index.embeddingModelOfEveryChunk())
                 .hasSize(3)
@@ -86,12 +87,12 @@ class ReIndexTest {
     }
 
     @Test
-    void whenReIndexIfOutdated_givenIndexOfAnotherModelAndDimension_thenRebuildItSoSearchFindsTheNotes() {
+    void whenRun_givenIndexOfAnotherModelAndDimension_thenRebuildItSoSearchFindsTheNotes() {
         String text = "Interval training improves speed";
         vault.write("Running/Intervals.md", text);
         indexedAsByAnOldModelWithThreeDimensions("Running/Intervals.md", text);
 
-        assertThat(reIndex.reIndexIfOutdated()).isPresent();
+        assertThat(indexVault.run().indexed()).isOne();
 
         assertThat(search.search(SearchRequest.of("interval training"))).extracting(SearchHit::notePath)
                 .containsExactly("Running/Intervals.md");
@@ -102,11 +103,11 @@ class ReIndexTest {
     }
 
     @Test
-    void whenReIndexIfOutdated_givenReIndexCompletedWithTheConfiguration_thenLeaveTheIndexAlone() {
+    void whenRun_givenReIndexCompletedWithTheConfiguration_thenReconcileWithoutIndexingAnyNoteAgain() {
         vault.write("Running/Tempo.md", "Tempo runs at threshold pace");
-        reIndex.reIndex();
+        reIndex.reIndex(Runnable::run).join();
 
-        assertThat(reIndex.reIndexIfOutdated()).isEmpty();
+        assertThat(indexVault.run()).isEqualTo(new Reconciled(0, 0, 1, List.of()));
     }
 
     /** The content hash matches the Vault, so only the fingerprint can tell that the Note needs indexing again. */

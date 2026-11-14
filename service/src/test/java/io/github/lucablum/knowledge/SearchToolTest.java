@@ -25,15 +25,12 @@ class SearchToolTest {
     @Inject
     IndexVault indexVault;
 
-    @Inject
-    ReIndexCollection reIndex;
-
     McpStreamableTestClient client;
 
     @BeforeEach
     void connect() {
         vault.clear();
-        reIndex.reIndexIfOutdated();
+        indexVault.run();
         client = TestClients.connect();
     }
 
