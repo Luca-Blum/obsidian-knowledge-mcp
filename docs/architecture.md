@@ -386,7 +386,7 @@ Syncthing and the host's Tailscale run natively because they work closely with t
 - **Health:** `quarkus-smallrye-health` provides health checks for Compose.
 - **Re-Index:** starts automatically when the index fingerprint (model, dimension, chunking parameters) doesn't match the configuration, and an admin endpoint forces one when needed. Meanwhile the Collection answers no searches.
 - **Backup:** the Vault lives on the Mac and the Pi, plus Time Machine. The database is not backed up, because the index can be rebuilt from the Vault at any time.
-- **Security:** claude.ai custom connectors offer only OAuth, so each instance is its own OAuth authorization server with a consent page guarded by a passphrase; changing the passphrase revokes every grant (ADR 0005). Claude Code keeps a static bearer token per Collection from `.env`. Each Collection has its own Tailscale sidecar node with Funnel on 443, because Claude's OAuth client only talks to the origin root.
+- **Security:** claude.ai custom connectors offer only OAuth, so each instance is its own OAuth authorization server with a consent page guarded by a passphrase; changing the passphrase revokes every grant (ADR 0005). Claude Code keeps a static bearer token per Collection from `.env`. Each Collection has its own Tailscale sidecar node with Funnel on 443, because claude.ai's OAuth client only talks to the origin root.
 
 ## Decisions, Trade-offs and Next Steps
 

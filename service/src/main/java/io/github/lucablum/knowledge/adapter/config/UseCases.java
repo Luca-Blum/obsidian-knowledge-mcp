@@ -95,7 +95,11 @@ public class UseCases {
     AuthorizeClients authorizeClients(Grants grants, CollectionConfig collection) {
         String passphrase = collection.oauth().passphrase().orElseThrow(() -> new IllegalStateException(
                 "OAuth is off for Collection %s: COLLECTION_OAUTH_PASSPHRASE is not set".formatted(collection.name())));
-        return new PassphraseConsent(grants, new Passphrase(passphrase), Clock.systemUTC());
+        try {
+            return new PassphraseConsent(grants, new Passphrase(passphrase), Clock.systemUTC());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("COLLECTION_OAUTH_PASSPHRASE: " + e.getMessage(), e);
+        }
     }
 
     private static ChunkingRules chunkingRules(CollectionConfig collection) {

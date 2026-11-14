@@ -32,8 +32,6 @@ public class ConsentRoute {
 
     private static final Logger LOG = Logger.getLogger(ConsentRoute.class);
 
-    private static final int BODY_LIMIT = 16 * 1024;
-
     private final AuthorizeClients authorize;
     private final CollectionConfig collection;
 
@@ -46,7 +44,7 @@ public class ConsentRoute {
         if (OAuthEndpoints.of(collection).isPresent()) {
             router.get(OAuthEndpoints.AUTHORIZE).blockingHandler(this::showConsentPage, false);
             router.post(OAuthEndpoints.AUTHORIZE)
-                    .handler(BodyHandler.create().setBodyLimit(BODY_LIMIT))
+                    .handler(BodyHandler.create().setBodyLimit(OAuthEndpoints.BODY_LIMIT))
                     .blockingHandler(this::consent, false);
         }
     }

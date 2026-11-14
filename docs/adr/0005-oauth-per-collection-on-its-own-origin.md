@@ -2,7 +2,7 @@
 
 claude.ai reaches a Collection as a custom connector, and custom connectors offer only OAuth: a static `Authorization` header cannot be set, so the static bearer token per Client from #13 cannot serve claude.ai. Each instance therefore issues OAuth tokens itself. It serves discovery (`/.well-known/oauth-authorization-server`, `/.well-known/oauth-protected-resource`), dynamic client registration, `/authorize` with a consent page guarded by a passphrase, and `/token`, all at its own origin root. Claude Code keeps its static bearer token.
 
-Every Collection gets its own Tailscale sidecar node with Funnel on port 443, e.g. `knowledge-engineering.<tailnet>.ts.net`. Claude's OAuth client sends `/authorize` and `/token` to the bare origin root, whatever path the issuer has, so two authorization servers cannot share one origin by path. And Funnel offers 443, 8443 and 10000, but claude.ai's connector backend only got through on 443, so they cannot share one node by port. Both were found running garmin-mcp and notebooklm-mcp on the same Pi.
+Every Collection gets its own Tailscale sidecar node with Funnel on port 443, e.g. `knowledge-engineering.<tailnet>.ts.net`. claude.ai's OAuth client sends `/authorize` and `/token` to the bare origin root, whatever path the issuer has, so two authorization servers cannot share one origin by path. And Funnel offers 443, 8443 and 10000, but claude.ai's connector backend only got through on 443, so they cannot share one node by port. Both were found running garmin-mcp and notebooklm-mcp on the same Pi.
 
 ## Considered Options
 

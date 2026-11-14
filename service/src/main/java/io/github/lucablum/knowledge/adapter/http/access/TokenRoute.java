@@ -28,8 +28,6 @@ import org.jmolecules.architecture.hexagonal.PrimaryAdapter;
 @PrimaryAdapter
 public class TokenRoute {
 
-    private static final int BODY_LIMIT = 16 * 1024;
-
     private static final String BASIC = "Basic ";
 
     private final AuthorizeClients authorize;
@@ -43,7 +41,7 @@ public class TokenRoute {
     void register(@Observes Router router) {
         if (OAuthEndpoints.of(collection).isPresent()) {
             router.post(OAuthEndpoints.TOKEN)
-                    .handler(BodyHandler.create().setBodyLimit(BODY_LIMIT))
+                    .handler(BodyHandler.create().setBodyLimit(OAuthEndpoints.BODY_LIMIT))
                     .blockingHandler(this::token, false);
         }
     }

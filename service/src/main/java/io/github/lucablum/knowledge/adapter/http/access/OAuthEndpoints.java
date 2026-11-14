@@ -5,7 +5,7 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Where this instance's OAuth endpoints are. They sit at the origin root, because Claude's OAuth client sends
+ * Where this instance's OAuth endpoints are. They sit at the origin root, because claude.ai's OAuth client sends
  * {@code /authorize} and {@code /token} there whatever path the issuer has (ADR 0005).
  */
 record OAuthEndpoints(String issuer) {
@@ -25,6 +25,9 @@ record OAuthEndpoints(String issuer) {
     static final String AUTHORIZE = "/authorize";
 
     static final String TOKEN = "/token";
+
+    /** The largest form or JSON body an OAuth endpoint accepts; theirs are a few hundred bytes. */
+    static final int BODY_LIMIT = 16 * 1024;
 
     private static final Set<String> PUBLIC_PATHS = Set.of(AUTHORIZATION_SERVER_METADATA, RESOURCE_METADATA,
             RESOURCE_METADATA_FOR_MCP, REGISTER, AUTHORIZE, TOKEN);

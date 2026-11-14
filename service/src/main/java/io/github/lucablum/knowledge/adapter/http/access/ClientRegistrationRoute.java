@@ -36,8 +36,6 @@ public class ClientRegistrationRoute {
 
     private static final int MAXIMUM_NAME_LENGTH = 100;
 
-    private static final int BODY_LIMIT = 16 * 1024;
-
     private final AuthorizeClients authorize;
     private final CollectionConfig collection;
 
@@ -49,7 +47,7 @@ public class ClientRegistrationRoute {
     void register(@Observes Router router) {
         if (OAuthEndpoints.of(collection).isPresent()) {
             router.post(OAuthEndpoints.REGISTER)
-                    .handler(BodyHandler.create().setBodyLimit(BODY_LIMIT))
+                    .handler(BodyHandler.create().setBodyLimit(OAuthEndpoints.BODY_LIMIT))
                     .blockingHandler(this::registerClient, false);
         }
     }
