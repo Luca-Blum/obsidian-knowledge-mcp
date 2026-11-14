@@ -7,10 +7,10 @@ The knowledge service runs on a Raspberry Pi 5 (8 GB). Every push to `main` depl
 ```
 Mac                                    Raspberry Pi
 ───                                    ────────────
-Obsidian + Vault  ──── Syncthing ────▶ /srv/vaults/Engineering (read-only copy)
-importer (launchd)                              │ mounted read-only
-Claude Code  ──── Tailscale, port 8081 ───▶ knowledgebase-engineering ──▶ postgres (pgvector)
-                                                                     └──▶ ollama (embedding model)
+Obsidian + Vaults ──── Syncthing ────▶ /srv/vaults/Engineering, /srv/vaults/Training (read-only copies)
+importer (launchd)                              │ each mounted read-only into its own instance
+Claude Code  ── Tailscale, port 8081 ──▶ knowledgebase-engineering ──┬──▶ postgres (pgvector), one schema each
+             ── Tailscale, port 8082 ──▶ knowledgebase-training ─────┴──▶ ollama (embedding model)
 ```
 
 On the Pi everything runs in Docker, started from `docker-compose.yml`:
@@ -22,6 +22,10 @@ On the Pi everything runs in Docker, started from `docker-compose.yml`:
 | `ollama` | `ollama/ollama` | Computes embeddings. Models in the Docker volume `knowledgebase_ollama`. |
 | `ollama-pull` | `ollama/ollama` | Downloads the embedding model (`bge-m3`) once, then exits. |
 | `knowledgebase-engineering` | `ghcr.io/luca-blum/obsidian-knowledge-mcp` | The service for the Engineering Collection. Serves MCP on port 8081. |
+| `knowledgebase-training` | `ghcr.io/luca-blum/obsidian-knowledge-mcp` | The service for the Training Collection. Serves MCP on port 8082. |
+
+Both Collection services run the same image with the same settings (`x-collection` in `docker-compose.yml`). They
+differ only in values: name, schema, port, Vault, tokens, Minimum Similarity and tool description.
 
 You do not install Postgres, Ollama or Java on the Pi. Docker pulls them.
 
@@ -48,13 +52,15 @@ Your user must be in the `docker` group.
 ### 1. Configuration
 
 ```shell
-sudo mkdir -p /srv/knowledgebase /srv/vaults/Engineering
+sudo mkdir -p /srv/knowledgebase /srv/vaults/Engineering /srv/vaults/Training
 sudo chown -R $USER: /srv/knowledgebase /srv/vaults
 cp deploy/.env.example /srv/knowledgebase/.env
 sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(openssl rand -hex 24)/" /srv/knowledgebase/.env
-sed -i "s/^ENGINEERING_DB_PASSWORD=.*/ENGINEERING_DB_PASSWORD=$(openssl rand -hex 24)/" /srv/knowledgebase/.env
-sed -i "s/^ENGINEERING_TOKEN_CLAUDE_CODE=.*/ENGINEERING_TOKEN_CLAUDE_CODE=$(openssl rand -hex 32)/" /srv/knowledgebase/.env
-sed -i "s/^ENGINEERING_TOKEN_CLAUDE_AI=.*/ENGINEERING_TOKEN_CLAUDE_AI=$(openssl rand -hex 32)/" /srv/knowledgebase/.env
+for COLLECTION in ENGINEERING TRAINING; do
+  sed -i "s/^${COLLECTION}_DB_PASSWORD=.*/${COLLECTION}_DB_PASSWORD=$(openssl rand -hex 24)/" /srv/knowledgebase/.env
+  sed -i "s/^${COLLECTION}_TOKEN_CLAUDE_CODE=.*/${COLLECTION}_TOKEN_CLAUDE_CODE=$(openssl rand -hex 32)/" /srv/knowledgebase/.env
+  sed -i "s/^${COLLECTION}_TOKEN_CLAUDE_AI=.*/${COLLECTION}_TOKEN_CLAUDE_AI=$(openssl rand -hex 32)/" /srv/knowledgebase/.env
+done
 chmod 600 /srv/knowledgebase/.env
 ```
 
@@ -68,9 +74,15 @@ anywhere. Keep the file: if you lose it, the Postgres volume can no longer be op
 - `ENGINEERING_TOKEN_<CLIENT>` is the bearer token one Client sends to the Engineering Collection. Every request
   without a configured token gets `401`, except health (`/q/health`). At least one token must be set, or the
   instance refuses to start.
+- The `TRAINING_` values mean the same for the Training Collection and its role `training`. Its tokens differ from
+  Engineering's, so a token of one Collection is never accepted by the other.
 
 An existing installation needs the three new values in `.env` before its next deploy. `postgres-init` then hands the
 schema that the superuser built to the role `engineering`, and the index stays as it is.
+
+Before the deploy that adds the Training Collection, an existing installation also needs `TRAINING_DB_PASSWORD`, the
+`TRAINING_` tokens and the other `TRAINING_` values from `.env.example`, and the Training Vault synced to
+`/srv/vaults/Training`. Without them the deploy stops with `set in .env`.
 
 ### 2. GitHub Actions runner
 
@@ -108,12 +120,13 @@ syncthing --device-id
 On the Mac (`brew install --cask syncthing`, web UI at http://localhost:8384):
 
 1. **Add Remote Device**: enter the Pi's Device ID.
-2. Share the Vault folder with the Pi (folder → Edit → Sharing → tick the Pi). Note the folder's **Folder ID**
-   (folder → Edit → General). For the Engineering Vault it is `Engineering`.
+2. Share each Vault folder with the Pi (folder → Edit → Sharing → tick the Pi). Note the folder's **Folder ID**
+   (folder → Edit → General), for example `Engineering` and `Training`.
 3. Copy the Mac's Device ID (Actions → Show ID).
 
-Back on the Pi, add the Mac and the folder. `<FOLDER-ID>` must be exactly the Folder ID from the Mac, or Syncthing
-treats them as two different folders and nothing syncs:
+Back on the Pi, add the Mac once, and then each folder. `<FOLDER-ID>` must be exactly the Folder ID from the Mac, or
+Syncthing treats them as two different folders and nothing syncs. For the Training Vault, use the label `Training` and
+the path `/srv/vaults/Training`:
 
 ```shell
 syncthing cli config devices add --device-id <MAC-DEVICE-ID> --name mac
@@ -126,13 +139,13 @@ syncthing cli config folders <FOLDER-ID> devices add --device-id <MAC-DEVICE-ID>
 - **Receive Only**: a change on the Pi is never sent back to the Mac.
 - **Ignore permissions**: the importer creates Source Notes that only their owner may read (mode `600`). Without this
   setting Syncthing copies that mode to the Pi, and the service, which runs as a different user in its container,
-  cannot read them. If files arrived before the setting was on, fix them once with `chmod -R a+rX /srv/vaults/Engineering`.
+  cannot read them. If files arrived before the setting was on, fix them once with `chmod -R a+rX /srv/vaults/<Vault>`.
 
 `syncthing cli show pending folders` lists a folder the Mac offers that the Pi has not added, and shows its Folder ID.
 The Pi's web UI only listens on the Pi itself. To open it from the Mac: `ssh -L 8384:localhost:8384 <user>@<pi>`, then
 http://localhost:8384.
 
-Check the sync with `syncthing cli show connections` (the Mac shows `"connected": true`) and `ls /srv/vaults/Engineering`.
+Check the sync with `syncthing cli show connections` (the Mac shows `"connected": true`) and `ls /srv/vaults/*`.
 
 ### 4. First deploy
 
@@ -150,27 +163,32 @@ Embedding runs one chunk at a time on the Pi's CPU and takes several seconds per
 large batch of new Notes, takes roughly an hour per 4 MB of Markdown. Search works meanwhile, and a Note always shows
 either its old or its new version, never a mix.
 
-Progress, as the number of chunks in the index:
+Progress, as the number of chunks in each index:
 
 ```shell
-docker exec knowledgebase-postgres-1 psql -U knowledge -d knowledge -Atc "select count(*) from engineering.chunk"
+docker exec knowledgebase-postgres-1 psql -U knowledge -d knowledge -Atc \
+  "select (select count(*) from engineering.chunk), (select count(*) from training.chunk)"
 ```
 
 ## Check that it runs
 
 ```shell
 docker compose --project-name knowledgebase ps --all           # every container "healthy", ollama-pull "exited (0)"
-curl http://<pi-tailscale-name>:8081/q/health/ready            # {"status":"UP", ...}
+curl http://<pi-tailscale-name>:8081/q/health/ready            # Engineering: {"status":"UP", ...}
+curl http://<pi-tailscale-name>:8082/q/health/ready            # Training
 docker logs --tail 50 knowledgebase-knowledgebase-engineering-1
+docker stats --no-stream                                       # memory per container, see Memory
 ```
 
 ## Connect Claude Code from the Mac
 
-The Mac and the Pi must be in the same Tailscale network.
+The Mac and the Pi must be in the same Tailscale network. Each Collection is its own MCP server with its own token:
 
 ```shell
 claude mcp add --transport http knowledge-engineering http://<pi-tailscale-name>:8081/mcp \
   --header "Authorization: Bearer <ENGINEERING_TOKEN_CLAUDE_CODE from .env>"
+claude mcp add --transport http knowledge-training http://<pi-tailscale-name>:8082/mcp \
+  --header "Authorization: Bearer <TRAINING_TOKEN_CLAUDE_CODE from .env>"
 ```
 
 ## Day to day
@@ -180,8 +198,8 @@ claude mcp add --transport http knowledge-engineering http://<pi-tailscale-name>
 | Deploy a change | Merge to `main`. |
 | Roll back | GitHub → Actions → Deploy → pick the run of an earlier commit → Re-run all jobs. |
 | Change configuration | Edit `/srv/knowledgebase/.env`, then rerun the latest Deploy workflow, or run the command below. |
-| Lock out a client | Empty its `ENGINEERING_TOKEN_<CLIENT>` in `.env` and deploy. To rotate, set a new token and add the connector again. |
-| Force a Re-Index | `curl -X POST -H "Authorization: Bearer <token>" http://<pi-tailscale-name>:8081/admin/re-index` |
+| Lock out a client | Empty its `<COLLECTION>_TOKEN_<CLIENT>` in `.env` and deploy. To rotate, set a new token and add the connector again. |
+| Force a Re-Index | `curl -X POST -H "Authorization: Bearer <token>" http://<pi-tailscale-name>:<port>/admin/re-index` |
 | Deploy by hand | See below. |
 
 To deploy by hand from a clone on the Pi (the `docker login` is only needed while the image is private):
@@ -194,23 +212,29 @@ IMAGE=ghcr.io/luca-blum/obsidian-knowledge-mcp:<commit-sha> \
 
 ## Add a Collection
 
-Each Collection is one service with its own schema, database role, port, Vault and tokens. For a Collection `training`:
+Each Collection is one service with its own schema, database role, port, Vault and tokens. Everything else comes from
+`x-collection` and `x-collection-environment` in `docker-compose.yml`. For a Collection `cooking`:
 
-1. `postgres/collections.sql`: add `CALL pg_temp.isolate_collection('training', :'training_password');`. The role is
+1. `postgres/collections.sql`: add `CALL pg_temp.isolate_collection('cooking', :'cooking_password');`. The role is
    named like the schema, and the instance connects as the role named like its `COLLECTION_SCHEMA`.
-2. `docker-compose.yml`, service `postgres-init`: add `--set=training_password=${TRAINING_DB_PASSWORD:?set in .env}`
+2. `docker-compose.yml`, service `postgres-init`: add `--set=cooking_password=${COOKING_DB_PASSWORD:?set in .env}`
    before the `--file` lines.
-3. `docker-compose.yml`: copy the service `knowledgebase-engineering` to `knowledgebase-training`. Set `COLLECTION_NAME`
-   and `COLLECTION_SCHEMA` to `training`, and replace every `ENGINEERING_` variable with `TRAINING_`. Check that the new instance still fits the
-   [Memory](#memory) budget.
-4. `.env.example` and `/srv/knowledgebase/.env`: add the `TRAINING_` values. Give it its own `TRAINING_MCP_PORT`, and
-   generate `TRAINING_DB_PASSWORD` and the tokens as in [Configuration](#1-configuration).
-5. Sync the Vault to `TRAINING_VAULT_DIR` as in [Syncthing](#3-syncthing-for-the-vault), then merge to deploy.
+3. `docker-compose.yml`: copy the service `knowledgebase-training` to `knowledgebase-cooking`. Set `COLLECTION_NAME`
+   and `COLLECTION_SCHEMA` to `cooking`, and replace every `TRAINING_` variable with `COOKING_`. Change nothing else
+   there: a setting all Collections share belongs in the `x-collection` anchors. Check that the new instance still fits
+   the [Memory](#memory) budget.
+4. `.env.example` and `/srv/knowledgebase/.env`: add the `COOKING_` values. Give it its own `COOKING_MCP_PORT`, and
+   generate `COOKING_DB_PASSWORD` and the tokens as in [Configuration](#1-configuration).
+5. Sync the Vault to `COOKING_VAULT_DIR` as in [Syncthing](#3-syncthing-for-the-vault). Add the Vault to the importer's
+   launchd agent (another `--vault` pair, see `importer/README.md`).
+6. Calibrate its Minimum Similarity with the Vault's Evaluation Set in `_eval/`, then merge to deploy. The `.env` on
+   the Pi must hold the new values first, or the deploy stops with `set in .env`.
 
 ## Memory
 
-`ENGINEERING_HEAP` (default `-Xmx512m`) caps the Java heap, and `mem_limit: 900m` caps the whole container. That
-leaves room for Postgres and Ollama in 8 GB.
+`<COLLECTION>_HEAP` (default `-Xmx512m`) caps each instance's Java heap, and `mem_limit: 900m` caps each Collection's
+container. Two instances take at most 1.8 GB, which leaves room for Postgres, Ollama with `bge-m3` (about 1.2 GB
+loaded) and the system in 8 GB. `docker stats --no-stream` shows what each container really uses.
 
 ## Troubleshooting
 
@@ -219,7 +243,7 @@ leaves room for Postgres and Ollama in 8 GB.
 | The `deploy` job waits for a runner forever | The runner is offline: `sudo systemctl status 'actions.runner.*'`. |
 | `set in .env` error in the `deploy` job | `/srv/knowledgebase/.env` is missing or a required value is empty. |
 | `401` from `/mcp` | The client sends no token or one that is not in `.env`. Check the connector's `Authorization` header. |
-| `No client token is configured` in the logs | Every `ENGINEERING_TOKEN_<CLIENT>` in `.env` is empty. |
+| `No client token is configured` in the logs | Every `<COLLECTION>_TOKEN_<CLIENT>` of that Collection in `.env` is empty. |
 | `knowledgebase-engineering` never gets healthy | Look at its logs. It waits for Postgres and Ollama first, and the first model download can take a while. |
 | Search finds nothing | The Vault is empty on the Pi (check the Syncthing connection), or the files arrived after the service started (restart it). |
 | `AccessDeniedException` in the logs | The Notes are not readable for the container: see *Ignore permissions* above. |
