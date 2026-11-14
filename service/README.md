@@ -36,8 +36,9 @@ A Collection is defined only by configuration:
 | `collection.reconciliation.interval` | `COLLECTION_RECONCILIATION_INTERVAL` | How often the Vault is compared with the index (default `5m`) |
 | `collection.reconciliation.quiet-period` | `COLLECTION_RECONCILIATION_QUIET_PERIOD` | How long the Vault must stay quiet after a file change before it is reconciled (default `2s`) |
 
-In the `prod` profile the database and Ollama come from `DATABASE_URL`, `DATABASE_USER`, `DATABASE_PASSWORD` and
-`OLLAMA_BASE_URL`; `/q/health/ready` reports readiness. See [`deploy/`](../deploy/README.md).
+In the `prod` profile the database and Ollama come from `DATABASE_URL`, `DATABASE_PASSWORD` and `OLLAMA_BASE_URL`. The
+service logs in as the role named like `collection.schema`, which sees only that schema; `/q/health/ready` reports
+readiness. See [`deploy/`](../deploy/README.md).
 
 ## Re-Index
 

@@ -87,8 +87,7 @@ services:
       COLLECTION_AUTH_TOKENS_CLAUDE_AI: ${ENGINEERING_TOKEN_CLAUDE_AI:-}
       COLLECTION_AUTH_TOKENS_CLAUDE_CODE: ${ENGINEERING_TOKEN_CLAUDE_CODE:-}
       DATABASE_URL: jdbc:postgresql://postgres:5432/knowledge
-      # The Collection's own role, created by postgres-init, sees only the schema engineering
-      DATABASE_USER: engineering
+      # Password of the role engineering, which postgres-init creates (see postgres/isolate-collection.sql)
       DATABASE_PASSWORD: ${ENGINEERING_DB_PASSWORD}
       OLLAMA_BASE_URL: http://ollama:11434
       # One chunk takes several seconds on the Pi's CPU, and longer while Ollama loads the model; the default is 10s

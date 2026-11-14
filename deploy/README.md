@@ -192,6 +192,21 @@ IMAGE=ghcr.io/luca-blum/obsidian-knowledge-mcp:<commit-sha> \
   docker compose --file deploy/docker-compose.yml --env-file /srv/knowledgebase/.env up --detach --pull always --wait
 ```
 
+## Add a Collection
+
+Each Collection is one service with its own schema, database role, port, Vault and tokens. For a Collection `training`:
+
+1. `postgres/collections.sql`: add `CALL pg_temp.isolate_collection('training', :'training_password');`. The role is
+   named like the schema, and the instance connects as the role named like its `COLLECTION_SCHEMA`.
+2. `docker-compose.yml`, service `postgres-init`: add `--set=training_password=${TRAINING_DB_PASSWORD:?set in .env}`
+   before the `--file` lines.
+3. `docker-compose.yml`: copy the service `knowledgebase-engineering` to `knowledgebase-training`. Set `COLLECTION_NAME`
+   and `COLLECTION_SCHEMA` to `training`, and replace every `ENGINEERING_` variable with `TRAINING_`. Check that the new instance still fits the
+   [Memory](#memory) budget.
+4. `.env.example` and `/srv/knowledgebase/.env`: add the `TRAINING_` values. Give it its own `TRAINING_MCP_PORT`, and
+   generate `TRAINING_DB_PASSWORD` and the tokens as in [Configuration](#1-configuration).
+5. Sync the Vault to `TRAINING_VAULT_DIR` as in [Syncthing](#3-syncthing-for-the-vault), then merge to deploy.
+
 ## Memory
 
 `ENGINEERING_HEAP` (default `-Xmx512m`) caps the Java heap, and `mem_limit: 900m` caps the whole container. That

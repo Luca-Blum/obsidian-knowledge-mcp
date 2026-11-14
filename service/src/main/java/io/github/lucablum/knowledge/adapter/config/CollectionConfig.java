@@ -15,7 +15,10 @@ public interface CollectionConfig {
 
     Path vaultPath();
 
-    /** The Postgres schema that holds this Collection's index. */
+    /**
+     * The Postgres schema that holds this Collection's index. Deployed, it also names the role the instance logs in as,
+     * so role and schema cannot drift apart.
+     */
     String schema();
 
     /** The HTTP port of this Collection's MCP endpoint. */
