@@ -1,6 +1,9 @@
 package io.github.lucablum.knowledge.adapter.config;
 
 import io.github.lucablum.knowledge.application.Embedding;
+import io.github.lucablum.knowledge.application.access.AuthorizeClients;
+import io.github.lucablum.knowledge.application.access.Grants;
+import io.github.lucablum.knowledge.application.access.PassphraseConsent;
 import io.github.lucablum.knowledge.application.catalog.BrowseCollection;
 import io.github.lucablum.knowledge.application.catalog.Catalog;
 import io.github.lucablum.knowledge.application.catalog.IndexLookup;
@@ -23,6 +26,7 @@ import io.github.lucablum.knowledge.application.search.ChunkVectors;
 import io.github.lucablum.knowledge.application.search.HybridSearch;
 import io.github.lucablum.knowledge.application.search.SearchChunks;
 import io.github.lucablum.knowledge.application.search.SearchSettings;
+import io.github.lucablum.knowledge.domain.access.Passphrase;
 import io.github.lucablum.knowledge.domain.chunk.ChunkingRules;
 import io.github.lucablum.knowledge.domain.chunk.Splitter;
 import io.github.lucablum.knowledge.domain.note.NoteLanguage;
@@ -31,6 +35,7 @@ import io.github.lucablum.knowledge.domain.reading.ReadingRules;
 import io.github.lucablum.knowledge.domain.search.ReciprocalRankFusion;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
+import java.time.Clock;
 
 /** Wires the plain-Java use cases to their adapters. */
 public class UseCases {
@@ -82,6 +87,15 @@ public class UseCases {
                 new ReciprocalRankFusion(fusion.k(), fusion.vectorWeight(), fusion.fullTextWeight()),
                 new SearchSettings(search.defaultK(), search.maxK(), search.minimumSimilarity(),
                         search.maxHitsPerNote(), search.candidates()));
+    }
+
+    /** Only ever asked for with OAuth on, which a passphrase turns on; without one no route or filter calls it. */
+    @Produces
+    @ApplicationScoped
+    AuthorizeClients authorizeClients(Grants grants, CollectionConfig collection) {
+        String passphrase = collection.oauth().passphrase().orElseThrow(() -> new IllegalStateException(
+                "OAuth is off for Collection %s: COLLECTION_OAUTH_PASSPHRASE is not set".formatted(collection.name())));
+        return new PassphraseConsent(grants, new Passphrase(passphrase), Clock.systemUTC());
     }
 
     private static ChunkingRules chunkingRules(CollectionConfig collection) {

@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-/** The client tokens come from the environment as Docker Compose sets them, an emptied one included. */
+/** Client tokens and OAuth come from the environment as Docker Compose sets them, emptied values included. */
 class CollectionConfigTest {
 
     /** The ordinal Quarkus gives environment variables, so they win over the properties below them. */
@@ -40,6 +40,23 @@ class CollectionConfigTest {
         assertThat(collection.auth().tokens()).containsOnly(
                 Map.entry("claude.ai", Optional.empty()),
                 Map.entry("claude.code", Optional.of("code-token")));
+    }
+
+    @Test
+    void whenMapOAuth_givenPassphraseAndPublicUrlInTheEnvironment_thenReadBoth() {
+        CollectionConfig collection = configFromEnvironment(Map.of(
+                "COLLECTION_OAUTH_PASSPHRASE", "a-passphrase-long-enough",
+                "COLLECTION_PUBLIC_URL", "https://knowledge-engineering.example.ts.net"));
+
+        assertThat(collection.oauth().passphrase()).contains("a-passphrase-long-enough");
+        assertThat(collection.publicUrl()).contains("https://knowledge-engineering.example.ts.net");
+    }
+
+    @Test
+    void whenMapOAuth_givenPassphraseEmptiedInTheEnvironment_thenOAuthHasNoPassphrase() {
+        CollectionConfig collection = configFromEnvironment(Map.of("COLLECTION_OAUTH_PASSPHRASE", ""));
+
+        assertThat(collection.oauth().passphrase()).isEmpty();
     }
 
     /** Reads the mapping as Quarkus does, from {@code environment} over the required values. */

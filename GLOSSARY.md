@@ -54,7 +54,7 @@ The language model that calls a Collection's tools over MCP. It writes the queri
 _Avoid_: Claude, LLM, Client
 
 **Client**:
-The app through which an AI Agent reaches a Collection, such as Claude Code or claude.ai. Each Client has its own bearer token per Collection, so one can be locked out without touching the others.
+The app through which an AI Agent reaches a Collection, such as Claude Code or claude.ai. claude.ai signs in with OAuth through the Collection's consent page; Claude Code sends its own static bearer token. Each can be locked out without touching the other.
 _Avoid_: Connector, user
 
 **Chunk**:
@@ -76,6 +76,16 @@ _Avoid_: Rebuild, reindexing
 **Minimum Similarity**:
 The semantic closeness a Chunk must reach to count as relevant to a query at all. It belongs to an embedding model and is calibrated per Collection with Negative Questions.
 _Avoid_: Minimum score, threshold
+
+### Access
+
+**Passphrase**:
+What the User types on a Collection's consent page to let a Client in through OAuth. Each Collection has its own, of at least 20 characters. Changing it and restarting locks out every Client that consented before. Without one, OAuth is off.
+_Avoid_: Password, PIN
+
+**Grant**:
+The access a Client holds after the User consented: an access token for its requests and a refresh token for the next pair. A refresh replaces the whole Grant, so each refresh token works once.
+_Avoid_: Session, login
 
 ### Links
 

@@ -83,10 +83,36 @@ claude mcp add --transport http knowledge-engineering http://localhost:8081/mcp 
 
 ## Authentication
 
-Every request, `/mcp` and `/admin` included, needs `Authorization: Bearer <token>` with the token of a configured
-Client; anything else gets `401`. Only health (`/q/health`) stays open. Each client has its own token per Collection, set only in the
-environment as `COLLECTION_AUTH_TOKENS_<CLIENT>`, for example `COLLECTION_AUTH_TOKENS_CLAUDE_CODE`. Removing one, or
-leaving it empty, locks out that client alone. An instance with no token at all refuses to start.
+Every request, `/mcp` and `/admin` included, needs `Authorization: Bearer <token>`; anything else gets `401`. Only
+health (`/q/health`) and, with OAuth on, the OAuth endpoints stay open. Two kinds of token get in (ADR 0005):
+
+- **A static Client token**, as Claude Code sends it. Each Client has its own per Collection, set only in the
+  environment as `COLLECTION_AUTH_TOKENS_<CLIENT>`, for example `COLLECTION_AUTH_TOKENS_CLAUDE_CODE`. Removing one,
+  or leaving it empty, locks out that Client alone.
+- **An OAuth access token**, as claude.ai gets it, because its custom connectors offer nothing else. OAuth is on
+  once `COLLECTION_OAUTH_PASSPHRASE` is set (at least 20 characters, e.g. `openssl rand -base64 24`), and then
+  `COLLECTION_PUBLIC_URL` must name the origin the internet reaches the instance at, such as
+  `https://knowledge-engineering.<tailnet>.ts.net`. The instance then serves, at that origin's root,
+  `/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`, `/register` (dynamic client
+  registration), `/authorize` (the consent page, which asks for the passphrase) and `/token`. An access token lives
+  one hour, a refresh token 30 days; both are stored only as hashes in the Collection's schema.
+
+Changing the passphrase and restarting locks out every OAuth Client. An instance with neither a static token nor a
+passphrase refuses to start, and so does one with a passphrase shorter than 20 characters.
+
+The `dev` profile turns OAuth on with the passphrase `dev-passphrase-for-local-use` at `http://localhost:8081`. To
+walk through the flow by hand, register a Client, open the consent page in a browser and trade the code:
+
+```shell
+curl -s -X POST http://localhost:8081/register -H 'Content-Type: application/json' \
+  -d '{"client_name":"curl","redirect_uris":["http://localhost:9999/callback"],"token_endpoint_auth_method":"none"}'
+# The example verifier and challenge of RFC 7636
+open "http://localhost:8081/authorize?response_type=code&client_id=<client_id>&redirect_uri=http://localhost:9999/callback&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256&state=x"
+# After the passphrase, the browser goes to http://localhost:9999/callback?code=<code>&state=x, which nothing serves:
+# copy the code from the address bar
+curl -s -X POST http://localhost:8081/token -d grant_type=authorization_code -d code=<code> -d client_id=<client_id> \
+  -d redirect_uri=http://localhost:9999/callback -d code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk
+```
 
 ## Tests
 

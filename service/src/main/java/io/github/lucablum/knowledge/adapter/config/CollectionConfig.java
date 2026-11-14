@@ -24,7 +24,15 @@ public interface CollectionConfig {
     /** The HTTP port of this Collection's MCP endpoint. */
     int mcpPort();
 
+    /**
+     * Where the internet reaches this Collection, such as {@code https://knowledge-engineering.<tailnet>.ts.net}: the
+     * OAuth issuer and the origin of the MCP endpoint. Required once OAuth is on.
+     */
+    Optional<String> publicUrl();
+
     Auth auth();
+
+    OAuth oauth();
 
     Reconciliation reconciliation();
 
@@ -46,6 +54,16 @@ public interface CollectionConfig {
          * has its own, so removing one token locks out that Client alone; an empty token counts as removed.
          */
         Map<String, Optional<String>> tokens();
+    }
+
+    /** How claude.ai gets in: OAuth with a consent page (ADR 0005). */
+    interface OAuth {
+
+        /**
+         * What the User types on the consent page, at least 20 characters. Without it OAuth is off and only the static
+         * Client tokens work; changing it locks out every Client that consented before.
+         */
+        Optional<String> passphrase();
     }
 
     interface Reconciliation {

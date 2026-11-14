@@ -117,9 +117,7 @@ record Statements(
     private static final String MARK_NOTES_CHANGED_TEMPLATE = "UPDATE {note} SET content_hash = 're-index'";
 
     static Statements forSchema(String schema) {
-        if (!IDENTIFIER.matcher(schema).matches()) {
-            throw new IllegalArgumentException("Invalid schema name: " + schema);
-        }
+        requireIdentifier(schema);
         return new Statements(
                 inSchema(DELETE_NOTE_TEMPLATE, schema),
                 inSchema(INSERT_NOTE_TEMPLATE, schema),
@@ -139,6 +137,13 @@ record Statements(
                 inSchema(REMOVE_CHUNKS_TEMPLATE, schema),
                 resizeEmbedding(schema),
                 inSchema(MARK_NOTES_CHANGED_TEMPLATE, schema));
+    }
+
+    /** The schema is spliced into SQL, so it may only be a plain lower-case identifier. */
+    static void requireIdentifier(String schema) {
+        if (!IDENTIFIER.matcher(schema).matches()) {
+            throw new IllegalArgumentException("Invalid schema name: " + schema);
+        }
     }
 
     private static IntFunction<String> resizeEmbedding(String schema) {

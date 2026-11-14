@@ -360,7 +360,7 @@ The Mac runs four tools plus an import script. The Pi runs four containers in on
 | Import script | Watch the `_inbox` folders of both Vaults, call Docling, write the Source Note with frontmatter, move the PDF to `_sources` | Python project (uv) in the repository, started by `launchd` every minute; checks the `_inbox/` of every Topic in both Vaults (polling instead of WatchPaths, which is not recursive) |
 | Syncthing | Send both Vaults one way to the Pi (Send Only) | App or `brew` |
 | Tailscale | Private network to the Pi | App |
-| Claude Code | MCP client with two connectors, e.g. `http://<pi>.<tailnet>:8081/mcp` (Engineering) and `:8082/mcp` (Training) | Already installed |
+| Claude Code | MCP client with two connectors, e.g. `https://knowledge-engineering.<tailnet>.ts.net/mcp` and `https://knowledge-training.<tailnet>.ts.net/mcp` | Already installed |
 
 Docker is needed on the Mac only for development, where Quarkus Dev Services start Postgres with pgvector automatically.
 
@@ -375,10 +375,10 @@ Docker is needed on the Mac only for development, where Quarkus Dev Services sta
 | `ollama` | Embedding model (bge-m3), used by both instances | Container (official image) |
 | Syncthing | Receive both Vaults (Receive Only) | Native (apt); each Vault as a read-only volume, mounted only into its own container |
 | Tailscale | Access from the Mac | Native (apt) |
-| Tunnel | Public HTTPS endpoints for claude.ai | Native: Tailscale Funnel |
+| Tunnel | Public HTTPS endpoint per Collection for claude.ai and Claude Code | Tailscale Funnel in one sidecar container per Collection |
 | GitHub Actions runner | Deploys every push to `main` (`docker compose up --wait`) | Native, self-hosted runner with label `pi`, as a service |
 
-Syncthing and Tailscale run natively because they work closely with the host's network and file system.
+Syncthing and the host's Tailscale run natively because they work closely with the host's network and file system. Each Collection's public origin is a Tailscale sidecar container, which its instance shares the network with (ADR 0005).
 
 ### Operations
 
@@ -386,7 +386,7 @@ Syncthing and Tailscale run natively because they work closely with the host's n
 - **Health:** `quarkus-smallrye-health` provides health checks for Compose.
 - **Re-Index:** starts automatically when the index fingerprint (model, dimension, chunking parameters) doesn't match the configuration, and an admin endpoint forces one when needed. Meanwhile the Collection answers no searches.
 - **Backup:** the Vault lives on the Mac and the Pi, plus Time Machine. The database is not backed up, because the index can be rebuilt from the Vault at any time.
-- **Security:** each client gets its own static bearer token per Collection (claude.ai, Claude Code), which Quarkus checks. claude.ai custom connectors send it as a request header. The tokens live in `.env`, so a single client can be blocked without touching the others. Rotating means removing the connector and creating it again, because its auth settings cannot be changed afterwards. The public endpoint runs through Tailscale Funnel.
+- **Security:** claude.ai custom connectors offer only OAuth, so each instance is its own OAuth authorization server with a consent page guarded by a passphrase; changing the passphrase revokes every grant (ADR 0005). Claude Code keeps a static bearer token per Collection from `.env`. Each Collection has its own Tailscale sidecar node with Funnel on 443, because Claude's OAuth client only talks to the origin root.
 
 ## Decisions, Trade-offs and Next Steps
 
@@ -403,7 +403,7 @@ Syncthing and Tailscale run natively because they work closely with the host's n
 | Reconciliation as the source of correctness | File watcher only | The periodic comparison costs some CPU; in return no missed changes after a deploy or restart |
 | `read_note` from the index | Reading from the file system | The raw text is stored twice; in return no path traversal and the same state as the search |
 | Re-Index switches search off | Keep serving the old index until the switch-over | Hours without search after a model switch; in return no doubled storage and no switch-over logic |
-| Static bearer token per client | OAuth server, Cloudflare Access | Rotating means creating the connector again; in return no additional service |
+| OAuth server in each instance, own Funnel origin per Collection (ADR 0005) | Static bearer token for claude.ai (connectors cannot set it), a shared OAuth gateway, Keycloak | OAuth code of our own and one Tailscale node per Collection; in return no additional service and tokens isolated per Collection |
 
 ### Open Points
 
@@ -411,7 +411,7 @@ Syncthing and Tailscale run natively because they work closely with the host's n
 - [x] Define the Collections: Engineering (Coaching, Software-Engineering) and Training
 - [ ] Compare bge-m3 with Qwen3-Embedding-0.6B on our own German and English Notes
 - [ ] Calibrate the Minimum Similarity per Collection and model with Negative Questions (method decided, values open)
-- [x] Authentication and tunnel: a bearer token per client through Tailscale Funnel
+- [x] Authentication and tunnel: OAuth for claude.ai and a static bearer token for Claude Code, through one Tailscale Funnel origin per Collection
 - [x] Chunking strategy: splitting by heading plus limits in characters, atomic blocks kept whole
 
 ### Next Steps
