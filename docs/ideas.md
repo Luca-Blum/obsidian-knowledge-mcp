@@ -25,3 +25,18 @@ Possibilities that are not tickets yet. Each entry says why it waits and what wo
 **Why it waits:** It depends on the page number in the placeholder (previous idea), and there is no evidence yet that the AI Agent needs pictures to answer from the Vaults. It also touches the knowledge service's API and its read-only handling of Vaults.
 
 **Look again when:** The page number in the placeholder exists and the Evaluation Set or everyday use shows answers that fail for lack of a picture.
+
+## OAuth through a proven authorization server
+
+**Idea:** Let claude.ai sign in through OAuth instead of a static token (ADR 0005). Quarkus brings no authorization server: `quarkus-oidc` only validates tokens, by introspection or by JWT signature, and can publish the protected resource metadata. The authorization server would be a proven component next to each Collection:
+
+- **Ory Hydra:** OpenID Certified, small Go binary, stores its state in Postgres. It does PKCE, refresh rotation and Dynamic Client Registration; we would keep only a login and consent app, such as a passphrase page. Its open-source edition will not get Client ID Metadata Documents (ory/hydra#4061, Enterprise only), its endpoints live under `/oauth2/…`, and one report saw claude.ai reject its registration response because of empty `*_uri` fields.
+- **Pomerium:** an identity-aware proxy with MCP support that already accepts Client ID Metadata Documents. It needs an upstream identity provider.
+- **Keycloak:** the standard, but about 1-1.25 GB of RAM even when idle, too much for the Pi.
+- Not robust enough at the time of writing: `tsidp` (Tailscale, experimental, below 1.0) and `mcp-auth-proxy` (a one-person project).
+
+What we learned about claude.ai: the connector recommends "Use Claude's published identity" (most likely Client ID Metadata Documents) over "Register automatically" and a client of our own, whose redirect URL is `https://claude.ai/api/mcp/auth_callback`. It honours the endpoints from the authorization server metadata, and falls back to `/authorize`, `/token` and `/register` on the MCP server's origin only when discovery fails, for example with a path in the issuer (anthropics/claude-ai-mcp#82). The connector backend reaches only port 443. PR #56 (closed, branch `issue-52-oauth`) holds a complete authorization server inside the service with tests and can serve as a reference.
+
+**Why it waits:** The static Client token works with claude.ai, needs no extra component and keeps every Collection standalone. Every option above adds a service per Collection and its own quirks with claude.ai.
+
+**Look again when:** claude.ai drops request headers, a Collection is shared with other people who need their own sign-in and revocation, or tokens should expire without creating the connector again.

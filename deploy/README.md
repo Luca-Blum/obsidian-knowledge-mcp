@@ -242,7 +242,7 @@ loaded) and the system in 8 GB. `docker stats --no-stream` shows what each conta
 | --- | --- |
 | The `deploy` job waits for a runner forever | The runner is offline: `sudo systemctl status 'actions.runner.*'`. |
 | `set in .env` error in the `deploy` job | `/srv/knowledgebase/.env` is missing or a required value is empty. |
-| `401` from `/mcp` | The client sends no token or one that is not in `.env`. Check the connector's `Authorization` header. |
+| `401` from `/mcp` | The client sends no token or one that is not in `.env`. Check the connector's `Authorization` header: its value is `Bearer <token>`, a bare token is refused. |
 | `No client token is configured` in the logs | Every `<COLLECTION>_TOKEN_<CLIENT>` of that Collection in `.env` is empty. |
 | `knowledgebase-engineering` never gets healthy | Look at its logs. It waits for Postgres and Ollama first, and the first model download can take a while. |
 | Search finds nothing | The Vault is empty on the Pi (check the Syncthing connection), or the files arrived after the service started (restart it). |
