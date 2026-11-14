@@ -349,7 +349,7 @@ obsidian-knowledge-mcp/
 
 ## Tooling and Operations
 
-The Mac runs four tools plus an import script. The Pi runs four containers in one Compose file (two service instances, Postgres, Ollama) plus four native services.
+The Mac runs four tools plus an import script. The Pi runs six containers in one Compose file (two service instances, each with its Tailscale sidecar, Postgres, Ollama) plus three native services.
 
 ### Mac
 
@@ -360,7 +360,7 @@ The Mac runs four tools plus an import script. The Pi runs four containers in on
 | Import script | Watch the `_inbox` folders of both Vaults, call Docling, write the Source Note with frontmatter, move the PDF to `_sources` | Python project (uv) in the repository, started by `launchd` every minute; checks the `_inbox/` of every Topic in both Vaults (polling instead of WatchPaths, which is not recursive) |
 | Syncthing | Send both Vaults one way to the Pi (Send Only) | App or `brew` |
 | Tailscale | Private network to the Pi | App |
-| Claude Code | MCP client with two connectors, e.g. `http://<pi>.<tailnet>:8081/mcp` (Engineering) and `:8082/mcp` (Training) | Already installed |
+| Claude Code | MCP client with one connector per Collection, e.g. `https://knowledge-engineering.<tailnet>.ts.net/mcp` | Already installed |
 
 Docker is needed on the Mac only for development, where Quarkus Dev Services start Postgres with pgvector automatically.
 
@@ -374,11 +374,11 @@ Docker is needed on the Mac only for development, where Quarkus Dev Services sta
 | `postgres` | Chunks, vectors, full text, Links; one schema per Collection | Container (`pgvector/pgvector`) |
 | `ollama` | Embedding model (bge-m3), used by both instances | Container (official image) |
 | Syncthing | Receive both Vaults (Receive Only) | Native (apt); each Vault as a read-only volume, mounted only into its own container |
-| Tailscale | Access from the Mac | Native (apt) |
-| Tunnel | Public HTTPS endpoints for claude.ai | Native: Tailscale Funnel |
+| Tailscale | Access from the Mac to the Pi itself (SSH) | Native (apt) |
+| Tunnel | One HTTPS origin per Collection: public through Funnel on 443 for claude.ai, through the tailnet for Claude Code | Container: a Tailscale sidecar per Collection |
 | GitHub Actions runner | Deploys every push to `main` (`docker compose up --wait`) | Native, self-hosted runner with label `pi`, as a service |
 
-Syncthing and Tailscale run natively because they work closely with the host's network and file system.
+Syncthing and the Pi's own Tailscale run natively because they work closely with the host's network and file system. Each Collection's Tailscale node runs as a sidecar container instead, so the Collection keeps its own origin and can move to another server on its own.
 
 ### Operations
 

@@ -8,10 +8,16 @@ The knowledge service runs on a Raspberry Pi 5 (8 GB). Every push to `main` depl
 Mac                                    Raspberry Pi
 ───                                    ────────────
 Obsidian + Vaults ──── Syncthing ────▶ /srv/vaults/Engineering, /srv/vaults/Training (read-only copies)
-importer (launchd)                              │ each mounted read-only into its own instance
-Claude Code  ── Tailscale, port 8081 ──▶ knowledgebase-engineering ──┬──▶ postgres (pgvector), one schema each
-             ── Tailscale, port 8082 ──▶ knowledgebase-training ─────┴──▶ ollama (embedding model)
+importer (launchd)                                         │ each mounted read-only into its own instance
+Claude Code ── tailnet ─┬─▶ tailscale-engineering ─▶ knowledgebase-engineering ─┬─▶ postgres (pgvector), one schema each
+claude.ai ──── Funnel ──┴─▶ tailscale-training ────▶ knowledgebase-training ────┴─▶ ollama (embedding model)
 ```
+
+Every Collection has its own Tailscale node, a sidecar container, and with it its own public HTTPS origin, e.g.
+`https://knowledge-engineering.<tailnet>.ts.net`. Claude Code and claude.ai both use that URL, each with its own token:
+claude.ai comes in from the internet through Tailscale Funnel on port 443, and the Mac, which is in the tailnet, goes
+through the tailnet. The instance shares the sidecar's network and publishes no port on the Pi, so all instances use
+the same internal port 8081. A Collection needs nothing from another one, so it can move to another server on its own.
 
 On the Pi everything runs in Docker, started from `docker-compose.yml`:
 
@@ -21,11 +27,15 @@ On the Pi everything runs in Docker, started from `docker-compose.yml`:
 | `postgres-init` | `pgvector/pgvector:pg17` | Gives each Collection its own database role that sees only its schema, then exits. |
 | `ollama` | `ollama/ollama` | Computes embeddings. Models in the Docker volume `knowledgebase_ollama`. |
 | `ollama-pull` | `ollama/ollama` | Downloads the embedding model (`bge-m3`) once, then exits. |
-| `knowledgebase-engineering` | `ghcr.io/luca-blum/obsidian-knowledge-mcp` | The service for the Engineering Collection. Serves MCP on port 8081. |
-| `knowledgebase-training` | `ghcr.io/luca-blum/obsidian-knowledge-mcp` | The service for the Training Collection. Serves MCP on port 8082. |
+| `tailscale-engineering` | `tailscale/tailscale` | The Engineering Collection's Tailscale node `knowledge-engineering`. Funnel on 443 proxies to its instance. State in the Docker volume `knowledgebase_tailscale-engineering`. |
+| `knowledgebase-engineering` | `ghcr.io/luca-blum/obsidian-knowledge-mcp` | The service for the Engineering Collection. Serves MCP on port 8081 inside the network of `tailscale-engineering`. |
+| `tailscale-training` | `tailscale/tailscale` | The same for the Training Collection: node `knowledge-training`. |
+| `knowledgebase-training` | `ghcr.io/luca-blum/obsidian-knowledge-mcp` | The service for the Training Collection. |
 
-Both Collection services run the same image with the same settings (`x-collection` in `docker-compose.yml`). They
-differ only in values: name, schema, port, Vault, tokens, Minimum Similarity and tool description.
+Both Collection services run the same image with the same settings (`x-collection` in `docker-compose.yml`), and
+both sidecars too (`x-tailscale-sidecar`, with `tailscale/serve.json` for Funnel). They differ in their values (name,
+schema, Vault, tokens, Tailscale auth key, Minimum Similarity and tool description) and in which sidecar each instance
+belongs to.
 
 You do not install Postgres, Ollama or Java on the Pi. Docker pulls them.
 
@@ -76,6 +86,7 @@ anywhere. Keep the file: if you lose it, the Postgres volume can no longer be op
   instance refuses to start.
 - The `TRAINING_` values mean the same for the Training Collection and its role `training`. Its tokens differ from
   Engineering's, so a token of one Collection is never accepted by the other.
+- `<COLLECTION>_TS_AUTHKEY` is set in the next step.
 
 An existing installation needs the three new values in `.env` before its next deploy. `postgres-init` then hands the
 schema that the superuser built to the role `engineering`, and the index stays as it is.
@@ -84,7 +95,51 @@ Before the deploy that adds the Training Collection, an existing installation al
 `TRAINING_` tokens and the other `TRAINING_` values from `.env.example`, and the Training Vault synced to
 `/srv/vaults/Training`. Without them the deploy stops with `set in .env`.
 
-### 2. GitHub Actions runner
+### 2. Tailscale: one public origin per Collection
+
+Each Collection's sidecar logs in to your tailnet as its own node with the tag `tag:knowledge`. A tagged node belongs
+to the tag instead of your user, so its key never expires, and Funnel is allowed for the tag in one place.
+
+**Once per tailnet**, in the Tailscale admin console → Access controls, add the tag and allow it Funnel:
+
+```jsonc
+"tagOwners": {
+  "tag:knowledge": ["autogroup:admin"]
+},
+"nodeAttrs": [
+  { "target": ["tag:knowledge"], "attr": ["funnel"] }
+]
+```
+
+If `nodeAttrs` already has a `funnel` entry, for example for `autogroup:member`, add `tag:knowledge` to its `target`
+instead. HTTPS certificates must be on too (admin console → DNS → HTTPS Certificates).
+
+claude.ai comes in from the internet through Funnel. A device that is itself in the tailnet, such as the Mac with
+Claude Code, resolves the same name to the node's tailnet address and goes through the tailnet instead, so the access
+rules apply. The default policy allows everything. If yours has its own rules, let your devices reach the tag on 443:
+
+```jsonc
+"grants": [
+  { "src": ["autogroup:member"], "dst": ["tag:knowledge"], "ip": ["443"] }
+]
+```
+
+**Once per Collection**, generate an auth key (admin console → Settings → Keys → Generate auth key):
+
+- Tags: `tag:knowledge`.
+- Reusable: off. Ephemeral: off, or the node disappears whenever its container stops.
+- Pre-approved: on, if your tailnet requires device approval.
+
+Put it into `.env` as `ENGINEERING_TS_AUTHKEY` (and `TRAINING_TS_AUTHKEY` for the Training Collection). The sidecar
+uses the key only for its first login and keeps the node's identity in its volume, so the key may expire afterwards.
+If you remove that volume, generate a new key, or the sidecar cannot log in again.
+
+On every start the sidecar reads `tailscale/serve.json`, which turns on Funnel on 443 to the instance's port 8081.
+Funnel therefore needs no manual `tailscale funnel` and survives a recreate of the container. After the first deploy
+the Collection answers at `https://knowledge-engineering.<tailnet>.ts.net`, where `<tailnet>` is your tailnet's DNS name
+(admin console → DNS). The first request can take a few seconds while the node gets its certificate.
+
+### 3. GitHub Actions runner
 
 ```shell
 VERSION=$(gh api repos/actions/runner/releases/latest --jq .tag_name | sed 's/^v//')
@@ -107,7 +162,7 @@ Check that GitHub sees it as `online`:
 gh api repos/Luca-Blum/obsidian-knowledge-mcp/actions/runners --jq '.runners[] | "\(.name) \(.status)"'
 ```
 
-### 3. Syncthing for the Vault
+### 4. Syncthing for the Vault
 
 On the Pi, install Syncthing and print its Device ID:
 
@@ -147,7 +202,7 @@ http://localhost:8384.
 
 Check the sync with `syncthing cli show connections` (the Mac shows `"connected": true`) and `ls /srv/vaults/*`.
 
-### 4. First deploy
+### 5. First deploy
 
 Push to `main`, or rerun the latest Deploy workflow (GitHub → Actions → Deploy → Re-run all jobs). The first run takes
 a few minutes longer, because `ollama-pull` downloads the embedding model (about 1.2 GB).
@@ -173,23 +228,58 @@ docker exec knowledgebase-postgres-1 psql -U knowledge -d knowledge -Atc \
 ## Check that it runs
 
 ```shell
-docker compose --project-name knowledgebase ps --all           # every container "healthy", ollama-pull "exited (0)"
-curl http://<pi-tailscale-name>:8081/q/health/ready            # Engineering: {"status":"UP", ...}
-curl http://<pi-tailscale-name>:8082/q/health/ready            # Training
+docker compose --project-name knowledgebase ps --all                # every container "healthy", ollama-pull "exited (0)"
+curl https://knowledge-engineering.<tailnet>.ts.net/q/health/ready  # Engineering: {"status":"UP", ...}
+curl https://knowledge-training.<tailnet>.ts.net/q/health/ready     # Training
 docker logs --tail 50 knowledgebase-knowledgebase-engineering-1
-docker stats --no-stream                                       # memory per container, see Memory
+docker stats --no-stream                                            # memory per container, see Memory
 ```
 
 ## Connect Claude Code from the Mac
 
-The Mac and the Pi must be in the same Tailscale network. Each Collection is its own MCP server with its own token:
+Each Collection is its own MCP server with its own token. The URL is the same as claude.ai's:
 
 ```shell
-claude mcp add --transport http knowledge-engineering http://<pi-tailscale-name>:8081/mcp \
+claude mcp add --transport http knowledge-engineering https://knowledge-engineering.<tailnet>.ts.net/mcp \
   --header "Authorization: Bearer <ENGINEERING_TOKEN_CLAUDE_CODE from .env>"
-claude mcp add --transport http knowledge-training http://<pi-tailscale-name>:8082/mcp \
+claude mcp add --transport http knowledge-training https://knowledge-training.<tailnet>.ts.net/mcp \
   --header "Authorization: Bearer <TRAINING_TOKEN_CLAUDE_CODE from .env>"
 ```
+
+If a connector of that name already exists, remove it first with `claude mcp remove <name>`.
+
+## Connect claude.ai
+
+claude.ai sends its own static token in a request header (see ADR 0005). In claude.ai → Settings → Connectors → Add
+custom connector, create one connector per Collection:
+
+| Field | Value |
+| --- | --- |
+| Name | `knowledge-engineering` |
+| URL | `https://knowledge-engineering.<tailnet>.ts.net/mcp` |
+| Authentication | No sign in |
+| Request header | Name `Authorization`, value `Bearer <ENGINEERING_TOKEN_CLAUDE_AI from .env>` |
+
+The value needs the `Bearer ` prefix. A bare token gets `401`, and claude.ai shows only "Couldn't connect to the
+server". Check the connector by asking claude.ai something the Collection knows: the answer cites Search Hits.
+
+- **Lock out claude.ai:** empty `<COLLECTION>_TOKEN_CLAUDE_AI` in `.env` and deploy. Every request with the old token
+  then gets `401`. Claude Code keeps working with its own token.
+- **Rotate the token:** set a new `<COLLECTION>_TOKEN_CLAUDE_AI` (`openssl rand -hex 32`) and deploy. A connector's
+  authentication cannot be changed after it is created, so remove the connector in claude.ai and create it again with
+  the new token. Claude Code's token rotates the same way with `claude mcp remove` and `claude mcp add`.
+
+## Move an existing installation to Funnel
+
+Before this setup, the instances published ports 8081 and 8082 on the Pi, and Claude Code connected through them.
+
+1. Do step [2. Tailscale](#2-tailscale-one-public-origin-per-collection) and put both auth keys into
+   `/srv/knowledgebase/.env`. Without them the deploy stops with `set in .env`. `ENGINEERING_MCP_PORT` and
+   `TRAINING_MCP_PORT` are no longer used, delete them.
+2. Merge to deploy. From now on ports 8081 and 8082 are closed.
+3. Connect Claude Code and claude.ai as above.
+4. Turn off any Funnel you set up by hand on the Pi's own node, e.g. from a test:
+   `sudo tailscale funnel --https=443 off`. `tailscale funnel status` on the Pi then shows nothing.
 
 ## Day to day
 
@@ -198,8 +288,8 @@ claude mcp add --transport http knowledge-training http://<pi-tailscale-name>:80
 | Deploy a change | Merge to `main`. |
 | Roll back | GitHub → Actions → Deploy → pick the run of an earlier commit → Re-run all jobs. |
 | Change configuration | Edit `/srv/knowledgebase/.env`, then rerun the latest Deploy workflow, or run the command below. |
-| Lock out a client | Empty its `<COLLECTION>_TOKEN_<CLIENT>` in `.env` and deploy. To rotate, set a new token and add the connector again. |
-| Force a Re-Index | `curl -X POST -H "Authorization: Bearer <token>" http://<pi-tailscale-name>:<port>/admin/re-index` |
+| Lock out a client | Empty its `<COLLECTION>_TOKEN_<CLIENT>` in `.env` and deploy. To rotate, see [Connect claude.ai](#connect-claudeai). |
+| Force a Re-Index | `curl -X POST -H "Authorization: Bearer <token>" https://knowledge-<collection>.<tailnet>.ts.net/admin/re-index` |
 | Deploy by hand | See below. |
 
 To deploy by hand from a clone on the Pi (the `docker login` is only needed while the image is private):
@@ -212,29 +302,34 @@ IMAGE=ghcr.io/luca-blum/obsidian-knowledge-mcp:<commit-sha> \
 
 ## Add a Collection
 
-Each Collection is one service with its own schema, database role, port, Vault and tokens. Everything else comes from
-`x-collection` and `x-collection-environment` in `docker-compose.yml`. For a Collection `cooking`:
+Each Collection is one service with its own schema, database role, Tailscale node, Vault and tokens. Everything else
+comes from the `x-collection` and `x-tailscale-sidecar` anchors in `docker-compose.yml`. For a Collection `cooking`:
 
 1. `postgres/collections.sql`: add `CALL pg_temp.isolate_collection('cooking', :'cooking_password');`. The role is
    named like the schema, and the instance connects as the role named like its `COLLECTION_SCHEMA`.
 2. `docker-compose.yml`, service `postgres-init`: add `--set=cooking_password=${COOKING_DB_PASSWORD:?set in .env}`
    before the `--file` lines.
-3. `docker-compose.yml`: copy the service `knowledgebase-training` to `knowledgebase-cooking`. Set `COLLECTION_NAME`
-   and `COLLECTION_SCHEMA` to `cooking`, and replace every `TRAINING_` variable with `COOKING_`. Change nothing else
-   there: a setting all Collections share belongs in the `x-collection` anchors. Check that the new instance still fits
-   the [Memory](#memory) budget.
-4. `.env.example` and `/srv/knowledgebase/.env`: add the `COOKING_` values. Give it its own `COOKING_MCP_PORT`, and
-   generate `COOKING_DB_PASSWORD` and the tokens as in [Configuration](#1-configuration).
-5. Sync the Vault to `COOKING_VAULT_DIR` as in [Syncthing](#3-syncthing-for-the-vault). Add the Vault to the importer's
+3. `docker-compose.yml`: copy the services `tailscale-training` and `knowledgebase-training` to `tailscale-cooking`
+   and `knowledgebase-cooking`, and add the volume `tailscale-cooking`. Replace every `training` with `cooking` (the
+   node `knowledge-cooking`, the volume, `network_mode`, `depends_on`, `COLLECTION_NAME` and `COLLECTION_SCHEMA`) and
+   every `TRAINING_` variable with `COOKING_`. Change nothing else there: a setting all Collections share belongs in the
+   `x-collection` and `x-tailscale-sidecar` anchors. Check that the new instance still fits the [Memory](#memory)
+   budget.
+4. `.env.example` and `/srv/knowledgebase/.env`: add the `COOKING_` values. Generate `COOKING_DB_PASSWORD` and the
+   tokens as in [Configuration](#1-configuration), and the auth key `COOKING_TS_AUTHKEY` as in
+   [Tailscale](#2-tailscale-one-public-origin-per-collection).
+5. Sync the Vault to `COOKING_VAULT_DIR` as in [Syncthing](#4-syncthing-for-the-vault). Add the Vault to the importer's
    launchd agent (another `--vault` pair, see `importer/README.md`).
 6. Calibrate its Minimum Similarity with the Vault's Evaluation Set in `_eval/`, then merge to deploy. The `.env` on
    the Pi must hold the new values first, or the deploy stops with `set in .env`.
+7. Connect Claude Code and claude.ai to `https://knowledge-cooking.<tailnet>.ts.net/mcp` as above.
 
 ## Memory
 
 `<COLLECTION>_HEAP` (default `-Xmx512m`) caps each instance's Java heap, and `mem_limit: 900m` caps each Collection's
 container. Two instances take at most 1.8 GB, which leaves room for Postgres, Ollama with `bge-m3` (about 1.2 GB
-loaded) and the system in 8 GB. `docker stats --no-stream` shows what each container really uses.
+loaded) and the system in 8 GB. Each Tailscale sidecar takes a few dozen MB. `docker stats --no-stream` shows what each
+container really uses.
 
 ## Troubleshooting
 
@@ -242,7 +337,12 @@ loaded) and the system in 8 GB. `docker stats --no-stream` shows what each conta
 | --- | --- |
 | The `deploy` job waits for a runner forever | The runner is offline: `sudo systemctl status 'actions.runner.*'`. |
 | `set in .env` error in the `deploy` job | `/srv/knowledgebase/.env` is missing or a required value is empty. |
-| `401` from `/mcp` | The client sends no token or one that is not in `.env`. Check the connector's `Authorization` header: its value is `Bearer <token>`, a bare token is refused. |
+| `401` from `/mcp` | The client sends no token or one that is not in `.env`. Check the connector's `Authorization` header: its value is `Bearer <token>`, a bare token is refused. `docker logs` of the instance shows every refused request. |
+| claude.ai: "Couldn't connect to the server" | First `docker logs --tail 50 knowledgebase-knowledgebase-<collection>-1`. A refused request there is a `401`, see above. Nothing there means the request never arrived: check the connector's URL and `curl https://knowledge-<collection>.<tailnet>.ts.net/q/health/ready` from outside the tailnet, e.g. a phone without Tailscale. |
+| `https://knowledge-<collection>...` does not answer | From a device in the tailnet, check the access rules in [Tailscale](#2-tailscale-one-public-origin-per-collection). Otherwise: `docker logs knowledgebase-tailscale-<collection>-1`. `docker exec knowledgebase-tailscale-<collection>-1 tailscale funnel status` must show Funnel on 443 to `http://127.0.0.1:8081`. If it says Funnel is not allowed, the node lacks `tag:knowledge` or the policy lacks the `funnel` attribute. |
+| An instance is up but cannot be reached, after its sidecar alone was recreated | The instance shares the sidecar's network, so a new sidecar container leaves it without one. Run `docker compose up` for both, as a deploy does, or restart the instance. |
+| `tailscale-<collection>` never gets healthy | The node is not logged in: the auth key is missing, used up or expired, or the device waits for approval in the admin console. Generate a new key, put it into `.env` and deploy. |
+| The node is called `knowledge-engineering-1` | A node of that name already existed. Remove the old one in the admin console and recreate the sidecar, or the URL changes. |
 | `No client token is configured` in the logs | Every `<COLLECTION>_TOKEN_<CLIENT>` of that Collection in `.env` is empty. |
 | `knowledgebase-engineering` never gets healthy | Look at its logs. It waits for Postgres and Ollama first, and the first model download can take a while. |
 | Search finds nothing | The Vault is empty on the Pi (check the Syncthing connection), or the files arrived after the service started (restart it). |
