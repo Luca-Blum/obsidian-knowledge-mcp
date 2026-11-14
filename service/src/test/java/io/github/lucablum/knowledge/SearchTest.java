@@ -12,7 +12,6 @@ import io.github.lucablum.knowledge.application.indexing.ReconciliationProgress;
 import io.github.lucablum.knowledge.application.search.SearchChunks;
 import io.github.lucablum.knowledge.application.search.SearchRequest;
 import io.github.lucablum.knowledge.domain.note.NoteKind;
-import io.github.lucablum.knowledge.domain.note.Topic;
 import io.github.lucablum.knowledge.domain.search.SearchHit;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
@@ -103,7 +102,7 @@ class SearchTest {
         vault.write("Index.md", "Interval training overview");
         indexVault.run();
 
-        List<SearchHit> hits = search.search(SearchRequest.of("interval training").inTopic(new Topic("Running")).withK(10));
+        List<SearchHit> hits = search.search(SearchRequest.of("interval training").inTopic("Running").withK(10));
 
         assertThat(hits).extracting(SearchHit::notePath)
                 .containsExactlyInAnyOrder("Running/Intervals.md", "Running/Plans/Marathon.md");
@@ -241,7 +240,7 @@ class SearchTest {
                 """);
         indexVault.run();
 
-        List<SearchHit> hits = search.search(SearchRequest.of("interval training").inTopic(new Topic("Cycling")));
+        List<SearchHit> hits = search.search(SearchRequest.of("interval training").inTopic("Cycling"));
 
         assertThat(hits).isEmpty();
     }

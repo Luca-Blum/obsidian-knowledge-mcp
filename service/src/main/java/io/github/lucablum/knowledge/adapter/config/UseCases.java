@@ -87,13 +87,19 @@ public class UseCases {
     @Produces
     @ApplicationScoped
     SearchChunks searchChunks(Embedding embedding, ChunkVectors vectors, ChunkFullText fullText,
-            ReIndexCollection reIndex, CollectionConfig collection) {
-        CollectionConfig.Search search = collection.search();
-        CollectionConfig.Search.Fusion fusion = search.fusion();
+            ReIndexCollection reIndex, SearchSettings settings, CollectionConfig collection) {
+        CollectionConfig.Search.Fusion fusion = collection.search().fusion();
         return new HybridSearch(embedding, vectors, fullText, reIndex,
-                new ReciprocalRankFusion(fusion.k(), fusion.vectorWeight(), fusion.fullTextWeight()),
-                new SearchSettings(search.defaultK(), search.maxK(), search.minimumSimilarity(),
-                        search.maxHitsPerNote(), search.candidates()));
+                new ReciprocalRankFusion(fusion.k(), fusion.vectorWeight(), fusion.fullTextWeight()), settings);
+    }
+
+    /** One instance for the search and the search tool, so both read the same {@code k} limits. */
+    @Produces
+    @Singleton
+    SearchSettings searchSettings(CollectionConfig collection) {
+        CollectionConfig.Search search = collection.search();
+        return new SearchSettings(search.defaultK(), search.maxK(), search.minimumSimilarity(),
+                search.maxHitsPerNote(), search.candidates());
     }
 
     private static ChunkingRules chunkingRules(CollectionConfig collection) {

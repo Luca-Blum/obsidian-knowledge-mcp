@@ -6,7 +6,7 @@ import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
 import io.github.lucablum.knowledge.application.indexing.ReIndexRunning;
 import io.github.lucablum.knowledge.application.search.SearchChunks;
 import io.github.lucablum.knowledge.application.search.SearchRequest;
-import io.github.lucablum.knowledge.domain.note.Topic;
+import io.github.lucablum.knowledge.application.search.SearchSettings;
 import io.github.lucablum.knowledge.domain.search.SearchHit;
 import io.quarkiverse.mcp.server.ToolManager.ToolArguments;
 import io.quarkiverse.mcp.server.ToolManager;
@@ -29,19 +29,23 @@ public class SearchTool {
 
     private final ToolManager tools;
     private final SearchChunks search;
-    private final CollectionConfig.Search config;
+    private final SearchSettings settings;
+    private final String description;
     private final ObjectMapper json;
 
-    public SearchTool(ToolManager tools, SearchChunks search, CollectionConfig collection, ObjectMapper json) {
+    /** Takes the settings at start-up, so settings the search would reject keep the Collection from starting. */
+    public SearchTool(ToolManager tools, SearchChunks search, SearchSettings settings, CollectionConfig collection,
+            ObjectMapper json) {
         this.tools = tools;
         this.search = search;
-        this.config = collection.search();
+        this.settings = settings;
+        this.description = collection.search().toolDescription();
         this.json = json;
     }
 
     void register(@Observes StartupEvent startup) {
         tools.newTool("search")
-                .setDescription(config.toolDescription())
+                .setDescription(description)
                 .addArgument("query", "The question in your own words. It drives the vector search, which finds "
                         + "meaning across German and English.", true, String.class)
                 .addArgument("keywords", "Optional exact terms for the full-text search, such as class names, "
@@ -50,7 +54,7 @@ public class SearchTool {
                 .addArgument("topic", "Restricts the search to one Topic (first folder below the Vault root).",
                         false, String.class)
                 .addArgument("k", "How many Search Hits to return (default %d, at most %d)."
-                                .formatted(config.defaultK(), config.maxK()),
+                                .formatted(settings.defaultK(), settings.maxK()),
                         false, Integer.class)
                 .setHandler(this::search)
                 .register();
@@ -76,13 +80,7 @@ public class SearchTool {
     }
 
     private SearchRequest request(String query, String keywords, String topic, Object k) {
-        SearchRequest request = SearchRequest.of(query);
-        if (keywords != null && !keywords.isBlank()) {
-            request = request.withKeywords(keywords);
-        }
-        if (topic != null && !topic.isBlank()) {
-            request = request.inTopic(new Topic(topic));
-        }
+        SearchRequest request = SearchRequest.of(query).withKeywords(keywords).inTopic(topic);
         return k == null ? request : request.withK(wholeNumber(k));
     }
 

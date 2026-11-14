@@ -2,24 +2,23 @@ package io.github.lucablum.knowledge.evaluation;
 
 import io.github.lucablum.knowledge.application.search.SearchRequest;
 import io.github.lucablum.knowledge.domain.note.NotePath;
-import io.github.lucablum.knowledge.domain.note.Topic;
 import java.util.Set;
 
 /**
  * A question of the Evaluation Set with the Notes expected to answer it. The Topic and the keywords for the full-text
  * search are optional; without keywords the full-text search uses the question.
  */
-record Question(String text, Topic topic, String keywords, Set<NotePath> expected) {
+record Question(String text, String topic, String keywords, Set<NotePath> expected) {
 
     Question {
         expected = Set.copyOf(expected);
     }
 
-    Question(String text, Topic topic, Set<NotePath> expected) {
+    Question(String text, String topic, Set<NotePath> expected) {
         this(text, topic, null, expected);
     }
 
     SearchRequest request(int k) {
-        return Requests.of(text, topic, keywords, k);
+        return SearchRequest.of(text).withKeywords(keywords).inTopic(topic).withK(k);
     }
 }

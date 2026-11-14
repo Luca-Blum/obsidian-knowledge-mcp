@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import io.github.lucablum.knowledge.domain.note.NotePath;
-import io.github.lucablum.knowledge.domain.note.Topic;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
@@ -62,10 +61,6 @@ record EvaluationSet(List<Question> questions, List<NegativeQuestion> negativeQu
                 parsed.negativeQuestions().stream().map(NegativeEntry::toNegativeQuestion).toList());
     }
 
-    private static Topic topicNamed(String name) {
-        return name == null || name.isBlank() ? null : new Topic(name);
-    }
-
     private record YamlFile(List<Entry> questions, @JsonProperty("negative-questions") List<NegativeEntry> negativeQuestions) {
 
         YamlFile {
@@ -81,7 +76,7 @@ record EvaluationSet(List<Question> questions, List<NegativeQuestion> negativeQu
                 throw new IllegalArgumentException("Question \"%s\" in %s names no expected Note"
                         .formatted(question, file));
             }
-            return new Question(question, topicNamed(topic), keywords, expected.stream().map(NotePath::new)
+            return new Question(question, topic, keywords, expected.stream().map(NotePath::new)
                     .collect(Collectors.toSet()));
         }
     }
@@ -89,7 +84,7 @@ record EvaluationSet(List<Question> questions, List<NegativeQuestion> negativeQu
     private record NegativeEntry(String question, String topic, String keywords) {
 
         NegativeQuestion toNegativeQuestion() {
-            return new NegativeQuestion(question, topicNamed(topic), keywords);
+            return new NegativeQuestion(question, topic, keywords);
         }
     }
 }
