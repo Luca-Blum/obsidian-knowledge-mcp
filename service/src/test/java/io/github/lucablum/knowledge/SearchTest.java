@@ -267,6 +267,19 @@ class SearchTest {
                 .containsExactly("Software-Engineering/Hexagonal.md", "Software-Engineering/Grid.md");
     }
 
+    /** Alpha sorts first by path, so only the heading's weight can put Zeta ahead. */
+    @Test
+    void whenSearch_givenKeywordInOneHeadingAndAnotherBody_thenRankTheHeadingFirst() {
+        vault.write("Software-Engineering/Alpha.md", "Tiles laid out in a hexagonal grid");
+        vault.write("Software-Engineering/Zeta.md", "## Hexagonal\nPorts and adapters keep the core clean");
+        indexVault.run();
+
+        List<SearchHit> hits = search.search(SearchRequest.of("unrelated").withKeywords("hexagonal").withK(10));
+
+        assertThat(hits).extracting(SearchHit::notePath)
+                .containsExactly("Software-Engineering/Zeta.md", "Software-Engineering/Alpha.md");
+    }
+
     /** Not only the search tool but every caller, such as the evaluation, must never search a mixed index. */
     @Test
     void whenSearch_givenReIndexRunning_thenRefuseNamingHowManyNotesAreDone() {

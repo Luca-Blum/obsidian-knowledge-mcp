@@ -147,6 +147,25 @@ class PostgresIndexTest {
                 .containsExactly("Tempo runs");
     }
 
+    /** The query is bound once; the limit cuts the closest Chunks before the Minimum Similarity drops the rest. */
+    @Test
+    void whenNearest_givenClosestChunksPartlyBelowMinimumSimilarity_thenReturnOnlyThoseThatReachIt() {
+        store(note("Running/Tempo.md"), "tempo");
+        store(note("Running/Easy.md"), "tempo easy");
+        store(note("Running/Long.md"), "tempo easy long run");
+        float[] query = embedding.embed("tempo");
+
+        assertThat(vectors.nearest(query, Optional.empty(), 0.8, 2)).extracting(SearchHit::notePath)
+                .containsExactly("Running/Tempo.md");
+        assertThat(vectors.nearest(query, Optional.empty(), 0.6, 3)).extracting(SearchHit::notePath)
+                .containsExactly("Running/Tempo.md", "Running/Easy.md");
+    }
+
+    private void store(Note note, String content) {
+        indexedNotes.replace(note, content, ContentHash.of(content), List.of(), List.of(chunk(note, content)),
+                FakeEmbedding.MODEL);
+    }
+
     private static Note note(String path) {
         return new Note(new NotePath(path), NoteKind.OWN, path, Optional.empty(), Optional.empty(), Optional.empty(),
                 new NoteLanguage("en"));
