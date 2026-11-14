@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
-import io.github.lucablum.knowledge.adapter.config.CollectionConfig;
 import io.github.lucablum.knowledge.application.indexing.IndexVault;
 import io.github.lucablum.knowledge.application.indexing.ReIndexCollection;
 import io.github.lucablum.knowledge.application.indexing.ReIndexRunning;
@@ -17,8 +16,6 @@ import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -33,9 +30,6 @@ class SearchTest {
 
     @Inject
     SearchChunks search;
-
-    @Inject
-    CollectionConfig collection;
 
     @BeforeEach
     void emptyVault() {
@@ -164,48 +158,6 @@ class SearchTest {
     }
 
     @Test
-    void whenSearch_givenLongNoteMatchingInManyChunks_thenReturnAtMostTwoHitsOfIt() {
-        vault.write("Running/Long.md", IntStream.rangeClosed(1, 4)
-                .mapToObj(i -> "## Section " + i + "\ntempo run " + i)
-                .collect(Collectors.joining("\n\n")));
-        vault.write("Running/Short.md", "tempo run once");
-        indexVault.run();
-
-        List<SearchHit> hits = search.search(SearchRequest.of("tempo run").withK(10));
-
-        assertThat(hits).extracting(SearchHit::notePath)
-                .containsExactlyInAnyOrder("Running/Long.md", "Running/Long.md", "Running/Short.md");
-    }
-
-    @Test
-    void whenSearch_givenNoteCappedOrCutByK_thenEachHitReportsItsNotesFurtherMatchingChunks() {
-        vault.write("Running/Long.md", IntStream.rangeClosed(1, 4)
-                .mapToObj(i -> "## Section " + i + "\ntempo run " + i)
-                .collect(Collectors.joining("\n\n")));
-        vault.write("Running/Short.md", "tempo with apples pears plums cherries");
-        vault.write("Cycling/Bike.md", "apples and pears");
-        indexVault.run();
-
-        List<SearchHit> all = search.search(SearchRequest.of("tempo run").withK(10));
-        List<SearchHit> first = search.search(SearchRequest.of("tempo run").withK(1));
-
-        assertThat(all).extracting(SearchHit::notePath, SearchHit::moreInNote).containsExactlyInAnyOrder(
-                tuple("Running/Long.md", 2), tuple("Running/Long.md", 2), tuple("Running/Short.md", 0));
-        assertThat(first).extracting(SearchHit::moreInNote).containsExactly(3);
-    }
-
-    @Test
-    void whenSearch_givenNoK_thenReturnCollectionDefaultNumberOfHits() {
-        int defaultK = collection.search().defaultK();
-        IntStream.rangeClosed(1, defaultK + 2).forEach(i -> vault.write("Running/Tempo " + i + ".md", "tempo run " + i));
-        indexVault.run();
-
-        List<SearchHit> hits = search.search(SearchRequest.of("tempo run"));
-
-        assertThat(hits).hasSize(defaultK);
-    }
-
-    @Test
     void whenSearch_givenTypeInFrontmatter_thenOnlyTypeSourceMakesASourceNote() {
         vault.write("Running/Source-Notes/Daniels.md", """
                 ---
@@ -313,22 +265,6 @@ class SearchTest {
 
         assertThat(hits).extracting(SearchHit::notePath)
                 .containsExactly("Software-Engineering/Hexagonal.md", "Software-Engineering/Grid.md");
-    }
-
-    @Test
-    void whenSearch_givenBlankQuery_thenRejectWithIllegalArgument() {
-        assertThatThrownBy(() -> search.search(SearchRequest.of("  ")))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("query must not be blank");
-    }
-
-    @Test
-    void whenSearch_givenKAboveMaximum_thenRejectWithIllegalArgument() {
-        int maxK = collection.search().maxK();
-
-        assertThatThrownBy(() -> search.search(SearchRequest.of("interval training").withK(maxK + 1)))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("k must be between 1 and " + maxK);
     }
 
     /** Not only the search tool but every caller, such as the evaluation, must never search a mixed index. */

@@ -3,6 +3,7 @@ package io.github.lucablum.knowledge.application.search;
 import io.github.lucablum.knowledge.domain.note.Topic;
 import io.github.lucablum.knowledge.domain.search.SearchHit;
 import java.util.List;
+import java.util.Optional;
 import org.jmolecules.architecture.hexagonal.SecondaryPort;
 
 /** The vectors of the Collection's indexed Chunks, searched by closeness to a query. */
@@ -11,10 +12,7 @@ public interface ChunkVectors {
 
     /**
      * The {@code limit} Chunks closest to {@code query} whose cosine similarity reaches {@code minimumSimilarity},
-     * closest first.
+     * closest first, and only those within {@code topic} if there is one.
      */
-    List<SearchHit> nearest(float[] query, double minimumSimilarity, int limit);
-
-    /** The same as {@link #nearest(float[], double, int)}, restricted to the Chunks within {@code topic}. */
-    List<SearchHit> nearest(float[] query, Topic topic, double minimumSimilarity, int limit);
+    List<SearchHit> nearest(float[] query, Optional<Topic> topic, double minimumSimilarity, int limit);
 }

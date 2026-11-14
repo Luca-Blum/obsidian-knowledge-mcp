@@ -52,20 +52,12 @@ public class HybridSearch implements SearchChunks {
     /** The closest Chunks that reach the Minimum Similarity, at most as many as the settings allow. */
     private List<SearchHit> vectorCandidates(SearchRequest request) {
         float[] query = embedding.embed(request.query());
-        double minimumSimilarity = settings.minimumSimilarity();
-        int limit = settings.candidates();
-        return request.topic()
-                .map(topic -> vectors.nearest(query, topic, minimumSimilarity, limit))
-                .orElseGet(() -> vectors.nearest(query, minimumSimilarity, limit));
+        return vectors.nearest(query, request.topic(), settings.minimumSimilarity(), settings.candidates());
     }
 
     /** The best ranked Chunks that contain every term, at most as many as the settings allow. */
     private List<SearchHit> fullTextCandidates(SearchRequest request) {
-        String terms = request.fullTextTerms();
-        int limit = settings.candidates();
-        return request.topic()
-                .map(topic -> fullText.matching(terms, topic, limit))
-                .orElseGet(() -> fullText.matching(terms, limit));
+        return fullText.matching(request.fullTextTerms(), request.topic(), settings.candidates());
     }
 
     /** Each Search Hit learns how many candidates of its Note are not among the Search Hits. */

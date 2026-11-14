@@ -112,18 +112,9 @@ public class PostgresIndex
     }
 
     @Override
-    public List<SearchHit> nearest(float[] query, double minimumSimilarity, int limit) {
-        return nearestInTopic(query, null, minimumSimilarity, limit);
-    }
-
-    @Override
-    public List<SearchHit> nearest(float[] query, Topic topic, double minimumSimilarity, int limit) {
-        return nearestInTopic(query, topic.name(), minimumSimilarity, limit);
-    }
-
-    /** A {@code null} topic name leaves the search unrestricted. */
-    private List<SearchHit> nearestInTopic(float[] query, String topicName, double minimumSimilarity, int limit) {
+    public List<SearchHit> nearest(float[] query, Optional<Topic> topic, double minimumSimilarity, int limit) {
         String vector = Arrays.toString(query);
+        String topicName = nameOrNull(topic);
         return query(sql.nearest(), select -> {
             select.setString(1, vector);
             select.setString(2, topicName);
@@ -136,23 +127,19 @@ public class PostgresIndex
     }
 
     @Override
-    public List<SearchHit> matching(String terms, int limit) {
-        return matchingInTopic(terms, null, limit);
-    }
-
-    @Override
-    public List<SearchHit> matching(String terms, Topic topic, int limit) {
-        return matchingInTopic(terms, topic.name(), limit);
-    }
-
-    /** A {@code null} topic name leaves the search unrestricted. */
-    private List<SearchHit> matchingInTopic(String terms, String topicName, int limit) {
+    public List<SearchHit> matching(String terms, Optional<Topic> topic, int limit) {
+        String topicName = nameOrNull(topic);
         return query(sql.matching(), select -> {
             select.setString(1, terms);
             select.setString(2, topicName);
             select.setString(3, topicName);
             select.setInt(4, limit);
         }, searchHit(SearchHit::byFullTextScore));
+    }
+
+    /** The statements leave the search unrestricted for a {@code null} topic name. */
+    private static String nameOrNull(Optional<Topic> topic) {
+        return topic.map(Topic::name).orElse(null);
     }
 
     @Override

@@ -142,7 +142,8 @@ class PostgresIndexTest {
 
         assertThat(indexedNotes.contentHashes()).containsEntry(note.path(), ContentHash.of("Tempo runs"));
         assertThat(texts.text(note.path())).contains(new NoteText("Tempo runs"));
-        assertThat(vectors.nearest(embedding.embed("tempo runs"), -1, 10)).extracting(SearchHit::content)
+        assertThat(vectors.nearest(embedding.embed("tempo runs"), Optional.empty(), -1, 10))
+                .extracting(SearchHit::content)
                 .containsExactly("Tempo runs");
     }
 
