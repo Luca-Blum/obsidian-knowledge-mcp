@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.lucablum.knowledge.domain.note.NotePath;
-import io.github.lucablum.knowledge.domain.note.Topic;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -35,7 +34,7 @@ class EvaluationSetTest {
         EvaluationSet set = EvaluationSet.read(file);
 
         assertThat(set.questions()).containsExactly(
-                new Question("What does the Dependency Rule say?", new Topic("Software-Engineering"), null,
+                new Question("What does the Dependency Rule say?", "Software-Engineering", null,
                         Set.of(new NotePath("Software-Engineering/Source-Notes/clean-architecture-ch5.md"))),
                 new Question("How do I run a kata?", null, null,
                         Set.of(new NotePath("Coaching/Kata.md"), new NotePath("Coaching/Dojo.md"))));

@@ -76,6 +76,21 @@ class SearchToolTest {
                 .thenAssertResults();
     }
 
+    /** The AI Agent often fills in every argument; blank ones must not restrict the search to nothing. */
+    @Test
+    void whenCallSearchTool_givenBlankKeywordsAndTopic_thenSearchAsIfLeftOut() {
+        vault.write("Running/Intervals.md", "Interval training improves speed");
+        indexVault.run();
+
+        client.when()
+                .toolsCall("search", Map.of("query", "interval training", "keywords", " ", "topic", ""), response -> {
+                    assertThat(response.isError()).isFalse();
+                    JsonArray hits = new JsonObject(((TextContent) response.firstContent()).text()).getJsonArray("hits");
+                    assertThat(hits).hasSize(1);
+                })
+                .thenAssertResults();
+    }
+
     @Test
     void whenListTools_givenSearchTool_thenKeywordsExplainHowTheyDifferFromTheQuery() {
         client.when()
