@@ -1,11 +1,12 @@
 # Runs on the Raspberry Pi 5. The Deploy workflow starts it on every push to main.
 name: knowledgebase
 
-# What every Collection's service shares. A Collection's own service sets only its values: see "Add a Collection" in README.md
+# What every Collection's service shares. A Collection's own service sets only its values and its sidecar: see
+# "Add a Collection" in README.md
 x-collection: &collection
   image: ${IMAGE:-ghcr.io/luca-blum/obsidian-knowledge-mcp:latest}
   restart: unless-stopped
-  depends_on:
+  depends_on: &collection-dependencies
     postgres-init:
       condition: service_completed_successfully
     ollama:
@@ -28,12 +29,39 @@ x-collection: &collection
 
 x-collection-environment: &collection-environment
   COLLECTION_VAULT_PATH: /vault
+  # Every instance has its own network through its sidecar, so all use the port that tailscale/serve.json proxies to
+  COLLECTION_MCP_PORT: 8081
   COLLECTION_EMBEDDING_MODEL: ${EMBEDDING_MODEL:-bge-m3}
   COLLECTION_EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-1024}
   DATABASE_URL: jdbc:postgresql://postgres:5432/knowledge
   OLLAMA_BASE_URL: http://ollama:11434
   # One chunk takes several seconds on the Pi's CPU, and longer while Ollama loads the model; the default is 10s
   QUARKUS_LANGCHAIN4J_OLLAMA_TIMEOUT: ${OLLAMA_TIMEOUT:-120s}
+
+# A Collection's own Tailscale node, which gives it the public origin https://knowledge-<collection>.<tailnet>.ts.net
+# through Funnel on 443. The instance shares the sidecar's network and publishes no port on the host
+x-tailscale-sidecar: &tailscale-sidecar
+  image: tailscale/tailscale:stable
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:9002/healthz"]
+    interval: 10s
+    timeout: 5s
+    retries: 6
+    start_period: 30s
+
+x-tailscale-sidecar-environment: &tailscale-sidecar-environment
+  # The node keeps its identity in TS_STATE_DIR, so the auth key is only used for the very first login
+  TS_AUTH_ONCE: "true"
+  TS_STATE_DIR: /var/lib/tailscale
+  # tailscaled only takes requests and proxies them to the instance; nothing in the container connects out into the
+  # tailnet. So it needs no tun device and no extra capabilities
+  TS_USERSPACE: "true"
+  # Read on every start, so Funnel survives a recreate of the sidecar
+  TS_SERVE_CONFIG: /config/serve.json
+  # Serves /healthz, which reports healthy once the node is in the tailnet
+  TS_ENABLE_HEALTH_CHECK: "true"
+  TS_LOCAL_ADDR_PORT: 127.0.0.1:9002
 
 services:
   postgres:
@@ -95,17 +123,29 @@ services:
     entrypoint: ["ollama", "pull", "${EMBEDDING_MODEL:-bge-m3}"]
     restart: "no"
 
+  tailscale-engineering:
+    <<: *tailscale-sidecar
+    volumes:
+      - ./tailscale:/config:ro
+      - tailscale-engineering:/var/lib/tailscale
+    environment:
+      <<: *tailscale-sidecar-environment
+      TS_HOSTNAME: knowledge-engineering
+      TS_AUTHKEY: ${ENGINEERING_TS_AUTHKEY:?set in .env}
+
   knowledgebase-engineering:
     <<: *collection
-    ports:
-      - "${ENGINEERING_MCP_PORT:-8081}:${ENGINEERING_MCP_PORT:-8081}"
+    network_mode: "service:tailscale-engineering"
+    depends_on:
+      <<: *collection-dependencies
+      tailscale-engineering:
+        condition: service_healthy
     volumes:
       - ${ENGINEERING_VAULT_DIR:?set in .env}:/vault:ro
     environment:
       <<: *collection-environment
       COLLECTION_NAME: engineering
       COLLECTION_SCHEMA: engineering
-      COLLECTION_MCP_PORT: ${ENGINEERING_MCP_PORT:-8081}
       COLLECTION_SEARCH_TOOL_DESCRIPTION: ${ENGINEERING_SEARCH_TOOL_DESCRIPTION:?set in .env}
       COLLECTION_SEARCH_MINIMUM_SIMILARITY: ${ENGINEERING_SEARCH_MINIMUM_SIMILARITY:-0.5}
       # One bearer token per client; an empty one locks that client out
@@ -116,17 +156,29 @@ services:
       # Bounds the heap so that this instance fits next to the others, Postgres and Ollama in 8 GB
       JAVA_OPTS_APPEND: -Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager ${ENGINEERING_HEAP:--Xmx512m}
 
+  tailscale-training:
+    <<: *tailscale-sidecar
+    volumes:
+      - ./tailscale:/config:ro
+      - tailscale-training:/var/lib/tailscale
+    environment:
+      <<: *tailscale-sidecar-environment
+      TS_HOSTNAME: knowledge-training
+      TS_AUTHKEY: ${TRAINING_TS_AUTHKEY:?set in .env}
+
   knowledgebase-training:
     <<: *collection
-    ports:
-      - "${TRAINING_MCP_PORT:-8082}:${TRAINING_MCP_PORT:-8082}"
+    network_mode: "service:tailscale-training"
+    depends_on:
+      <<: *collection-dependencies
+      tailscale-training:
+        condition: service_healthy
     volumes:
       - ${TRAINING_VAULT_DIR:?set in .env}:/vault:ro
     environment:
       <<: *collection-environment
       COLLECTION_NAME: training
       COLLECTION_SCHEMA: training
-      COLLECTION_MCP_PORT: ${TRAINING_MCP_PORT:-8082}
       COLLECTION_SEARCH_TOOL_DESCRIPTION: ${TRAINING_SEARCH_TOOL_DESCRIPTION:?set in .env}
       COLLECTION_SEARCH_MINIMUM_SIMILARITY: ${TRAINING_SEARCH_MINIMUM_SIMILARITY:-0.5}
       # One bearer token per client; an empty one locks that client out
@@ -140,3 +192,5 @@ services:
 volumes:
   postgres:
   ollama:
+  tailscale-engineering:
+  tailscale-training:
