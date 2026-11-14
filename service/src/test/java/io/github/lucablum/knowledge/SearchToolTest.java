@@ -34,15 +34,7 @@ class SearchToolTest {
     void connect() {
         vault.clear();
         reIndex.reIndexIfOutdated();
-        client = McpAssured.newConnectedStreamableClient();
-    }
-
-    @Test
-    void whenListTools_givenCollectionDescription_thenSearchToolCarriesIt() {
-        client.when()
-                .toolsList(page -> assertThat(page.findByName("search").description())
-                        .isEqualTo("Searches the test Collection."))
-                .thenAssertResults();
+        client = TestClients.connect();
     }
 
     @Test

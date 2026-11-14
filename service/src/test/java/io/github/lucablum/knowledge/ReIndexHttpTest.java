@@ -104,7 +104,10 @@ class ReIndexHttpTest {
     }
 
     private static HttpRequest post(URI uri) {
-        return HttpRequest.newBuilder(uri).POST(HttpRequest.BodyPublishers.noBody()).build();
+        return HttpRequest.newBuilder(uri)
+                .header("Authorization", TestClients.authorization())
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build();
     }
 
     private static HttpResponse.BodyHandler<String> ofString() {

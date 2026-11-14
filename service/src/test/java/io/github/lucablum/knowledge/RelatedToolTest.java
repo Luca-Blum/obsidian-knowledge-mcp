@@ -28,7 +28,7 @@ class RelatedToolTest {
     @BeforeEach
     void connect() {
         vault.clear();
-        client = McpAssured.newConnectedStreamableClient();
+        client = TestClients.connect();
     }
 
     @Test

@@ -4,6 +4,8 @@ import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Map;
+import java.util.Optional;
 
 /** Everything that makes this instance serve one particular Collection. */
 @ConfigMapping(prefix = "collection")
@@ -13,11 +15,16 @@ public interface CollectionConfig {
 
     Path vaultPath();
 
-    /** The Postgres schema that holds this Collection's index. */
+    /**
+     * The Postgres schema that holds this Collection's index. Deployed, it also names the role the instance logs in as,
+     * so role and schema cannot drift apart.
+     */
     String schema();
 
     /** The HTTP port of this Collection's MCP endpoint. */
     int mcpPort();
+
+    Auth auth();
 
     Reconciliation reconciliation();
 
@@ -31,6 +38,15 @@ public interface CollectionConfig {
     Search search();
 
     Reading reading();
+
+    interface Auth {
+
+        /**
+         * The bearer token of every Client allowed to reach this Collection, keyed by the Client's name. Each Client
+         * has its own, so removing one token locks out that Client alone; an empty token counts as removed.
+         */
+        Map<String, Optional<String>> tokens();
+    }
 
     interface Reconciliation {
 

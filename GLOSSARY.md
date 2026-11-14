@@ -51,7 +51,11 @@ The language a Note is written in, taken from its frontmatter `lang` or else fro
 
 **AI Agent**:
 The language model that calls a Collection's tools over MCP. It writes the queries, decides which Notes to read and writes the answer; the knowledge service only returns text.
-_Avoid_: Claude, LLM, client
+_Avoid_: Claude, LLM, Client
+
+**Client**:
+The app through which an AI Agent reaches a Collection, such as Claude Code or claude.ai. Each Client has its own bearer token per Collection, so one can be locked out without touching the others.
+_Avoid_: Connector, user
 
 **Chunk**:
 A section of a Note's content that can be searched on its own, with its heading path as context. Small neighbouring sections are merged into one Chunk and a large section is split into several, which repeat a little of each other's text. Its identity is only its position in the current version of the Note.

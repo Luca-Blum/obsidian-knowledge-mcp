@@ -17,6 +17,27 @@ services:
       timeout: 5s
       retries: 5
 
+  # Gives every Collection its own role that owns its schema and sees no other's, then exits. Safe on every deploy
+  postgres-init:
+    image: pgvector/pgvector:pg17
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGDATABASE: knowledge
+      PGUSER: knowledge
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./postgres:/init:ro
+    command:
+      - psql
+      - --set=ON_ERROR_STOP=1
+      - --set=engineering_password=${ENGINEERING_DB_PASSWORD:?set in .env}
+      - --file=/init/isolate-collection.sql
+      - --file=/init/collections.sql
+    restart: "no"
+
   ollama:
     image: ollama/ollama
     restart: unless-stopped
@@ -43,8 +64,8 @@ services:
     image: ${IMAGE:-ghcr.io/luca-blum/obsidian-knowledge-mcp:latest}
     restart: unless-stopped
     depends_on:
-      postgres:
-        condition: service_healthy
+      postgres-init:
+        condition: service_completed_successfully
       ollama:
         condition: service_healthy
       ollama-pull:
@@ -62,9 +83,12 @@ services:
       COLLECTION_EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-1024}
       COLLECTION_SEARCH_TOOL_DESCRIPTION: ${ENGINEERING_SEARCH_TOOL_DESCRIPTION:?set in .env}
       COLLECTION_SEARCH_MINIMUM_SIMILARITY: ${ENGINEERING_SEARCH_MINIMUM_SIMILARITY:-0.5}
+      # One bearer token per client; an empty one locks that client out
+      COLLECTION_AUTH_TOKENS_CLAUDE_AI: ${ENGINEERING_TOKEN_CLAUDE_AI:-}
+      COLLECTION_AUTH_TOKENS_CLAUDE_CODE: ${ENGINEERING_TOKEN_CLAUDE_CODE:-}
       DATABASE_URL: jdbc:postgresql://postgres:5432/knowledge
-      DATABASE_USER: knowledge
-      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      # Password of the role engineering, which postgres-init creates (see postgres/isolate-collection.sql)
+      DATABASE_PASSWORD: ${ENGINEERING_DB_PASSWORD}
       OLLAMA_BASE_URL: http://ollama:11434
       # One chunk takes several seconds on the Pi's CPU, and longer while Ollama loads the model; the default is 10s
       QUARKUS_LANGCHAIN4J_OLLAMA_TIMEOUT: ${OLLAMA_TIMEOUT:-120s}
