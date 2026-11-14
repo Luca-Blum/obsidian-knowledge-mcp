@@ -25,15 +25,12 @@ class SearchToolTest {
     @Inject
     IndexVault indexVault;
 
-    @Inject
-    ReIndexCollection reIndex;
-
     McpStreamableTestClient client;
 
     @BeforeEach
     void connect() {
         vault.clear();
-        reIndex.reIndexIfOutdated();
+        indexVault.run();
         client = TestClients.connect();
     }
 
@@ -76,6 +73,21 @@ class SearchToolTest {
                             assertThat(hits.getJsonObject(0).getString("notePath"))
                                     .isEqualTo("Software-Engineering/Index.md");
                         })
+                .thenAssertResults();
+    }
+
+    /** The AI Agent often fills in every argument; blank ones must not restrict the search to nothing. */
+    @Test
+    void whenCallSearchTool_givenBlankKeywordsAndTopic_thenSearchAsIfLeftOut() {
+        vault.write("Running/Intervals.md", "Interval training improves speed");
+        indexVault.run();
+
+        client.when()
+                .toolsCall("search", Map.of("query", "interval training", "keywords", " ", "topic", ""), response -> {
+                    assertThat(response.isError()).isFalse();
+                    JsonArray hits = new JsonObject(((TextContent) response.firstContent()).text()).getJsonArray("hits");
+                    assertThat(hits).hasSize(1);
+                })
                 .thenAssertResults();
     }
 

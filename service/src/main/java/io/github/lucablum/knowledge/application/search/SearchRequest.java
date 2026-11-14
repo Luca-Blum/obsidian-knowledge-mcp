@@ -1,7 +1,6 @@
 package io.github.lucablum.knowledge.application.search;
 
 import io.github.lucablum.knowledge.domain.note.Topic;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
 import org.jmolecules.ddd.annotation.ValueObject;
@@ -9,7 +8,8 @@ import org.jmolecules.ddd.annotation.ValueObject;
 /**
  * What is asked of a search: the query, optionally exact keywords for the full-text search, optionally restricted to
  * a Topic, optionally limited to {@code k} Search Hits. What is left out is up to the search to decide, so a caller
- * never has to know the Collection's defaults.
+ * never has to know the Collection's defaults. Blank keywords or a blank Topic count as left out, because that is how
+ * the AI Agent leaves out an argument it fills in anyway.
  */
 @ValueObject
 public final class SearchRequest {
@@ -31,11 +31,11 @@ public final class SearchRequest {
     }
 
     public SearchRequest withKeywords(String keywords) {
-        return new SearchRequest(query, Objects.requireNonNull(keywords), topic, k);
+        return isLeftOut(keywords) ? this : new SearchRequest(query, keywords, topic, k);
     }
 
-    public SearchRequest inTopic(Topic topic) {
-        return new SearchRequest(query, keywords, Objects.requireNonNull(topic), k);
+    public SearchRequest inTopic(String topic) {
+        return isLeftOut(topic) ? this : new SearchRequest(query, keywords, new Topic(topic), k);
     }
 
     public SearchRequest withK(int k) {
@@ -61,5 +61,9 @@ public final class SearchRequest {
 
     public OptionalInt k() {
         return k == null ? OptionalInt.empty() : OptionalInt.of(k);
+    }
+
+    private static boolean isLeftOut(String argument) {
+        return argument == null || argument.isBlank();
     }
 }

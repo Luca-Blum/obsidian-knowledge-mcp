@@ -48,7 +48,7 @@ class EvaluationTest {
     void whenRun_givenQuestionWithTopic_thenSearchWithinThatTopic() {
         Evaluation evaluation = new Evaluation(returning(Map.of()));
 
-        evaluation.run(new EvaluationSet(List.of(new Question("dependency rule", new Topic("Software-Engineering"),
+        evaluation.run(new EvaluationSet(List.of(new Question("dependency rule", "Software-Engineering",
                 Set.of(new NotePath("Software-Engineering/Clean Architecture.md")))), List.of()));
 
         assertThat(requests).singleElement()

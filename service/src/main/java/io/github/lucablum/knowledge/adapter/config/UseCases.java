@@ -31,26 +31,38 @@ import io.github.lucablum.knowledge.domain.reading.ReadingRules;
 import io.github.lucablum.knowledge.domain.search.ReciprocalRankFusion;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
+import jakarta.inject.Singleton;
 
-/** Wires the plain-Java use cases to their adapters. */
+/**
+ * Wires the plain-Java use cases to their adapters. Reconciliation and the Re-Index are one {@link FingerprintReIndex},
+ * so that they share its lock; it is built once and produced as each port on its own, so a test can replace either.
+ */
+@Singleton
 public class UseCases {
 
-    @Produces
-    @ApplicationScoped
-    IndexVault indexVault(Vault vault, Embedding embedding, IndexedNotes indexedNotes, CollectionConfig collection) {
-        NoteParser parser = new NoteParser(new NoteLanguage(collection.defaultLanguage()));
-        Splitter splitter = new Splitter(chunkingRules(collection));
-        return new ContentHashReconciliation(vault, parser, splitter, embedding, indexedNotes);
-    }
+    private final FingerprintReIndex fingerprintReIndex;
 
     /** The fingerprint names the model as the Embedding does, which is also the name every Chunk records. */
+    UseCases(Vault vault, Embedding embedding, IndexedNotes indexedNotes, IndexBuild build, CollectionConfig collection) {
+        ChunkingRules chunking = chunkingRules(collection);
+        NoteParser parser = new NoteParser(new NoteLanguage(collection.defaultLanguage()));
+        IndexVault reconciliation =
+                new ContentHashReconciliation(vault, parser, new Splitter(chunking), embedding, indexedNotes);
+        IndexFingerprint configured =
+                new IndexFingerprint(embedding.model(), collection.embedding().dimension(), chunking);
+        fingerprintReIndex = new FingerprintReIndex(reconciliation, build, configured);
+    }
+
     @Produces
     @ApplicationScoped
-    ReIndexCollection reIndexCollection(
-            IndexVault indexVault, IndexBuild build, Embedding embedding, CollectionConfig collection) {
-        IndexFingerprint configured =
-                new IndexFingerprint(embedding.model(), collection.embedding().dimension(), chunkingRules(collection));
-        return new FingerprintReIndex(indexVault, build, configured);
+    IndexVault indexVault() {
+        return fingerprintReIndex;
+    }
+
+    @Produces
+    @ApplicationScoped
+    ReIndexCollection reIndexCollection() {
+        return fingerprintReIndex;
     }
 
     @Produces
@@ -74,14 +86,20 @@ public class UseCases {
 
     @Produces
     @ApplicationScoped
-    SearchChunks searchChunks(
-            Embedding embedding, ChunkVectors vectors, ChunkFullText fullText, CollectionConfig collection) {
+    SearchChunks searchChunks(Embedding embedding, ChunkVectors vectors, ChunkFullText fullText,
+            ReIndexCollection reIndex, SearchSettings settings, CollectionConfig collection) {
+        CollectionConfig.Search.Fusion fusion = collection.search().fusion();
+        return new HybridSearch(embedding, vectors, fullText, reIndex,
+                new ReciprocalRankFusion(fusion.k(), fusion.vectorWeight(), fusion.fullTextWeight()), settings);
+    }
+
+    /** One instance for the search and the search tool, so both read the same {@code k} limits. */
+    @Produces
+    @Singleton
+    SearchSettings searchSettings(CollectionConfig collection) {
         CollectionConfig.Search search = collection.search();
-        CollectionConfig.Search.Fusion fusion = search.fusion();
-        return new HybridSearch(embedding, vectors, fullText,
-                new ReciprocalRankFusion(fusion.k(), fusion.vectorWeight(), fusion.fullTextWeight()),
-                new SearchSettings(search.defaultK(), search.maxK(), search.minimumSimilarity(),
-                        search.maxHitsPerNote(), search.candidates()));
+        return new SearchSettings(search.defaultK(), search.maxK(), search.minimumSimilarity(),
+                search.maxHitsPerNote(), search.candidates());
     }
 
     private static ChunkingRules chunkingRules(CollectionConfig collection) {

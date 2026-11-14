@@ -9,4 +9,12 @@ import org.jmolecules.ddd.annotation.ValueObject;
  */
 @ValueObject
 public record SearchSettings(int defaultK, int maxK, double minimumSimilarity, int maxHitsPerNote, int candidates) {
+
+    /** A {@code k} the search would reject itself must never be its default. */
+    public SearchSettings {
+        if (defaultK < 1 || defaultK > maxK) {
+            throw new IllegalArgumentException(
+                    "defaultK must be between 1 and maxK (%d), but is %d".formatted(maxK, defaultK));
+        }
+    }
 }
