@@ -1,6 +1,6 @@
 package io.github.lucablum.knowledge.application.reading;
 
-import io.github.lucablum.knowledge.domain.chunk.section.HeadingPath;
+import io.github.lucablum.knowledge.domain.markdown.HeadingPath;
 import io.github.lucablum.knowledge.domain.note.NotePath;
 import io.github.lucablum.knowledge.domain.reading.NoteReading;
 import io.github.lucablum.knowledge.domain.reading.NoteSections;

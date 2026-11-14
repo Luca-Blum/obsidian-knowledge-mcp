@@ -1,6 +1,5 @@
-package io.github.lucablum.knowledge.domain.chunk.section;
+package io.github.lucablum.knowledge.domain.markdown;
 
-import io.github.lucablum.knowledge.domain.chunk.markdown.HeadingLine;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;

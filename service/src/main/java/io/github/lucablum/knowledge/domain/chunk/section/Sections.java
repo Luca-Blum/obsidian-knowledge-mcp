@@ -1,10 +1,11 @@
 package io.github.lucablum.knowledge.domain.chunk.section;
 
-import io.github.lucablum.knowledge.domain.chunk.markdown.CodeBlock;
-import io.github.lucablum.knowledge.domain.chunk.markdown.HeadingLine;
-import io.github.lucablum.knowledge.domain.chunk.markdown.MarkdownLine;
-import io.github.lucablum.knowledge.domain.chunk.markdown.MarkdownLines;
-import io.github.lucablum.knowledge.domain.chunk.markdown.TextLine;
+import io.github.lucablum.knowledge.domain.markdown.CodeBlock;
+import io.github.lucablum.knowledge.domain.markdown.HeadingLine;
+import io.github.lucablum.knowledge.domain.markdown.MarkdownLine;
+import io.github.lucablum.knowledge.domain.markdown.MarkdownLines;
+import io.github.lucablum.knowledge.domain.markdown.OpenHeadings;
+import io.github.lucablum.knowledge.domain.markdown.TextLine;
 import java.util.ArrayList;
 import java.util.List;
 

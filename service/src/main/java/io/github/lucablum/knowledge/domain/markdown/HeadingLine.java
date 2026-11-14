@@ -1,4 +1,4 @@
-package io.github.lucablum.knowledge.domain.chunk.markdown;
+package io.github.lucablum.knowledge.domain.markdown;
 
 import java.util.Optional;
 import java.util.regex.Matcher;

@@ -1,6 +1,6 @@
 package io.github.lucablum.knowledge.domain.reading;
 
-import io.github.lucablum.knowledge.domain.chunk.section.HeadingPath;
+import io.github.lucablum.knowledge.domain.markdown.HeadingPath;
 import java.util.List;
 import java.util.Objects;
 import org.jmolecules.ddd.annotation.ValueObject;

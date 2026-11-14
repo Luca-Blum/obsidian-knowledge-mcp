@@ -2,7 +2,7 @@ package io.github.lucablum.knowledge.domain.reading;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.lucablum.knowledge.domain.chunk.section.HeadingPath;
+import io.github.lucablum.knowledge.domain.markdown.HeadingPath;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 

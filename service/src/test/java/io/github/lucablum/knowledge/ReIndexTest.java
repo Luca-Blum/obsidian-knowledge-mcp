@@ -13,7 +13,7 @@ import io.github.lucablum.knowledge.application.search.SearchChunks;
 import io.github.lucablum.knowledge.application.search.SearchRequest;
 import io.github.lucablum.knowledge.domain.chunk.Chunk;
 import io.github.lucablum.knowledge.domain.chunk.ChunkingRules;
-import io.github.lucablum.knowledge.domain.chunk.section.HeadingPath;
+import io.github.lucablum.knowledge.domain.markdown.HeadingPath;
 import io.github.lucablum.knowledge.domain.note.ContentHash;
 import io.github.lucablum.knowledge.domain.note.Note;
 import io.github.lucablum.knowledge.domain.note.NoteKind;
