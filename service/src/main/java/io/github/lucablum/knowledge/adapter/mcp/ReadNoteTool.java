@@ -3,7 +3,7 @@ package io.github.lucablum.knowledge.adapter.mcp;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.lucablum.knowledge.application.reading.ReadNote;
-import io.github.lucablum.knowledge.domain.chunk.section.HeadingPath;
+import io.github.lucablum.knowledge.domain.markdown.HeadingPath;
 import io.github.lucablum.knowledge.domain.note.NotePath;
 import io.github.lucablum.knowledge.domain.reading.NoteOutline;
 import io.github.lucablum.knowledge.domain.reading.NoteReading;

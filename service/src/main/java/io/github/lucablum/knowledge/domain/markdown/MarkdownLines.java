@@ -1,4 +1,4 @@
-package io.github.lucablum.knowledge.domain.chunk.markdown;
+package io.github.lucablum.knowledge.domain.markdown;
 
 import io.github.lucablum.knowledge.domain.note.Frontmatter;
 import java.util.ArrayList;

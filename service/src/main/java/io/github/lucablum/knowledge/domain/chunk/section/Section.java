@@ -1,6 +1,7 @@
 package io.github.lucablum.knowledge.domain.chunk.section;
 
-import io.github.lucablum.knowledge.domain.chunk.markdown.HeadingLine;
+import io.github.lucablum.knowledge.domain.markdown.HeadingLine;
+import io.github.lucablum.knowledge.domain.markdown.HeadingPath;
 import java.util.List;
 import java.util.Optional;
 import org.jmolecules.ddd.annotation.ValueObject;
