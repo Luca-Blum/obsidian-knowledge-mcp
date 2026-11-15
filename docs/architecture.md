@@ -4,14 +4,16 @@ Terms are defined in [`GLOSSARY.md`](../GLOSSARY.md), and decisions with their r
 
 ## Goal and Guiding Principles
 
-A self-hosted knowledge service on a Raspberry Pi 5 lets an AI Agent (the AI Coach in claude.ai, Claude Code) ask questions about a subject area and get back the matching passages from its owner's Obsidian Notes and sources. It replaces a hosted notebook service: no usage limits, no upload of the sources, and every part can be inspected and replaced.
+A self-hosted knowledge service on a Raspberry Pi 5 lets an AI Agent, such as Claude Code or an assistant in claude.ai, ask questions about a subject area and get back the matching passages from a set of Obsidian Notes and sources. Unlike a hosted notebook service it has no usage limits, the sources never leave the owner's machines, and every part can be inspected and replaced.
 
 1. **Obsidian is the only source of truth.** Notes, PDFs and links live in the Vaults on the Mac. Everything else is derived.
 2. **The Pi is a pure read model.** It receives the Vaults one way and builds search indexes from them. Every index can be deleted and rebuilt at any time, and the Pi never writes to a Vault.
 3. **Agentic RAG: retrieval on the Pi, generation by the AI Agent.** The service only returns facts (Chunks, Notes, Links). The AI Agent decides when and how often it searches, reads and answers. No language model runs on the Pi to write answers.
 4. **Heavy work runs where the compute is.** PDF conversion with Docling runs on the Mac, not on the Pi.
 5. **Models are replaceable.** The embedding model, and later a re-ranker, sit behind ports and are chosen only through configuration. A switch means changing the configuration, rebuilding the index and measuring against the Evaluation Set.
-6. **Collections are isolated.** Engineering and Training are separate knowledge bases, each with its own Vault, DB schema and service instance with its own MCP endpoint. A client sees only the Collections it has a connector for. Only infrastructure is shared (code, Postgres instance, Ollama). The isolation serves relevance and per-Collection configuration, not access control.
+6. **Collections are isolated.** Each subject area is its own knowledge base with its own Vault, DB schema and service instance, and so its own MCP endpoint. A client sees only the Collections it has a connector for. Only infrastructure is shared (code, Postgres instance, Ollama). The isolation serves relevance and per-Collection configuration, not access control.
+
+The reference deployment runs two Collections, `engineering` (software engineering sources) and `training` (sports science sources). They serve as the examples throughout this document; the code knows neither of them.
 
 ## System Overview
 
@@ -23,7 +25,7 @@ flowchart TB
         docling --> vaults
     end
     subgraph Clients["AI Agents (MCP clients)"]
-        coach["AI Coach<br/><small>claude.ai</small>"]
+        coach["Assistant<br/><small>claude.ai</small>"]
         code["Claude Code"]
     end
     subgraph Pi["Raspberry Pi 5"]
@@ -58,24 +60,24 @@ The Mac is the master: Syncthing mirrors both Vaults one way to the Pi. There, a
 | Postgres + pgvector | Pi | Chunks, vectors, full-text index, link graph, metadata | – |
 | Embedding model | Pi (Ollama, model replaceable through configuration) | Text → vector for Chunks and queries; multilingual (DE/EN) | – |
 | Tailscale sidecar | Pi, one per Collection | One HTTPS origin per Collection: public through Funnel for claude.ai, through the tailnet for Claude Code; the service checks a bearer token per Client | – |
-| AI Agent (AI Coach, Claude Code) | Anthropic / Mac | Call tools, read sources, write the answer with citations | No |
+| AI Agent (e.g. Claude Code, claude.ai) | Anthropic / Mac | Call tools, read sources, write the answer with citations | No |
 
 So the Pi holds two things: a copy of all sources (the Vault, PDFs included) and the index derived from it. Only the Markdown files are indexed, and the PDFs sit next to them as originals.
 
 ## Vault Structure and Conventions
 
-There are two Collections, each with its own Vault. The rule: whatever should link to each other lives in the same Vault, because wikilinks don't work across Vault boundaries in Obsidian.
+Each Collection has its own Vault. The rule: whatever should link to each other lives in the same Vault, because wikilinks don't work across Vault boundaries in Obsidian.
 
 | Collection | Vault | Topics | Content |
 | --- | --- | --- | --- |
-| Engineering | `Engineering/` | Coaching, Software-Engineering | Coaching: only the sources from the ASE coaching; Software-Engineering: general technical sources and Own Notes |
-| Training | `Training/` | Running, Cycling, Triathlon-Duathlon, Climbing, Bouldering, Physio | Training sources and Own Notes |
+| Engineering | `Engineering/` | e.g. Software-Engineering, Architecture | Technical books, articles and Own Notes |
+| Training | `Training/` | e.g. Running, Cycling | Sports science sources and Own Notes |
 
 Within a Vault, the first folder below the Vault root is the Topic, and deeper levels inherit it. The Topic comes only from the folder, never from the frontmatter, and serves as an optional filter within the Collection. Notes directly in the root are indexed but have no Topic, so a `topic` filter excludes them.
 
 ```
 Engineering/                     ← Vault 1 → Collection "engineering"
-├── Coaching/
+├── Architecture/                ← a Topic
 │   ├── _inbox/                  ← drop PDFs here (Docling picks them up)
 │   ├── _sources/                ← original PDFs after conversion
 │   └── Source-Notes/            ← Source Notes created by Docling (.md)
@@ -85,11 +87,7 @@ Engineering/                     ← Vault 1 → Collection "engineering"
 
 Training/                        ← Vault 2 → Collection "training"
 ├── Running/
-├── Cycling/
-├── Triathlon-Duathlon/
-├── Climbing/
-├── Bouldering/
-└── Physio/                      ← each with _inbox/, _sources/, Source-Notes/, Own Notes
+└── Cycling/                     ← each with _inbox/, _sources/, Source-Notes/, Own Notes
 ```
 
 A Source Note gets frontmatter so that it can be linked and filtered:
@@ -127,7 +125,7 @@ Further rules:
 3. It writes the Source Note to `<Topic>/Source-Notes/` with `type`, `title`, `lang`, `imported` and `source` in the frontmatter (no `topic`) and moves the PDF to `<Topic>/_sources/`.
 4. An existing Source Note is never overwritten. On a name clash, the new one gets a suffix.
 5. If Docling fails, the PDF moves to `<Topic>/_inbox/_failed/` together with a log.
-6. You link the source from your Own Notes.
+6. The author links the source from Own Notes.
 
 If Docling returns Markdown without usable headings, the importer corrects nothing. The splitter's size limit catches that case.
 
@@ -141,15 +139,15 @@ If Docling returns Markdown without usable headings, the importer corrects nothi
 
 At startup the instance also compares the index fingerprint (embedding model, dimension, chunking parameters) with the configuration. If they differ, a full Re-Index starts automatically. Until it finishes, the Collection answers no searches and reports its progress (x/y Notes) through health and the MCP error text. The instance stays ready meanwhile, because reading and browsing still work and a Re-Index takes far longer than a deployment waits.
 
-### A Question from the AI Coach
+### A Question from an AI Agent
 
 ```mermaid
 sequenceDiagram
-    actor You
-    participant Agent as AI Agent (AI Coach)
+    actor User
+    participant Agent as AI Agent
     participant KS as Knowledge service
     participant Index as Search index
-    You->>Agent: Question about a Topic
+    User->>Agent: Question about a Topic
     Agent->>KS: search(query, keywords?, topic?)
     KS->>Index: Hybrid search
     Index-->>KS: Top hits
@@ -158,7 +156,7 @@ sequenceDiagram
         Agent->>KS: read_note / related
         KS-->>Agent: whole Notes, sections, Links
     end
-    Agent-->>You: Answer with sources
+    Agent-->>User: Answer with sources
 ```
 
 The AI Agent decides itself how often it searches and which Notes it reads in full. The service only returns text, and the answer comes from a single LLM call.
@@ -343,7 +341,7 @@ obsidian-knowledge-mcp/
 └── LICENSE
 ```
 
-- **Never in the repository:** Vault content, `.env` with tokens and passwords, personal evaluation questions. The Evaluation Sets live per Collection in their Vault (e.g. `Engineering/_eval/questions.yaml`) and are passed to the test by path.
+- **Never in the repository:** Vault content, `.env` with tokens and passwords, evaluation questions. The Evaluation Sets live per Collection in their Vault (e.g. `Engineering/_eval/questions.yaml`) and are passed to the test by path.
 - **Image tag:** one image for all Collections. Only the configuration in `deploy/` decides which Collection an instance serves.
 
 ## Tooling and Operations
@@ -359,7 +357,7 @@ How to set all of this up is in [`deploy/README.md`](../deploy/README.md); this 
 | Import script | Watch the `_inbox` folders of both Vaults, call Docling, write the Source Note with frontmatter, move the PDF to `_sources` | Python project (uv) in the repository, started by `launchd` every minute; checks the `_inbox/` of every Topic in both Vaults (polling instead of WatchPaths, which is not recursive) |
 | Syncthing | Send both Vaults one way to the Pi (Send Only) | App or `brew` |
 | Tailscale | Private network to the Pi | App |
-| Claude Code | MCP client with one connector per Collection, e.g. `https://knowledge-engineering.<tailnet>.ts.net/mcp` | Already installed |
+| Claude Code | MCP client with one connector per Collection, e.g. `https://knowledge-engineering.<tailnet>.ts.net/mcp` | `claude mcp add` |
 
 Docker is needed on the Mac only for development, where Quarkus Dev Services start Postgres with pgvector automatically.
 
