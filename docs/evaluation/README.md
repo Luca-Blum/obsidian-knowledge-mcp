@@ -15,6 +15,15 @@ themselves stay in the Vault, so only the numbers are here.
 The training Collection has its own Evaluation Set: [`training-minimum-similarity.md`](training-minimum-similarity.md)
 measures it with hybrid search and chooses its Minimum Similarity.
 
+For the comparison of embedding models (#54) both Evaluation Sets were extended to harder questions in several
+categories and `near-miss` Negative Questions, so the runs below are not comparable to the rows above. Each model gets
+its own Minimum Similarity, calibrated against the Negative Questions.
+
+| Run | What changed | Hit@5 | Recall@5 | MRR |
+| --- | --- | --- | --- | --- |
+| [Engineering, `bge-m3`](engineering-bge-m3.md) | Extended set, 41 questions, Minimum Similarity 0.60 | 0.85 | 0.80 | 0.79 |
+| [Training, `bge-m3`](training-bge-m3.md) | Extended set, 45 questions, Minimum Similarity 0.62 | 0.91 | 0.75 | 0.81 |
+
 What the second and third row show: the full-text search only helps when it gets exact terms. Given the whole
 question, it matches common words in long book chapters and pushes expected Notes out of the top 5. Given the term
 the AI Agent passes as `keywords`, it finds every expected Note. That is why the `search` tool asks for `keywords`
