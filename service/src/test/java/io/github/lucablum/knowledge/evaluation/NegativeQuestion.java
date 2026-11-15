@@ -2,11 +2,14 @@ package io.github.lucablum.knowledge.evaluation;
 
 import io.github.lucablum.knowledge.application.search.SearchRequest;
 
-/** A question the Collection must not answer; the Topic and the keywords are optional, and blank counts as left out. */
-record NegativeQuestion(String text, String topic, String keywords) {
+/**
+ * A question the Collection must not answer, with its kind; the Topic and the keywords are optional, and blank counts
+ * as left out.
+ */
+record NegativeQuestion(String text, NegativeKind kind, String topic, String keywords) {
 
-    NegativeQuestion(String text, String topic) {
-        this(text, topic, null);
+    NegativeQuestion(String text, NegativeKind kind, String topic) {
+        this(text, kind, topic, null);
     }
 
     SearchRequest request(int k) {

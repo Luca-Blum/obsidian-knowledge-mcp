@@ -29,14 +29,32 @@ is never indexed, e.g. `Engineering/_eval/questions.yaml`. Questions never go in
 ```yaml
 questions:
   - question: What does the Dependency Rule say?
+    category: definition                 # the question's shape, see below
     topic: Software-Engineering          # optional, restricts the search like the tool's 'topic'
     keywords: Dependency Rule            # optional, exact terms for the full-text search like the tool's 'keywords'
     expected:                            # Notes that answer it, as paths relative to the Vault root
       - Software-Engineering/Source-Notes/clean-architecture-ch5.md
 negative-questions:                      # questions this Collection must not answer
   - question: How should I taper before a marathon?
+    category: other-collection           # other-collection or near-miss
     keywords: Tapering                   # optional, as above
 ```
+
+Every question has exactly one `category`, so that a run shows where a model wins or loses, not only one average.
+Where shapes overlap, the harder one is chosen, e.g. a German paraphrase of an English Note is `cross-language`.
+
+| Category | Shape |
+| --- | --- |
+| `definition` | Asks what a named concept is. Kept, but a minority. |
+| `paraphrase` | Describes a concept without naming it. |
+| `scenario` | Describes a situation in several sentences and asks what to do. |
+| `comparison` | Asks how two or more concepts differ or relate. |
+| `multi-note` | Needs several Notes, e.g. a Source Note and an Own Note, or two books. |
+| `cross-language` | Asked in German about an English Note, or the reverse. |
+| `own-note` | Answered by an Own Note, not a Source Note. |
+
+A Negative Question is either `other-collection`, a question that belongs to another Collection, or `near-miss`, a
+question from the Collection's own field that its Vault does not cover.
 
 Without `keywords` the full-text search gets the whole question, as it would when the AI Agent leaves them out.
 
@@ -67,6 +85,9 @@ and leaves fewer slots for the others.
 - **Hit@5** (main metric): share of questions with at least one expected Note in the top 5.
 - **Recall@5**: mean share of a question's expected Notes found in the top 5.
 - **MRR**: mean of 1 / rank of the first expected Note, 0 when none is in the top 5.
+
+The summary repeats the three metrics per category, and counts the Negative Questions passed and their highest
+similarity per kind.
 
 A Negative Question passes when none of its vector hits reaches the configured Minimum Similarity
 (`COLLECTION_SEARCH_MINIMUM_SIMILARITY`), and the summary counts how many passed. Its full-text hits never fail it; the

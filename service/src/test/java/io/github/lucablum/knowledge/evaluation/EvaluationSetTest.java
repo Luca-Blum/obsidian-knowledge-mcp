@@ -22,24 +22,27 @@ class EvaluationSetTest {
         Path file = write("""
                 questions:
                   - question: What does the Dependency Rule say?
+                    category: definition
                     topic: Software-Engineering
                     expected:
                       - Software-Engineering/Source-Notes/clean-architecture-ch5.md
                   - question: How do I run a kata?
+                    category: multi-note
                     expected: [Coaching/Kata.md, Coaching/Dojo.md]
                 negative-questions:
                   - question: How should I taper before a marathon?
+                    category: other-collection
                 """);
 
         EvaluationSet set = EvaluationSet.read(file);
 
         assertThat(set.questions()).containsExactly(
-                new Question("What does the Dependency Rule say?", "Software-Engineering", null,
+                new Question("What does the Dependency Rule say?", Category.DEFINITION, "Software-Engineering",
                         Set.of(new NotePath("Software-Engineering/Source-Notes/clean-architecture-ch5.md"))),
-                new Question("How do I run a kata?", null, null,
+                new Question("How do I run a kata?", Category.MULTI_NOTE, null,
                         Set.of(new NotePath("Coaching/Kata.md"), new NotePath("Coaching/Dojo.md"))));
-        assertThat(set.negativeQuestions())
-                .containsExactly(new NegativeQuestion("How should I taper before a marathon?", null, null));
+        assertThat(set.negativeQuestions()).containsExactly(new NegativeQuestion(
+                "How should I taper before a marathon?", NegativeKind.OTHER_COLLECTION, null));
     }
 
     @Test
@@ -47,19 +50,21 @@ class EvaluationSetTest {
         Path file = write("""
                 questions:
                   - question: How is the index stored?
+                    category: definition
                     keywords: PostgresIndex pgvector
                     expected: [Software-Engineering/Index.md]
                 negative-questions:
                   - question: How should I taper before a marathon?
+                    category: near-miss
                     keywords: Tapering
                 """);
 
         EvaluationSet set = EvaluationSet.read(file);
 
-        assertThat(set.questions()).containsExactly(new Question("How is the index stored?", null,
-                "PostgresIndex pgvector", Set.of(new NotePath("Software-Engineering/Index.md"))));
-        assertThat(set.negativeQuestions())
-                .containsExactly(new NegativeQuestion("How should I taper before a marathon?", null, "Tapering"));
+        assertThat(set.questions()).containsExactly(new Question("How is the index stored?", Category.DEFINITION,
+                null, "PostgresIndex pgvector", Set.of(new NotePath("Software-Engineering/Index.md"))));
+        assertThat(set.negativeQuestions()).containsExactly(new NegativeQuestion(
+                "How should I taper before a marathon?", NegativeKind.NEAR_MISS, null, "Tapering"));
     }
 
     @Test
@@ -67,6 +72,7 @@ class EvaluationSetTest {
         Path file = write("""
                 questions:
                   - question: What does the Dependency Rule say?
+                    category: definition
                 """);
 
         assertThatThrownBy(() -> EvaluationSet.read(file))
@@ -76,10 +82,65 @@ class EvaluationSetTest {
     }
 
     @Test
+    void whenRead_givenQuestionWithoutCategory_thenRejectNamingTheQuestion() throws IOException {
+        Path file = write("""
+                questions:
+                  - question: What does the Dependency Rule say?
+                    expected: [Software-Engineering/Index.md]
+                """);
+
+        assertThatThrownBy(() -> EvaluationSet.read(file))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("What does the Dependency Rule say?")
+                .hasMessageContaining("category");
+    }
+
+    @Test
+    void whenRead_givenNegativeQuestionWithoutCategory_thenRejectNamingTheQuestion() throws IOException {
+        Path file = write("""
+                negative-questions:
+                  - question: How should I taper before a marathon?
+                """);
+
+        assertThatThrownBy(() -> EvaluationSet.read(file))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("How should I taper before a marathon?")
+                .hasMessageContaining("category");
+    }
+
+    @Test
+    void whenRead_givenUnknownCategory_thenRejectNamingIt() throws IOException {
+        Path file = write("""
+                questions:
+                  - question: What does the Dependency Rule say?
+                    category: trivia
+                    expected: [Software-Engineering/Index.md]
+                """);
+
+        assertThatThrownBy(() -> EvaluationSet.read(file))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("trivia");
+    }
+
+    @Test
+    void whenRead_givenNegativeQuestionWithQuestionCategory_thenRejectNamingIt() throws IOException {
+        Path file = write("""
+                negative-questions:
+                  - question: How should I taper before a marathon?
+                    category: definition
+                """);
+
+        assertThatThrownBy(() -> EvaluationSet.read(file))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("definition");
+    }
+
+    @Test
     void whenRead_givenNegativeQuestionWithExpectedNotes_thenReject() throws IOException {
         Path file = write("""
                 negative-questions:
                   - question: How should I taper before a marathon?
+                    category: near-miss
                     expected: [Training/Taper.md]
                 """);
 
@@ -89,8 +150,10 @@ class EvaluationSetTest {
     @Test
     void whenFindMissingNotes_givenExpectedNoteNotInVault_thenReturnIt() {
         EvaluationSet set = new EvaluationSet(List.of(
-                new Question("How do I run a kata?", null, null, Set.of(new NotePath("Coaching/Kata.md"))),
-                new Question("What is a dojo?", null, null, Set.of(new NotePath("Coaching/Dojo (renamed).md")))), List.of());
+                new Question("How do I run a kata?", Category.DEFINITION, null,
+                        Set.of(new NotePath("Coaching/Kata.md"))),
+                new Question("What is a dojo?", Category.DEFINITION, null,
+                        Set.of(new NotePath("Coaching/Dojo (renamed).md")))), List.of());
 
         Set<NotePath> missing = set.missingNotes(List.of(new NotePath("Coaching/Kata.md"), new NotePath("Index.md")));
 

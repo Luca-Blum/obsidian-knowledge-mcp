@@ -48,7 +48,12 @@ record Report(List<QuestionResult> questions, List<NegativeResult> negativeQuest
         return negativeQuestions.stream().filter(result -> !result.fullTextHits().isEmpty()).count();
     }
 
+    /** The totals, then the metrics per Category and the Negative Questions per kind. */
     String summary(Run run) {
+        return totals(run) + "\n" + perCategory() + "\n" + perNegativeKind(run.minimumSimilarity());
+    }
+
+    private String totals(Run run) {
         return """
                 # Evaluation of Collection %s
 
@@ -73,18 +78,64 @@ record Report(List<QuestionResult> questions, List<NegativeResult> negativeQuest
                 run.fusion().k(), twoDecimals(run.fusion().vectorWeight()), twoDecimals(run.fusion().fullTextWeight()));
     }
 
+    private String perCategory() {
+        StringBuilder table = new StringBuilder("""
+                ## Per category
+
+                | Category | Questions | Hit@5 | Recall@5 | MRR |
+                | --- | --- | --- | --- | --- |
+                """);
+        for (Category category : Category.values()) {
+            Report inCategory = new Report(questionsIn(category), List.of());
+            if (!inCategory.questions().isEmpty()) {
+                table.append("| %s | %d | %s | %s | %s |\n".formatted(category.label(), inCategory.questions().size(),
+                        twoDecimals(inCategory.hitAt5()), twoDecimals(inCategory.recallAt5()),
+                        twoDecimals(inCategory.meanReciprocalRank())));
+            }
+        }
+        return table.toString();
+    }
+
+    private String perNegativeKind(double minimumSimilarity) {
+        StringBuilder table = new StringBuilder("""
+                ## Negative Questions per kind
+
+                | Kind | Passed | Highest similarity |
+                | --- | --- | --- |
+                """);
+        for (NegativeKind kind : NegativeKind.values()) {
+            Report ofKind = new Report(List.of(), negativeQuestionsOf(kind));
+            if (!ofKind.negativeQuestions().isEmpty()) {
+                table.append("| %s | %d of %d | %s |\n".formatted(kind.label(),
+                        ofKind.negativeQuestionsPassed(minimumSimilarity), ofKind.negativeQuestions().size(),
+                        similarity(ofKind.highestNegativeSimilarity())));
+            }
+        }
+        return table.toString();
+    }
+
+    private List<QuestionResult> questionsIn(Category category) {
+        return questions.stream().filter(result -> result.question().category() == category).toList();
+    }
+
+    private List<NegativeResult> negativeQuestionsOf(NegativeKind kind) {
+        return negativeQuestions.stream().filter(result -> result.question().kind() == kind).toList();
+    }
+
     String details(Run run) {
         StringBuilder details = new StringBuilder(summary(run)).append("\n## Questions\n");
         for (QuestionResult result : questions) {
             int rank = result.firstExpectedRank();
-            details.append("\n### ").append(result.question().text()).append("\n\n")
+            details.append("\n### ").append(result.question().text())
+                    .append(" (").append(result.question().category().label()).append(")\n\n")
                     .append(rank == 0 ? "Expected Note not in the top 5" : "First expected Note at rank " + rank)
                     .append(", recall ").append(twoDecimals(result.recall())).append(".\n\n");
             appendHits(details, result.top());
         }
         details.append("\n## Negative Questions\n");
         for (NegativeResult result : negativeQuestions) {
-            details.append("\n### ").append(result.question().text()).append("\n\n")
+            details.append("\n### ").append(result.question().text())
+                    .append(" (").append(result.question().kind().label()).append(")\n\n")
                     .append(result.passed(run.minimumSimilarity()) ? "Passed: no hit reaches" : "Failed: a hit reaches")
                     .append(" the Minimum Similarity of ").append(similarity(run.minimumSimilarity())).append(".\n\n");
             appendHits(details, result.vectorHits());
