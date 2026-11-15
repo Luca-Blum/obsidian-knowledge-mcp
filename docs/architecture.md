@@ -4,31 +4,31 @@ Terms are defined in [`GLOSSARY.md`](../GLOSSARY.md), and decisions with their r
 
 ## Goal and Guiding Principles
 
-A self-hosted knowledge service on a Raspberry Pi 5 lets an AI Agent, such as Claude Code or an assistant in claude.ai, ask questions about a subject area and get back the matching passages from a set of Obsidian Notes and sources. Unlike a hosted notebook service it has no usage limits, the sources never leave the owner's machines, and every part can be inspected and replaced.
+A self-hosted knowledge service on a small home server lets an AI Agent, such as Claude Code or an assistant in claude.ai, ask questions about a subject area and get back the matching passages from a set of Obsidian Notes and sources. Unlike a hosted notebook service it has no usage limits, the sources never leave the owner's machines, and every part can be inspected and replaced.
 
-1. **Obsidian is the only source of truth.** Notes, PDFs and links live in the Vaults on the Mac. Everything else is derived.
-2. **The Pi is a pure read model.** It receives the Vaults one way and builds search indexes from them. Every index can be deleted and rebuilt at any time, and the Pi never writes to a Vault.
-3. **Agentic RAG: retrieval on the Pi, generation by the AI Agent.** The service only returns facts (Chunks, Notes, Links). The AI Agent decides when and how often it searches, reads and answers. No language model runs on the Pi to write answers.
-4. **Heavy work runs where the compute is.** PDF conversion with Docling runs on the Mac, not on the Pi.
+1. **Obsidian is the only source of truth.** Notes, PDFs and links live in the Vaults on the workstation. Everything else is derived.
+2. **The server is a pure read model.** It receives the Vaults one way and builds search indexes from them. Every index can be deleted and rebuilt at any time, and the server never writes to a Vault.
+3. **Agentic RAG: retrieval on the server, generation by the AI Agent.** The service only returns facts (Chunks, Notes, Links). The AI Agent decides when and how often it searches, reads and answers. No language model runs on the server to write answers.
+4. **Heavy work runs where the compute is.** PDF conversion with Docling runs on the workstation, not on the server.
 5. **Models are replaceable.** The embedding model, and later a re-ranker, sit behind ports and are chosen only through configuration. A switch means changing the configuration, rebuilding the index and measuring against the Evaluation Set.
 6. **Collections are isolated.** Each subject area is its own knowledge base with its own Vault, DB schema and service instance, and so its own MCP endpoint. A client sees only the Collections it has a connector for. Only infrastructure is shared (code, Postgres instance, Ollama). The isolation serves relevance and per-Collection configuration, not access control.
 
-The reference deployment runs two Collections, `engineering` (software engineering sources) and `training` (sports science sources). They serve as the examples throughout this document; the code knows neither of them.
+The reference deployment runs two Collections, `engineering` (software engineering sources) and `training` (sports science sources). They serve as the examples throughout this document; the code knows neither of them. The deployment runs on a Mac with Apple Silicon as the workstation and a Raspberry Pi 5 with 8 GB as the server.
 
 ## System Overview
 
 ```mermaid
 flowchart TB
-    subgraph Mac
+    subgraph Workstation
         docling["Docling import<br/><small>PDF to Markdown</small>"]
         vaults["Obsidian Vaults<br/><small>Engineering, Training</small>"]
         docling --> vaults
     end
     subgraph Clients["AI Agents (MCP clients)"]
-        coach["Assistant<br/><small>claude.ai</small>"]
+        assistant["Assistant<br/><small>claude.ai</small>"]
         code["Claude Code"]
     end
-    subgraph Pi["Raspberry Pi 5"]
+    subgraph Server["Server (Raspberry Pi 5)"]
         copies["Vault copies<br/><small>each mounted read-only</small>"]
         subgraph Instances["one instance per Collection, same image"]
             eng["knowledgebase-engineering<br/><small>schema engineering</small>"]
@@ -47,22 +47,22 @@ flowchart TB
     Clients <-- "MCP, one endpoint per Collection" --> Instances
 ```
 
-The Mac is the master: Syncthing mirrors both Vaults one way to the Pi. There, a separate service instance per Collection indexes its Vault into its own schema. Over MCP it returns only Search Hits to the AI Agent, and the AI Agent writes the answer itself. Both instances share Postgres and Ollama.
+The workstation is the master: Syncthing mirrors both Vaults one way to the server. There, a separate service instance per Collection indexes its Vault into its own schema. Over MCP it returns only Search Hits to the AI Agent, and the AI Agent writes the answer itself. Both instances share Postgres and Ollama.
 
 ## Components
 
 | Component | Runs on | Responsibility | Writes to the Vault? |
 | --- | --- | --- | --- |
-| Obsidian | Mac (master) | Write Notes, link sources, read PDFs | Yes (you) |
-| Docling import | Mac | PDF from `_inbox` → Markdown Source Note, move the PDF to `_sources` | Yes |
-| Syncthing | Mac (Send Only) → Pi (Receive Only) | Mirror both Vaults one way to the Pi, PDFs included as a backup | No (Pi copy only) |
-| Quarkus knowledge service | Pi | Watch the Vault, parse Markdown, chunk, embed, hybrid search, MCP server; one instance per Collection | No |
-| Postgres + pgvector | Pi | Chunks, vectors, full-text index, link graph, metadata | – |
-| Embedding model | Pi (Ollama, model replaceable through configuration) | Text → vector for Chunks and queries; multilingual (DE/EN) | – |
-| Tailscale sidecar | Pi, one per Collection | One HTTPS origin per Collection: public through Funnel for claude.ai, through the tailnet for Claude Code; the service checks a bearer token per Client | – |
-| AI Agent (e.g. Claude Code, claude.ai) | Anthropic / Mac | Call tools, read sources, write the answer with citations | No |
+| Obsidian | Workstation (master) | Write Notes, link sources, read PDFs | Yes (you) |
+| Docling import | Workstation | PDF from `_inbox` → Markdown Source Note, move the PDF to `_sources` | Yes |
+| Syncthing | Workstation (Send Only) → server (Receive Only) | Mirror both Vaults one way to the server, PDFs included as a backup | No (server copy only) |
+| Quarkus knowledge service | Server | Watch the Vault, parse Markdown, chunk, embed, hybrid search, MCP server; one instance per Collection | No |
+| Postgres + pgvector | Server | Chunks, vectors, full-text index, link graph, metadata | – |
+| Embedding model | Server (Ollama, model replaceable through configuration) | Text → vector for Chunks and queries; multilingual (DE/EN) | – |
+| Tailscale sidecar | Server, one per Collection | One HTTPS origin per Collection: public through Funnel for claude.ai, through the tailnet for Claude Code; the service checks a bearer token per Client | – |
+| AI Agent (e.g. Claude Code, claude.ai) | Anthropic / workstation | Call tools, read sources, write the answer with citations | No |
 
-So the Pi holds two things: a copy of all sources (the Vault, PDFs included) and the index derived from it. Only the Markdown files are indexed, and the PDFs sit next to them as originals.
+So the server holds two things: a copy of all sources (the Vault, PDFs included) and the index derived from it. Only the Markdown files are indexed, and the PDFs sit next to them as originals.
 
 ## Vault Structure and Conventions
 
@@ -118,7 +118,7 @@ Further rules:
 
 ## Flows
 
-### PDF Import (Mac)
+### PDF Import (Workstation)
 
 1. Drop the PDF into `<Topic>/_inbox/`.
 2. The import script calls Docling and produces Markdown with headings and tables.
@@ -129,9 +129,9 @@ Further rules:
 
 If Docling returns Markdown without usable headings, the importer corrects nothing. The splitter's size limit catches that case.
 
-### Sync and Indexing (Pi)
+### Sync and Indexing (Server)
 
-1. Syncthing transfers changed files from the Mac to the Pi.
+1. Syncthing transfers changed files from the workstation to the server.
 2. Each service instance compares its Vault with the index (Reconciliation): at startup and every N minutes it compares Note paths and content hashes and re-indexes only what differs. A file watcher speeds this up to seconds but is not the source of correctness. A rename is a delete plus a create.
 3. It parses frontmatter, wikilinks and headings and cuts the Note into Chunks.
 4. It computes the embeddings and, in one transaction, replaces all Chunks, the raw text and the Links of that Note.
@@ -259,7 +259,7 @@ LIMIT :candidates;
 | Hits per Note | Keeps one long Note from taking every slot |
 | `setweight` on Title and headings | Hits in headings count more than in body text |
 | Language per Note, `to_tsvector(lang::regconfig, …)` | Stemming and stop words for German and English instead of `'simple'`. The query is parsed with every language of the Collection, and each Chunk is compared with the tsquery of its language |
-| Re-ranker on the top 30 (later) | More precise ordering, costs compute time on the Pi |
+| Re-ranker on the top 30 (later) | More precise ordering, costs compute time on the server |
 
 All values come from MicroProfile Config, so an experiment is a configuration change, not a code change.
 
@@ -282,7 +282,7 @@ The test computes three metrics, counted on Notes in the result actually returne
 - **Recall@5**: the share of expected Notes in the top 5. It measures the coverage of broad questions.
 - **MRR**: the rank of the first expected Note.
 
-Start with a baseline (pure vector search, fixed Chunks), then always change exactly one lever and measure again. Experiments run locally on the Mac (Dev Services, Ollama with the same model name, a local Vault). A run on the Pi only confirms the final configuration, because Ollama can return slightly different vectors on ARM and x86.
+Start with a baseline (pure vector search, fixed Chunks), then always change exactly one lever and measure again. Experiments run locally on the workstation (Dev Services, Ollama with the same model name, a local Vault). A run on the server only confirms the final configuration, because Ollama can return slightly different vectors on ARM and x86.
 
 Every Collection has its own Evaluation Set. On top of that there are Negative Questions, e.g. a training question against the Engineering Collection. A Negative Question passes when no vector hit reaches the Minimum Similarity. Full-text hits are reported separately and only for information. This shows whether the full-text search adds noise in practice.
 
@@ -310,17 +310,17 @@ The instances differ only in this description ("engineering knowledge base …" 
 | --- | --- | --- |
 | Language / framework | Java 25+, Quarkus (JVM mode) | Professionally relevant stack; CDI model close to Jakarta EE/MicroProfile |
 | AI building blocks | Quarkus LangChain4j (embedding model, embedding store, splitter) | Ready-made building blocks, but our own ingestion instead of Easy RAG |
-| MCP | `quarkus-mcp-server-http` (Streamable HTTP) | Remote access from the Mac and from claude.ai |
+| MCP | `quarkus-mcp-server-http` (Streamable HTTP) | Remote access from the workstation and from claude.ai |
 | Database | Postgres + pgvector (one schema per Collection), full text via `tsvector` | Vector and keyword search in one DB, hybrid via Reciprocal Rank Fusion |
-| Embeddings | Default `bge-m3` (1024 dim.); candidate `Qwen3-Embedding-0.6B` | Strongly multilingual (DE/EN), runs on the Pi CPU; chosen through configuration, decided by evaluation |
-| Model runtime | Ollama on the Pi | Model replaceable by name, no code change |
-| PDF conversion | Docling as a Python library in the importer on the Mac | Apple Silicon is many times faster than the Pi CPU |
-| Sync | Syncthing (Send Only / Receive Only) | One way, the Pi cannot change the Vault |
-| Operations | Docker Compose on the Pi, NVMe SSD | SD cards wear out under Postgres load |
+| Embeddings | Default `bge-m3` (1024 dim.); candidate `Qwen3-Embedding-0.6B` | Strongly multilingual (DE/EN), runs on the server's CPU; chosen through configuration, decided by evaluation |
+| Model runtime | Ollama on the server | Model replaceable by name, no code change |
+| PDF conversion | Docling as a Python library in the importer on the workstation | Apple Silicon is many times faster than the server's CPU |
+| Sync | Syncthing (Send Only / Receive Only) | One way, the server cannot change the Vault |
+| Operations | Docker Compose on the server, NVMe SSD | SD cards wear out under Postgres load |
 
 **Resources (Pi 5, 8 GB RAM):** OS about 0.5 GB, Postgres about 0.5–1 GB, two Quarkus instances with a limited heap at about 0.4–0.6 GB each, Ollama with bge-m3 about 1–1.5 GB. Together that is roughly 3.5–4.5 GB, which still leaves enough headroom for a Re-Index and a later re-ranker. Both Collections share Postgres and Ollama.
 
-**Replaceable models:** the `Embedding` knows only "text in, vector out". The model name and vector dimension come from the configuration, and every Chunk stores which model produced it. A model switch therefore forces a full Re-Index, never a mixed index. Embedding stays on the Pi, because every query also has to be embedded with the same model at the moment it is asked.
+**Replaceable models:** the `Embedding` knows only "text in, vector out". The model name and vector dimension come from the configuration, and every Chunk stores which model produced it. A model switch therefore forces a full Re-Index, never a mixed index. Embedding stays on the server, because every query also has to be embedded with the same model at the moment it is asked.
 
 **Licenses:** Quarkus, LangChain4j and quarkus-mcp-server (Apache 2.0), Postgres and pgvector (PostgreSQL License), Docling and Ollama (MIT), Syncthing (MPL 2.0) and the embedding models are open source. Obsidian is free but proprietary, without lock-in because the Vault consists of plain Markdown files. Tailscale is partly open (fully open: Headscale).
 
@@ -333,7 +333,7 @@ obsidian-knowledge-mcp/
 ├── service/              ← Quarkus knowledge service (Maven module)
 │   ├── src/main/java/…   ← domain, application, adapter (hexagonal)
 │   └── src/test/java/…   ← unit, ArchUnit, integration and evaluation tests
-├── importer/             ← Docling import for the Mac (Python project with uv + launchd template)
+├── importer/             ← Docling import for the workstation (macOS; Python project with uv + launchd template)
 ├── deploy/               ← docker-compose.yml, .env.example, configuration per Collection
 ├── docs/                 ← architecture, ADRs
 ├── .github/workflows/    ← build, tests, arm64 image to GHCR
@@ -346,22 +346,22 @@ obsidian-knowledge-mcp/
 
 ## Tooling and Operations
 
-How to set all of this up is in [`deploy/README.md`](../deploy/README.md); this section is the overview. The Mac runs four tools plus an import script. The Pi runs six containers in one Compose file (two service instances, each with its Tailscale sidecar, Postgres, Ollama) plus three native services.
+How to set all of this up is in [`deploy/README.md`](../deploy/README.md); this section is the overview. The workstation runs four tools plus an import script. The server runs six containers in one Compose file (two service instances, each with its Tailscale sidecar, Postgres, Ollama) plus three native services.
 
-### Mac
+### Workstation (Mac)
 
 | Tool | Purpose | Installation |
 | --- | --- | --- |
 | Obsidian | Edit both Vaults, link sources | App |
 | Docling | PDF → Markdown | Library in the importer project (uv), version pinned, OCR on; models fetched ahead of time with `docling-tools models download` |
 | Import script | Watch the `_inbox` folders of both Vaults, call Docling, write the Source Note with frontmatter, move the PDF to `_sources` | Python project (uv) in the repository, started by `launchd` every minute; checks the `_inbox/` of every Topic in both Vaults (polling instead of WatchPaths, which is not recursive) |
-| Syncthing | Send both Vaults one way to the Pi (Send Only) | App or `brew` |
-| Tailscale | Private network to the Pi | App |
+| Syncthing | Send both Vaults one way to the server (Send Only) | App or `brew` |
+| Tailscale | Private network to the server | App |
 | Claude Code | MCP client with one connector per Collection, e.g. `https://knowledge-engineering.<tailnet>.ts.net/mcp` | `claude mcp add` |
 
-Docker is needed on the Mac only for development, where Quarkus Dev Services start Postgres with pgvector automatically.
+Docker is needed on the workstation only for development, where Quarkus Dev Services start Postgres with pgvector automatically.
 
-### Raspberry Pi 5
+### Server (Raspberry Pi 5)
 
 | Tool | Purpose | Operation |
 | --- | --- | --- |
@@ -371,28 +371,28 @@ Docker is needed on the Mac only for development, where Quarkus Dev Services sta
 | `postgres` | Chunks, vectors, full text, Links; one schema per Collection | Container (`pgvector/pgvector`) |
 | `ollama` | Embedding model (bge-m3), used by both instances | Container (official image) |
 | Syncthing | Receive both Vaults (Receive Only) | Native (apt); each Vault as a read-only volume, mounted only into its own container |
-| Tailscale | Access from the Mac to the Pi itself (SSH) | Native (apt) |
+| Tailscale | Access from the workstation to the server itself (SSH) | Native (apt) |
 | Tunnel | One HTTPS origin per Collection: public through Funnel on 443 for claude.ai, through the tailnet for Claude Code | Container: a Tailscale sidecar per Collection |
 | GitHub Actions runner | Deploys every push to `main` (`docker compose up --wait`) | Native, self-hosted runner with label `pi`, as a service |
 
-Syncthing and the Pi's own Tailscale run natively because they work closely with the host's network and file system. Each Collection's Tailscale node runs as a sidecar container instead, so the Collection keeps its own origin and can move to another server on its own.
+Syncthing and the server's own Tailscale run natively because they work closely with the host's network and file system. Each Collection's Tailscale node runs as a sidecar container instead, so the Collection keeps its own origin and can move to another server on its own.
 
 ### Operations
 
-- **Build and deployment:** the Git repository and GitHub Actions build an arm64 image with `docker buildx` on a native arm64 runner and push it to the GitHub Container Registry. A self-hosted runner on the Pi then starts every instance on the image of that commit (`docker compose up --wait`), so a merge to `main` is deployed and an unhealthy instance fails the workflow.
+- **Build and deployment:** the Git repository and GitHub Actions build an arm64 image with `docker buildx` on a native arm64 runner and push it to the GitHub Container Registry. A self-hosted runner on the server then starts every instance on the image of that commit (`docker compose up --wait`), so a merge to `main` is deployed and an unhealthy instance fails the workflow.
 - **Health:** `quarkus-smallrye-health` provides health checks for Compose.
 - **Re-Index:** starts automatically when the index fingerprint (model, dimension, chunking parameters) doesn't match the configuration, and an admin endpoint forces one when needed. Meanwhile the Collection answers no searches.
-- **Backup:** the Vault lives on the Mac and the Pi, plus Time Machine. The database is not backed up, because the index can be rebuilt from the Vault at any time.
+- **Backup:** the Vault lives on the workstation and the server, plus the workstation's own backup. The database is not backed up, because the index can be rebuilt from the Vault at any time.
 - **Security:** each client gets its own static bearer token per Collection (claude.ai, Claude Code), which Quarkus checks. claude.ai custom connectors send it as a request header. The tokens live in `.env`, so a single client can be blocked without touching the others. Rotating means removing the connector and creating it again, because its auth settings cannot be changed afterwards. The public endpoint runs through Tailscale Funnel.
 
 ## Decisions and Trade-offs
 
 | Decision | Instead of | Trade-off |
 | --- | --- | --- |
-| Our own Quarkus service | RAGFlow | More to build; in return Obsidian stays the master, it runs lightly on the Pi, and there is a Java learning effect |
+| Our own Quarkus service | RAGFlow | More to build; in return Obsidian stays the master, it runs lightly on the server, and there is a Java learning effect |
 | Retrieval-only MCP (Agentic RAG) | The server calls an LLM itself | Quality depends on the client model; in return one LLM call instead of two, and the AI Agent sees the original sources |
-| Vault master on the Mac, one-way sync | Pi as master | The Pi is only as current as the last sync (the Mac has to be running) |
-| Docling on the Mac | docling-serve on the Pi | Import works only on the Mac; in return it is fast and the Pi stays lean |
+| Vault master on the workstation, one-way sync | Server as master | The server is only as current as the last sync (the workstation has to be running) |
+| Docling on the workstation | docling-serve on the server | Import works only on the workstation; in return it is fast and the server stays lean |
 | Two Collections: own Vault, own schema, own instance | One index with a `topic` filter | A bit more RAM (a second JVM) and no links between Engineering and Training; in return real isolation and configuration per Collection (language, chunking, model) |
 | One schema per Collection in one Postgres instance, own DB role per instance | A separate DB instance per Collection | Shared operations; isolation at schema level is enough for this purpose |
 | Store Links as text, resolve them at query time (ADR 0001) | A resolved graph at indexing time | Slightly more expensive queries; in return replacement stays limited to one Note, and Backlinks stay correct after creating or renaming Notes |
@@ -406,9 +406,9 @@ Syncthing and the Pi's own Tailscale run natively because they work closely with
 
 The system grew in thin vertical slices, each usable on its own:
 
-1. Two Vaults (Engineering, Training), synced one way from the Mac to the Pi with Syncthing.
-2. The Docling importer on the Mac (`_inbox` → `Source-Notes/` + `_sources/`).
-3. A walking skeleton on the Pi for Engineering only: Quarkus, pgvector and a vector-only `search` tool, connected to Claude Code.
+1. Two Vaults (Engineering, Training), synced one way from the workstation to the server with Syncthing.
+2. The Docling importer on the workstation (`_inbox` → `Source-Notes/` + `_sources/`).
+3. A walking skeleton on the server for Engineering only: Quarkus, pgvector and a vector-only `search` tool, connected to Claude Code.
 4. The Evaluation Set: real questions plus Negative Questions, and a baseline.
 5. Hybrid search, Minimum Similarity, Reconciliation, `read_note`, `related` and the lists, each measured against the baseline.
 6. A second instance for Training from the same image, through configuration only.
