@@ -1,5 +1,7 @@
 # Links are stored as written and resolved at query time
 
+Status: Accepted · 2026-11-06
+
 The index stores each Link only as the text the author wrote, together with its kind and its heading anchor. It resolves the Link against the current set of Notes when `related` is called, using Obsidian's rules: the path suffix or file name is matched without regard to case, and more than one match is reported as an Ambiguous Link instead of being guessed. We chose this so that creating, renaming or deleting one Note never forces other Notes to be re-indexed. Replacement stays limited to the Note that changed, and Backlinks and Unresolved Links stay correct without a graph-wide update.
 
 ## Consequences

@@ -1,5 +1,7 @@
 # Packages are split by layer first, then by concept, and each use case gets its own view of the index
 
+Status: Accepted · 2026-11-09
+
 The hexagon's layers `domain`, `application` and `adapter` stay the top-level packages, because ADR 0003 and `ArchitectureTest` are built on them. Below them, `domain` and `application` are split by concept: `domain.note` (what a Note is), `domain.markdown` (the lines and headings of a Note's Markdown), `domain.chunk` (how a Note becomes Chunks), `domain.search`, `domain.catalog`, `domain.link` and `domain.reading` (what the AI Agent gets back when it reads a Note), and `application.indexing`, `application.search`, `application.catalog`, `application.link` and `application.reading`, with `Embedding` left in `application` because indexing and search both need it. `adapter` stays split by technology. The index is one Postgres schema, but the core sees it through secondary ports cut by use case: `IndexedNotes` for indexing, `IndexBuild` for the Re-Index, `ChunkVectors` and `ChunkFullText` for search, `Catalog` for browsing, `IndexedLinks` for following Links and `NoteTexts` for reading, all implemented by `PostgresIndex`. Search has two, because its vector and full-text rankings are separate lists that only the use case fuses.
 
 ## Considered Options
