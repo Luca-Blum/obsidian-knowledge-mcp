@@ -341,29 +341,3 @@ container really uses.
 | Search finds nothing | The Vault is empty on the Pi (check the Syncthing connection), or the files arrived after the service started (restart it). |
 | `AccessDeniedException` in the logs | The Notes are not readable for the container: see *Ignore permissions* above. |
 | `timeout period ... exceeded while executing POST /api/embed` | Ollama is slower than `OLLAMA_TIMEOUT` (default `120s`). Raise it in `.env`. |
-
-## Upgrade notes
-
-Only for an installation set up before these changes; a new one follows the setup above.
-
-### Isolated database roles and the Training Collection
-
-An installation from before the bearer tokens and database roles needs `ENGINEERING_DB_PASSWORD`,
-`ENGINEERING_TOKEN_CLAUDE_CODE` and `ENGINEERING_TOKEN_CLAUDE_AI` in `.env` before its next deploy. `postgres-init` then hands the
-schema that the superuser built to the role `engineering`, and the index stays as it is.
-
-Before the deploy that adds the Training Collection, an existing installation also needs `TRAINING_DB_PASSWORD`, the
-`TRAINING_` tokens and the other `TRAINING_` values from `.env.example`, and the Training Vault synced to
-`/srv/vaults/Training`. Without them the deploy stops with `set in .env`.
-
-### Move to Funnel
-
-Before this setup, the instances published ports 8081 and 8082 on the Pi, and Claude Code connected through them.
-
-1. Do step [2. Tailscale](#2-tailscale-one-public-origin-per-collection) and put both auth keys into
-   `/srv/knowledgebase/.env`. Without them the deploy stops with `set in .env`. `ENGINEERING_MCP_PORT` and
-   `TRAINING_MCP_PORT` are no longer used, delete them.
-2. Merge to deploy. From now on ports 8081 and 8082 are closed.
-3. Connect Claude Code and claude.ai as above.
-4. Turn off any Funnel you set up by hand on the Pi's own node, e.g. from a test:
-   `sudo tailscale funnel --https=443 off`. `tailscale funnel status` on the Pi then shows nothing.

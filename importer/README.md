@@ -87,9 +87,9 @@ uv run pdf-importer --vault ~/Obsidian/Engineering --vault ~/Obsidian/Training
 Each file is logged to stderr with its outcome and, for a converted or failed file, how long it took:
 
 ```text
-2026-11-06 14:02:11,512 INFO converted /…/Coaching/_inbox/dependency-rule.pdf as /…/Coaching/Source-Notes/dependency-rule.md in 8.3s
-2026-11-06 14:02:12,044 ERROR failed /…/Coaching/_inbox/broken.pdf in 0.4s
-2026-11-06 14:02:13,100 INFO skipped /…/Coaching/_inbox/half-copied.pdf: changed a moment ago
+2026-11-06 14:02:11,512 INFO converted /…/Software-Engineering/_inbox/dependency-rule.pdf as /…/Software-Engineering/Source-Notes/dependency-rule.md in 8.3s
+2026-11-06 14:02:12,044 ERROR failed /…/Software-Engineering/_inbox/broken.pdf in 0.4s
+2026-11-06 14:02:13,100 INFO skipped /…/Software-Engineering/_inbox/half-copied.pdf: changed a moment ago
 ```
 
 ## Run in the background
