@@ -71,6 +71,15 @@ GitHub never connects to the Pi. The runner on the Pi asks GitHub for jobs, so t
 You need Raspberry Pi OS (64-bit) with Docker, Tailscale and the GitHub CLI (`gh`, logged in with `gh auth login`).
 Your user must be in the `docker` group.
 
+Raspberry Pi OS turns off the kernel's memory controller, and without it Docker ignores every `mem_limit`. Turn it on
+before the first deploy, then reboot:
+
+```shell
+sudo sed -i '1 s/$/ cgroup_enable=memory/' /boot/firmware/cmdline.txt   # the file is a single line
+sudo reboot
+grep -o memory /sys/fs/cgroup/cgroup.controllers                        # prints "memory"
+```
+
 ### 1. Configuration
 
 ```shell
@@ -322,7 +331,8 @@ comes from the `x-collection` and `x-tailscale-sidecar` anchors in `docker-compo
 `<COLLECTION>_HEAP` (default `-Xmx512m`) caps each instance's Java heap, and `mem_limit: 900m` caps each Collection's
 container. Two instances take at most 1.8 GB, which leaves room for Postgres, Ollama with `bge-m3` (about 1.2 GB
 loaded) and the system in 8 GB. Each Tailscale sidecar takes a few dozen MB. `docker stats --no-stream` shows what each
-container really uses.
+container really uses; it shows each Collection's limit as `900MiB` only when the memory controller is on (see
+[First setup](#first-setup-on-the-pi)).
 
 ## Troubleshooting
 

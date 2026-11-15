@@ -10,6 +10,10 @@ themselves stay in the Vault, so only the numbers are here.
 | [Engineering baseline](engineering-baseline.md) | Plain vector search, `bge-m3`, no Minimum Similarity | 0.88 | 0.75 | 0.80 |
 | [Engineering hybrid search](engineering-hybrid-search.md) | Full-text weight 1.0, questions without `keywords` | 0.81 | 0.72 | 0.71 |
 | [Engineering hybrid search](engineering-hybrid-search.md#with-keywords) | Full-text weight 1.0, questions with `keywords` | 1.00 | 0.91 | 0.92 |
+| [Engineering Minimum Similarity](engineering-minimum-similarity.md) | Minimum Similarity 0.56 | 1.00 | 0.97 | 0.94 |
+
+The training Collection has its own Evaluation Set: [`training-minimum-similarity.md`](training-minimum-similarity.md)
+measures it with hybrid search and chooses its Minimum Similarity.
 
 What the second and third row show: the full-text search only helps when it gets exact terms. Given the whole
 question, it matches common words in long book chapters and pushes expected Notes out of the top 5. Given the term
