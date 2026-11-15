@@ -32,6 +32,9 @@ full and which Links to follow, and writes the answer itself. No language model 
   *before* the fusion ([ADR 0002](docs/adr/0002-minimum-similarity-before-fusion.md)).
 - **Measured, not guessed.** Every Collection has an Evaluation Set of real questions and Negative Questions. Each
   change to search moves one lever and is measured against the baseline ([evaluation](docs/evaluation/README.md)).
+- **Tools designed for AI Agents.** Separate parameters for semantic `query` and exact `keywords`, per-Collection
+  tool descriptions, Search Hits capped per Note, and calibrated abstention: an off-topic question gets no hits
+  instead of the least bad match.
 - **A self-healing index.** Reconciliation compares content hashes with the Vault on start-up, periodically and after
   file changes, and embeds only what changed. A changed embedding model or chunking rule triggers a full Re-Index on
   its own, so swapping the model is a configuration change.
@@ -134,17 +137,24 @@ Re-Index are described in [`service/README.md`](service/README.md).
 - [Glossary](GLOSSARY.md): the domain language used in code, docs and tool descriptions
 - [Evaluation](docs/evaluation/README.md): method and results
 - [Deployment](deploy/README.md): Raspberry Pi setup, operations and troubleshooting
-- [How this project is built](docs/agentic-development.md)
+- [Agentic engineering workflow](docs/agentic-development.md): specs, context engineering, guardrails, review gate
 - [Ideas](docs/ideas.md): what was deliberately not built yet, and when to look again
 
-## How this project is built
+## Agentic engineering workflow
 
-This project was built agentically, and it was not vibe coding. I set the architecture and made every decision; AI
-Agents wrote much of the code within that frame, using structured skills from
-[mattpocock/skills](https://github.com/mattpocock/skills) (test-driven development, domain modeling, grilling a
-plan, code review against standards and spec) instead of free-form prompts. Every change went through a pull request
-that I reviewed before it was merged, and CI, ArchUnit rules and the Evaluation Set check what a review can miss.
-[`docs/agentic-development.md`](docs/agentic-development.md) shows the workflow in detail.
+Built with coding agents in a spec-driven, human-in-the-loop workflow:
+
+- **Spec-driven:** every change starts as an issue with acceptance criteria; only issues triaged `ready-for-agent`
+  go to an agent, and plans are stress-tested before implementation.
+- **Context engineering:** agent instructions, a ubiquitous-language glossary and ADRs are versioned with the code,
+  and recurring review findings become rules there.
+- **Skills over prompts:** TDD, domain modeling, plan grilling and two-axis code review (standards and spec) run as
+  versioned procedures from [mattpocock/skills](https://github.com/mattpocock/skills).
+- **Guardrails:** ArchUnit architecture rules, integration tests on real Postgres, an eval suite for retrieval
+  quality, CI on every pull request and health-gated deployment.
+- **Human review gate:** every change reaches `main` through a pull request I review.
+
+Details and examples: [`docs/agentic-development.md`](docs/agentic-development.md).
 
 ## Roadmap
 
