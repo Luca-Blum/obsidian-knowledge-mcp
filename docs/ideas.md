@@ -6,7 +6,7 @@ Possibilities that are not tickets yet. Each entry says why it waits and what wo
 
 **Idea:** Docling can replace the `<!-- image -->` placeholder of a picture with a generated description (`do_picture_description`). Pointing it at a larger local vision model through `PictureDescriptionApiOptions` (LM Studio or Ollama) might read the labels in diagrams.
 
-**Why it waits:** An experiment with Docling's default model, SmolVLM-256M, on the clean-architecture diagram of Clean Architecture (PDF pages 229-230) produced only "In this image, we can see a diagram. In the diagram, we can see the labels of different things." and leaked the model's `<end_of_utterance>` token into the Note. The surrounding text of the book already explains most diagrams, and a wrong description would stand in a Source Note like book text. A larger model has not been tried because no local vision model is installed.
+**Why it waits:** An experiment with Docling's default model, SmolVLM-256M, on the clean-architecture diagram of Clean Architecture (PDF pages 229-230) produced only "In this image, we can see a diagram. In the diagram, we can see the labels of different things." and leaked the model's `<end_of_utterance>` token into the Note. The surrounding text of the book already explains most diagrams, and a wrong description would stand in a Source Note like book text. A larger model has not been tried yet.
 
 **Look again when:** The Evaluation Set (#4) contains questions that only a diagram can answer, or a source depends on charts or tables that exist only as pictures. Try a larger model on those sources only, and mark any description clearly as generated.
 
