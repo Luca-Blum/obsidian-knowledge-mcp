@@ -1,5 +1,7 @@
 # claude.ai reaches a Collection with its static Client token, not through OAuth
 
+Status: Accepted · 2026-11-14
+
 claude.ai reaches a Collection as a custom connector with Authentication "No sign in" and the request header `Authorization: Bearer <token>`, where the token is the Client's static bearer token from #13. The service checks it like Claude Code's. Custom connectors have offered request headers since August 2026, which a test against the Engineering Collection confirmed on 2026-11-14. The value needs the `Bearer ` prefix: a bare token gets `401`, and the connector reports only "Couldn't connect to the server".
 
 ## Considered Options

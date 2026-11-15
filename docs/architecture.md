@@ -4,7 +4,7 @@ Terms are defined in [`GLOSSARY.md`](../GLOSSARY.md), and decisions with their r
 
 ## Goal and Guiding Principles
 
-A self-hosted knowledge service on the Raspberry Pi 5 replaces the NotebookLM MCP. An AI Agent (the AI Coach in claude.ai, Claude Code) asks questions about a subject area and gets back the matching passages from your own Obsidian Notes and sources. There are no limits, and you manage all of it yourself.
+A self-hosted knowledge service on a Raspberry Pi 5 lets an AI Agent (the AI Coach in claude.ai, Claude Code) ask questions about a subject area and get back the matching passages from its owner's Obsidian Notes and sources. It replaces a hosted notebook service: no usage limits, no upload of the sources, and every part can be inspected and replaced.
 
 1. **Obsidian is the only source of truth.** Notes, PDFs and links live in the Vaults on the Mac. Everything else is derived.
 2. **The Pi is a pure read model.** It receives the Vaults one way and builds search indexes from them. Every index can be deleted and rebuilt at any time, and the Pi never writes to a Vault.
@@ -57,8 +57,7 @@ The Mac is the master: Syncthing mirrors both Vaults one way to the Pi. There, a
 | Quarkus knowledge service | Pi | Watch the Vault, parse Markdown, chunk, embed, hybrid search, MCP server; one instance per Collection | No |
 | Postgres + pgvector | Pi | Chunks, vectors, full-text index, link graph, metadata | – |
 | Embedding model | Pi (Ollama, model replaceable through configuration) | Text → vector for Chunks and queries; multilingual (DE/EN) | – |
-| Tailscale | Mac, Pi | Private network access for Claude Code to the MCP endpoint | – |
-| Tunnel with auth | Pi | Publicly reachable HTTPS endpoint for the custom connector in claude.ai (AI Coach) | – |
+| Tailscale sidecar | Pi, one per Collection | One HTTPS origin per Collection: public through Funnel for claude.ai, through the tailnet for Claude Code; the service checks a bearer token per Client | – |
 | AI Agent (AI Coach, Claude Code) | Anthropic / Mac | Call tools, read sources, write the answer with citations | No |
 
 So the Pi holds two things: a copy of all sources (the Vault, PDFs included) and the index derived from it. Only the Markdown files are indexed, and the PDFs sit next to them as originals.
@@ -215,7 +214,7 @@ Search quality depends on four levers. Chunking and hybrid search usually help m
 
 ### 1. Chunking: Our Own Markdown Splitter
 
-The Markdown is parsed into a syntax tree (e.g. with commonmark-java or flexmark), and the splitter is domain logic:
+The Markdown is read line by line in the domain (`domain.markdown`), which recognizes headings, code fences and tables without a parser library, and the splitter is domain logic:
 
 - One Chunk per H2/H3 section (the level is configurable).
 - Limits in characters, independent of the model (roughly 200 / 2000): merge smaller sections with their neighbour, split larger ones by paragraph, with a slight overlap. There is no tokenizer in the service, so comparing models changes only the model, not the Chunks. The upper limit, context prefix included, stays far below the input limit of every candidate model.
@@ -268,7 +267,7 @@ All values come from MicroProfile Config, so an experiment is a configuration ch
 
 ### 3. Measuring: the Evaluation Set as a Test
 
-A file with real questions and the expected Notes, plus the Negative Questions (format and how to run it: [`service/README.md`](../service/README.md#evaluation)):
+A file with real questions and the expected Notes, plus the Negative Questions (format and how to run it: [`docs/evaluation/`](evaluation/README.md)):
 
 ```yaml
 questions:
@@ -295,7 +294,7 @@ The AI Agent writes the queries itself, and the `@Tool` descriptions steer how t
 
 ```java
 @Tool(description = """
-    Searches Luca's engineering knowledge base (Obsidian).
+    Searches the engineering knowledge base (Obsidian).
     'query' is the question in your own words (vector search, across languages).
     'keywords' are optional exact terms for the full-text search
     (class names, abbreviations, proper names).
@@ -349,7 +348,7 @@ obsidian-knowledge-mcp/
 
 ## Tooling and Operations
 
-The Mac runs four tools plus an import script. The Pi runs six containers in one Compose file (two service instances, each with its Tailscale sidecar, Postgres, Ollama) plus three native services.
+How to set all of this up is in [`deploy/README.md`](../deploy/README.md); this section is the overview. The Mac runs four tools plus an import script. The Pi runs six containers in one Compose file (two service instances, each with its Tailscale sidecar, Postgres, Ollama) plus three native services.
 
 ### Mac
 
@@ -382,13 +381,13 @@ Syncthing and the Pi's own Tailscale run natively because they work closely with
 
 ### Operations
 
-- **Build and deployment:** the Git repository and GitHub Actions build an arm64 image (Jib or `docker buildx`) and push it to the GitHub Container Registry. A self-hosted runner on the Pi then starts every instance on the image of that commit (`docker compose up --wait`), so a merge to `main` is deployed and an unhealthy instance fails the workflow.
+- **Build and deployment:** the Git repository and GitHub Actions build an arm64 image with `docker buildx` on a native arm64 runner and push it to the GitHub Container Registry. A self-hosted runner on the Pi then starts every instance on the image of that commit (`docker compose up --wait`), so a merge to `main` is deployed and an unhealthy instance fails the workflow.
 - **Health:** `quarkus-smallrye-health` provides health checks for Compose.
 - **Re-Index:** starts automatically when the index fingerprint (model, dimension, chunking parameters) doesn't match the configuration, and an admin endpoint forces one when needed. Meanwhile the Collection answers no searches.
 - **Backup:** the Vault lives on the Mac and the Pi, plus Time Machine. The database is not backed up, because the index can be rebuilt from the Vault at any time.
 - **Security:** each client gets its own static bearer token per Collection (claude.ai, Claude Code), which Quarkus checks. claude.ai custom connectors send it as a request header. The tokens live in `.env`, so a single client can be blocked without touching the others. Rotating means removing the connector and creating it again, because its auth settings cannot be changed afterwards. The public endpoint runs through Tailscale Funnel.
 
-## Decisions, Trade-offs and Next Steps
+## Decisions and Trade-offs
 
 | Decision | Instead of | Trade-off |
 | --- | --- | --- |
@@ -405,21 +404,16 @@ Syncthing and the Pi's own Tailscale run natively because they work closely with
 | Re-Index switches search off | Keep serving the old index until the switch-over | Hours without search after a model switch; in return no doubled storage and no switch-over logic |
 | Static bearer token per client | OAuth server, Cloudflare Access | Rotating means creating the connector again; in return no additional service |
 
-### Open Points
+### How It Was Built Up
 
-- [x] Settle the Pi 5's RAM: 8 GB, enough for the setup
-- [x] Define the Collections: Engineering (Coaching, Software-Engineering) and Training
-- [ ] Compare bge-m3 with Qwen3-Embedding-0.6B on our own German and English Notes
-- [ ] Calibrate the Minimum Similarity per Collection and model with Negative Questions (method decided, values open)
-- [x] Authentication and tunnel: a bearer token per client through Tailscale Funnel
-- [x] Chunking strategy: splitting by heading plus limits in characters, atomic blocks kept whole
+The system grew in thin vertical slices, each usable on its own:
 
-### Next Steps
+1. Two Vaults (Engineering, Training), synced one way from the Mac to the Pi with Syncthing.
+2. The Docling importer on the Mac (`_inbox` → `Source-Notes/` + `_sources/`).
+3. A walking skeleton on the Pi for Engineering only: Quarkus, pgvector and a vector-only `search` tool, connected to Claude Code.
+4. The Evaluation Set: real questions plus Negative Questions, and a baseline.
+5. Hybrid search, Minimum Similarity, Reconciliation, `read_note`, `related` and the lists, each measured against the baseline.
+6. A second instance for Training from the same image, through configuration only.
+7. claude.ai as a second Client, through its own token and a public origin per Collection.
 
-1. Create two Vaults (Engineering, Training) and set up Syncthing Mac → Pi for both.
-2. Docling import script on the Mac (`_inbox` → `Source-Notes/` + `_sources/`).
-3. Walking skeleton on the Pi, first for Engineering only: Quarkus + pgvector + the `search` tool (vector only), connected to Claude Code.
-4. Evaluation Set: 15–20 real questions plus Negative Questions, answers compared with NotebookLM.
-5. Add hybrid search, Minimum Similarity, Reconciliation, `read_note`, `related`, `list_sources` and measure again.
-6. Start a second instance for Training from the same image (configuration only).
-7. Enable access for the AI Coach in claude.ai; replace NotebookLM for "ask" once the evaluation is on par.
+What is still open is listed under Roadmap in the [README](../README.md#roadmap).

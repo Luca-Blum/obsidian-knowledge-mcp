@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8b9bb4"/>
+    </marker>
+    <style>
+      text { font-family: -apple-system, "SF Pro Display", "Helvetica Neue", Arial, sans-serif; }
+      .title { font-size: 60px; font-weight: 700; fill: #f4f6fa; }
+      .tagline { font-size: 27px; fill: #aab6c8; }
+      .box { fill: #1b2433; stroke: #34445e; stroke-width: 2; }
+      .core { fill: #1d2c45; stroke: #5b8def; stroke-width: 2.5; }
+      .label { font-size: 25px; font-weight: 600; fill: #f4f6fa; }
+      .sub { font-size: 18px; fill: #8b9bb4; }
+      .edge { stroke: #8b9bb4; stroke-width: 2.5; fill: none; }
+      .edgelabel { font-size: 17px; fill: #8b9bb4; }
+      .chip { fill: #222d3f; stroke: #34445e; stroke-width: 1.5; }
+      .chiptext { font-size: 19px; fill: #cfd8e6; }
+    </style>
+  </defs>
+
+  <rect width="1280" height="640" fill="#0f1520"/>
+
+  <text x="80" y="118" class="title">obsidian-knowledge-mcp</text>
+  <text x="80" y="166" class="tagline">Hybrid search over Obsidian Vaults for AI Agents, served over MCP from a Raspberry Pi</text>
+
+  <!-- Mac -->
+  <rect x="80" y="240" width="300" height="190" rx="16" class="box"/>
+  <text x="110" y="284" class="label">Mac</text>
+  <text x="110" y="324" class="sub">Obsidian Vaults</text>
+  <text x="110" y="354" class="sub">Docling importer</text>
+  <text x="110" y="384" class="sub">PDF, EPUB, Word → Markdown</text>
+
+  <!-- Pi -->
+  <rect x="490" y="220" width="320" height="230" rx="16" class="core"/>
+  <text x="520" y="264" class="label">Raspberry Pi 5</text>
+  <text x="520" y="304" class="sub">Quarkus service per Collection</text>
+  <text x="520" y="334" class="sub">Postgres + pgvector</text>
+  <text x="520" y="364" class="sub">Ollama embeddings</text>
+  <text x="520" y="394" class="sub">Vector + full text, RRF fusion</text>
+
+  <!-- Agent -->
+  <rect x="920" y="240" width="280" height="190" rx="16" class="box"/>
+  <text x="950" y="284" class="label">AI Agent</text>
+  <text x="950" y="324" class="sub">search, read_note,</text>
+  <text x="950" y="354" class="sub">related, list_topics</text>
+  <text x="950" y="384" class="sub">answers with citations</text>
+
+  <!-- Edges -->
+  <path d="M380 335 L486 335" class="edge" marker-end="url(#arrow)"/>
+  <text x="392" y="318" class="edgelabel">Syncthing</text>
+  <path d="M814 335 L916 335" class="edge" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="836" y="318" class="edgelabel">MCP</text>
+
+  <!-- Stack chips -->
+  <g>
+    <rect x="80" y="510" width="110" height="44" rx="22" class="chip"/>
+    <text x="135" y="539" text-anchor="middle" class="chiptext">Java 25</text>
+    <rect x="204" y="510" width="120" height="44" rx="22" class="chip"/>
+    <text x="264" y="539" text-anchor="middle" class="chiptext">Quarkus</text>
+    <rect x="338" y="510" width="160" height="44" rx="22" class="chip"/>
+    <text x="418" y="539" text-anchor="middle" class="chiptext">LangChain4j</text>
+    <rect x="512" y="510" width="130" height="44" rx="22" class="chip"/>
+    <text x="577" y="539" text-anchor="middle" class="chiptext">pgvector</text>
+    <rect x="656" y="510" width="210" height="44" rx="22" class="chip"/>
+    <text x="761" y="539" text-anchor="middle" class="chiptext">Hexagonal + ArchUnit</text>
+    <rect x="880" y="510" width="110" height="44" rx="22" class="chip"/>
+    <text x="935" y="539" text-anchor="middle" class="chiptext">Docling</text>
+    <rect x="1004" y="510" width="196" height="44" rx="22" class="chip"/>
+    <text x="1102" y="539" text-anchor="middle" class="chiptext">GitHub Actions CD</text>
+  </g>
+</svg>

@@ -1,5 +1,7 @@
 # Ports are interfaces, and every architectural role is marked with a jMolecules annotation
 
+Status: Accepted · 2026-11-06
+
 The service is a hexagon with the packages `domain`, `application` and `adapter`, each split further by concept (ADR 0004). Each type states its role with a jMolecules annotation, and `ArchitectureTest` enforces the roles. Names carry the concept, not the role, so there are no `Port`, `Repository` or `Reader` suffixes.
 
 | Role | Annotation | Form | Example |
