@@ -1,77 +1,118 @@
-# How This Project Is Built
+# Agentic Engineering Workflow
 
-This project was built agentically: AI Agents wrote much of the code and documentation. It was not vibe coding. I
-set the architecture, made every decision, and reviewed every change in its pull request before it was merged. This
-page shows the frame that makes that work.
+This project is built with coding agents in a spec-driven, human-in-the-loop workflow. I own the architecture, the
+specs and the review gate; agents implement against them. What keeps the output reliable is not the prompt but the
+system around the agent: versioned context, deterministic guardrails, evals and a merge gate that only a human
+passes.
 
-## Roles
+```mermaid
+flowchart LR
+    spec["Spec<br/><small>issue, ready-for-agent</small>"]
+    plan["Plan<br/><small>grilled, ADR if needed</small>"]
+    impl["Implementation<br/><small>agent, TDD, own worktree</small>"]
+    checks["Guardrails<br/><small>CI, ArchUnit, evals</small>"]
+    review["Human review<br/><small>pull request</small>"]
+    deploy["Deploy<br/><small>health-gated</small>"]
+    spec --> plan --> impl --> checks --> review --> deploy
+    checks -. fail .-> impl
+    review -. changes requested .-> impl
+```
 
-| Who | Does |
+## Responsibilities
+
+| Role | Owns |
 | --- | --- |
-| Me | Decides what to build and how it should be structured, writes and triages issues, challenges plans, reviews every pull request, merges |
-| AI Agent | Explores the code, proposes plans, writes code, tests and docs within the written rules, opens the pull request |
-| CI, ArchUnit, Evaluation Set | Check on every change what a reviewer can overlook |
+| Engineer (me) | Problem framing, architecture, specs, decisions (ADRs), plan approval, code review, merge |
+| Coding agent | Codebase exploration, plan proposals, implementation, tests, docs, pull request |
+| Guardrails | Architecture conformance, test suite, retrieval quality, deployment health, all deterministic and on every change |
 
-## A structured workflow instead of free-form prompts
+## Spec-driven development
 
-The work runs on skills from [mattpocock/skills](https://github.com/mattpocock/skills), each a written procedure an
-AI Agent follows for one kind of task:
+Every change starts as a GitHub issue that serves as its spec: the problem, the expected behaviour and the acceptance
+criteria, in the vocabulary of [`GLOSSARY.md`](../GLOSSARY.md). Triage labels gate what an agent may pick up: only
+an issue labelled `ready-for-agent` is specified well enough to implement without guessing; `needs-info` and
+`ready-for-human` keep underspecified or judgement-heavy work away from the agent. The label definitions live in
+[`docs/agents/`](agents/), so agents apply them the same way.
 
-- **Grilling** a plan before any code is written: the agent questions the idea until open points are decided.
-- **Domain modeling**: terms that come up are settled in [`GLOSSARY.md`](../GLOSSARY.md), decisions with their
-  trade-offs are recorded as [ADRs](adr/README.md).
-- **Test-driven development**: red, green, refactor, with integration tests against real Postgres.
-- **Code review** of a branch against two axes: the repository's standards and what the issue asked for.
-- **Pull request descriptions** that explain the change for the reviewer.
+Before implementation, the plan is stress-tested in a structured interview (*grilling*) until every open question is
+resolved. A decision with lasting consequences is recorded as an [ADR](adr/README.md) before code depends on it.
 
-## What every AI Agent reads first
+## Context engineering
 
-The agent starts every task with the same context, kept in the repository and versioned with the code:
+The agent's context is part of the codebase: versioned, reviewed and refined like code.
 
-- [`CLAUDE.md`](../CLAUDE.md): the architecture rules (hexagonal, jMolecules roles, ports as interfaces), the code
-  style (small functions that read like prose, no abstractions for needs that don't exist yet), the test naming
-  convention `when<Action>_given<Context>_then<Outcome>`, and the wording rules.
-- [`GLOSSARY.md`](../GLOSSARY.md): the domain language. Code, tests, docs and MCP tool descriptions use its terms,
-  and each entry lists the synonyms to avoid.
-- [`docs/adr/`](adr/README.md): the decisions already made, so an agent does not reopen them silently.
-- [`docs/agents/`](agents/): where issues live, what the triage labels mean and how to use the domain docs.
+- [`CLAUDE.md`](../CLAUDE.md), the project's agent instructions: architecture rules (hexagonal, ports as
+  interfaces, jMolecules roles), code style, test naming convention and wording rules.
+- [`GLOSSARY.md`](../GLOSSARY.md), the ubiquitous language: each term with its definition and the synonyms to
+  avoid, so names in code, tests, docs and MCP tool descriptions stay consistent across sessions and agents.
+- [ADRs](adr/README.md) as durable decision memory, so an agent does not silently reopen a settled trade-off.
+- [`docs/agents/`](agents/): the issue tracker, triage labels and how to consume the domain docs.
 
-## From issue to merge
+When a review uncovers a recurring mistake, the fix goes into this context rather than into a one-off prompt, so it
+holds for every later session.
 
-1. **Issue.** Each piece of work is a GitHub issue. Triage labels (`needs-triage`, `ready-for-agent`,
-   `ready-for-human`, …) say whether it is specified well enough for an agent.
-2. **Plan.** For anything non-trivial the agent explores the code and proposes a plan, which I grill or correct
-   before it starts.
-3. **Branch and pull request.** One issue, one branch, one pull request. 33 pull requests have been merged into
-   `main` so far; only the initial setup was committed directly.
-4. **Checks.** CI runs the service tests, including `ArchitectureTest`, and the importer tests on every pull
-   request. Search changes are measured with the [Evaluation Set](evaluation/README.md) before they are merged.
-5. **Review.** I review the diff in the pull request, ask for changes, and merge. A merge to `main` deploys to the
-   Raspberry Pi.
+## Skills: repeatable procedures instead of ad-hoc prompts
 
-## Guard rails that do not depend on the reviewer
+Recurring tasks run as agent skills from [mattpocock/skills](https://github.com/mattpocock/skills), each a written,
+versioned procedure:
 
-- **ArchUnit** fails the build when a dependency points the wrong way or a type lacks its role.
-- **Integration tests** run against real Postgres with pgvector; a deterministic fake replaces only the embedding
-  model.
-- **The Evaluation Set** turns "search feels better" into Hit@5, Recall@5 and MRR, so a change that makes search
-  worse is visible in numbers.
-- **The deploy** fails when an instance is not healthy within ten minutes, so a broken image never stays live
-  unnoticed.
+| Skill | Used for |
+| --- | --- |
+| Grilling | Stress-testing a plan until it is unambiguous |
+| Domain modeling | Maintaining the glossary and recording ADRs |
+| Test-driven development | Red-green-refactor, integration tests against real Postgres |
+| Code review | Reviewing a branch on two axes: conformance to the repository's standards, and to the issue's spec |
+| Pull request | Writing a reviewer-oriented PR description with evidence and merge risk |
 
-## Examples where the human decision mattered
+## Guardrails
 
-- **OAuth built, then dropped.** An authorization server for claude.ai was built and tested inside the service
-  (#52, PR #56, about 1400 lines of security code). When claude.ai's custom connectors began to accept a static
-  request header, I tested that against a live Collection and closed the pull request in favour of a static token
-  per Client: much less code to secure and no extra component. The reasoning is in
-  [ADR 0005](adr/0005-claude-ai-uses-a-static-token-not-oauth.md), the option kept for later in
-  [`ideas.md`](ideas.md).
-- **A rule made green the wrong way.** An early version satisfied the jMolecules architecture rule by marking the
-  concrete use case classes as ports. That merged each port with its implementation and hid the boundary the rule
-  protects. It was reversed in [ADR 0003](adr/0003-ports-are-interfaces-and-roles-are-annotated.md), and
-  `CLAUDE.md` now says it outright: never annotate a concrete class as a port to satisfy a rule, fix the design.
-- **Measured before merged.** Hybrid search at equal weight made results *worse* when the full-text search got the
-  whole question. Instead of tuning weights until the numbers looked right, the `search` tool now asks the AI Agent
-  for exact terms as `keywords`, and with them Hit@5 went from 0.88 to 1.00
+Deterministic checks that hold no matter who or what wrote the code:
+
+- **Architecture as code.** `ArchitectureTest` (ArchUnit + jMolecules) fails the build on a wrong dependency
+  direction, a missing role annotation or a concrete class posing as a port.
+- **Tests against real infrastructure.** Integration tests run on Postgres with pgvector through Quarkus Dev
+  Services; only the embedding model is replaced by a deterministic fake.
+- **Eval-driven retrieval.** Each Collection has an Evaluation Set with Negative Questions. Retrieval changes are
+  measured on Hit@5, Recall@5 and MRR against a committed baseline, one lever at a time
+  ([evaluation](evaluation/README.md)).
+- **CI on every pull request** for the Java service and the Python importer.
+- **Health-gated deployment.** The deploy fails when an instance is not healthy within ten minutes.
+
+## Human in the loop
+
+The merge is the gate. Every change reaches `main` through a pull request that I review: 33 merged so far, only the
+initial setup was committed directly. Review covers what guardrails cannot: whether the design fits, whether names
+carry the domain, and whether the change does what the spec meant rather than what it literally said.
+
+Agents work in parallel in separate git worktrees, one issue each. Implementation scales out; review remains the
+deliberate bottleneck.
+
+## Decisions in practice
+
+- **Discarding a working implementation.** An OAuth authorization server for claude.ai was built and fully tested
+  (#52, PR #56, about 1,400 lines of security-critical code). Once claude.ai's custom connectors accepted static
+  request headers, I validated that against a live Collection and closed the PR in favour of a static token per
+  Client: less attack surface, no extra component.
+  [ADR 0005](adr/0005-claude-ai-uses-a-static-token-not-oauth.md) records the trade-off.
+- **Turning a review finding into a guardrail.** An early change satisfied the jMolecules rule by annotating the
+  concrete use case classes as ports, which made the check pass while erasing the boundary it protects. The design
+  was corrected ([ADR 0003](adr/0003-ports-are-interfaces-and-roles-are-annotated.md)), and the rule "never annotate
+  a concrete class as a port to satisfy a rule; fix the design" went into `CLAUDE.md`.
+- **Letting the eval decide.** Hybrid search at equal weights lowered Hit@5 when the full-text search received the
+  whole question. Rather than tuning weights to the Evaluation Set, the MCP tool interface changed: the `search`
+  tool now asks the AI Agent for exact terms as `keywords`. With them Hit@5 went from 0.88 to 1.00
   ([results](evaluation/README.md#results)).
+
+## AI engineering in the product itself
+
+The same discipline applies to what the service offers its own AI Agents:
+
+- **Agentic RAG.** The service only retrieves; the AI Agent plans its own searches, reads and link traversal and
+  writes the answer, so there is one LLM call instead of two and the agent sees the original sources.
+- **Tool design for agents.** Tool descriptions are configured per Collection and tell the agent how to search well.
+  `query` (semantic) and `keywords` (exact terms) are separate parameters, Search Hits are capped per Note with a
+  count of what was left out, and an index being rebuilt answers with an error that states its progress instead of
+  returning silently incomplete results.
+- **Calibrated abstention.** A Minimum Similarity on the vector list lets a Collection return nothing for an
+  off-topic question instead of its least bad match, so the agent can tell that it does not know
+  ([ADR 0002](adr/0002-minimum-similarity-before-fusion.md)).
