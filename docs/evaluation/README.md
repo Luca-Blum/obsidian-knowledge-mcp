@@ -77,7 +77,7 @@ question from the Collection's own field that its Vault does not cover.
 
 Without `keywords` the full-text search gets the whole question, as it would when the AI Agent leaves them out.
 
-Start Ollama with the model the Pi uses (`EMBEDDING_MODEL` in `deploy/.env`, default `bge-m3`), then run:
+Start Ollama with the model the Pi uses (`EMBEDDING_MODEL` in `deploy/.env`, default `qwen3-embedding:0.6b`), then run:
 
 ```shell
 cd service

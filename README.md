@@ -114,7 +114,7 @@ The full design, with its trade-offs, is in [`docs/architecture.md`](docs/archit
 | Service | Java 25, Quarkus, Quarkus LangChain4j, `quarkus-mcp-server-http` (Streamable HTTP) |
 | Architecture | Hexagonal, jMolecules, ArchUnit |
 | Storage and search | Postgres 17, pgvector, `tsvector` full text with German and English stemming |
-| Embeddings | Ollama, `bge-m3` (1024 dimensions, multilingual), replaceable through configuration |
+| Embeddings | Ollama, `qwen3-embedding:0.6b` (1024 dimensions, multilingual), chosen by evaluation, replaceable through configuration |
 | Importer | Python, uv, Docling, Lingua for language detection, launchd |
 | Tests | JUnit, ArchUnit, Quarkus Dev Services with real Postgres and pgvector, pytest |
 | Operations | Docker Compose, GitHub Actions, GHCR, self-hosted runner, Tailscale Funnel, Syncthing |
@@ -124,7 +124,7 @@ The full design, with its trade-offs, is in [`docs/architecture.md`](docs/archit
 You need Java 25, Docker and [Ollama](https://ollama.com). Quarkus Dev Services start Postgres with pgvector.
 
 ```shell
-ollama pull bge-m3
+ollama pull qwen3-embedding:0.6b
 COLLECTION_VAULT_PATH=/path/to/your/vault ./service/mvnw -f service/pom.xml quarkus:dev
 claude mcp add --transport http knowledge http://localhost:8081/mcp --header "Authorization: Bearer dev-token"
 ```

@@ -8,8 +8,10 @@ measured against others. On the extended Evaluation Sets of #54, each model at i
 43 against 41 of 45 on training), and costs the same on the Pi: 135 ms against 116 ms per query, 1.2 GB against 1.3 GB
 of Ollama memory. The numbers are in [`embedding-models.md`](../evaluation/embedding-models.md).
 
-The switch itself is a follow-up: `EMBEDDING_MODEL=qwen3-embedding:0.6b`, the Minimum Similarities calibrated for it,
-0.61 for engineering and 0.53 for training, and a Re-Index of both Collections, about 10 hours on the Pi.
+The defaults in `deploy/docker-compose.yml`, `deploy/.env.example` and `application.properties` become
+`qwen3-embedding:0.6b` with the Minimum Similarities calibrated for it, 0.61 for engineering and 0.53 for training. The
+Pi switches when its `.env` takes the same values; the next deploy then starts a Re-Index of both Collections, about
+10 hours on the Pi.
 
 ## Considered Options
 
