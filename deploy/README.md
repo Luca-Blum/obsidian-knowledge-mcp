@@ -26,7 +26,7 @@ On the Pi everything runs in Docker, started from `docker-compose.yml`:
 | `postgres` | `pgvector/pgvector:pg17` | Stores the index. Data in the Docker volume `knowledgebase_postgres`. |
 | `postgres-init` | `pgvector/pgvector:pg17` | Gives each Collection its own database role that sees only its schema, then exits. |
 | `ollama` | `ollama/ollama` | Computes embeddings. Models in the Docker volume `knowledgebase_ollama`. |
-| `ollama-pull` | `ollama/ollama` | Downloads the embedding model (`bge-m3`) once, then exits. |
+| `ollama-pull` | `ollama/ollama` | Downloads the embedding model (`qwen3-embedding:0.6b`) once, then exits. |
 | `tailscale-engineering` | `tailscale/tailscale` | The Engineering Collection's Tailscale node `knowledge-engineering`. Funnel on 443 proxies to its instance. State in the Docker volume `knowledgebase_tailscale-engineering`. |
 | `knowledgebase-engineering` | `ghcr.io/luca-blum/obsidian-knowledge-mcp` | The service for the Engineering Collection. Serves MCP on port 8081 inside the network of `tailscale-engineering`. |
 | `tailscale-training` | `tailscale/tailscale` | The same for the Training Collection: node `knowledge-training`. |
@@ -219,7 +219,7 @@ Check the sync with `syncthing cli show connections` (the Mac shows `"connected"
 ### 5. First deploy
 
 Push to `main`, or rerun the latest Deploy workflow (GitHub → Actions → Deploy → Re-run all jobs). The first run takes
-a few minutes longer, because `ollama-pull` downloads the embedding model (about 1.2 GB).
+a few minutes longer, because `ollama-pull` downloads the embedding model (about 640 MB).
 
 ## Indexing
 
@@ -329,9 +329,9 @@ comes from the `x-collection` and `x-tailscale-sidecar` anchors in `docker-compo
 ## Memory
 
 `<COLLECTION>_HEAP` (default `-Xmx512m`) caps each instance's Java heap, and `mem_limit: 900m` caps each Collection's
-container. Two instances take at most 1.8 GB, which leaves room for Postgres, Ollama with `bge-m3` (about 1.2 GB
-loaded) and the system in 8 GB. Each Tailscale sidecar takes a few dozen MB. `docker stats --no-stream` shows what each
-container really uses; it shows each Collection's limit as `900MiB` only when the memory controller is on (see
+container. Two instances take at most 1.8 GB, which leaves room for Postgres, Ollama with `qwen3-embedding:0.6b` (about
+1.2 GB loaded) and the system in 8 GB. Each Tailscale sidecar takes a few dozen MB. `docker stats --no-stream` shows
+what each container really uses; it shows each Collection's limit as `900MiB` only when the memory controller is on (see
 [First setup](#first-setup-on-the-pi)).
 
 ## Troubleshooting

@@ -31,7 +31,7 @@ x-collection-environment: &collection-environment
   COLLECTION_VAULT_PATH: /vault
   # Every instance has its own network through its sidecar, so all use the port that tailscale/serve.json proxies to
   COLLECTION_MCP_PORT: 8081
-  COLLECTION_EMBEDDING_MODEL: ${EMBEDDING_MODEL:-bge-m3}
+  COLLECTION_EMBEDDING_MODEL: ${EMBEDDING_MODEL:-qwen3-embedding:0.6b}
   COLLECTION_EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-1024}
   DATABASE_URL: jdbc:postgresql://postgres:5432/knowledge
   OLLAMA_BASE_URL: http://ollama:11434
@@ -120,7 +120,7 @@ services:
         condition: service_healthy
     environment:
       OLLAMA_HOST: ollama:11434
-    entrypoint: ["ollama", "pull", "${EMBEDDING_MODEL:-bge-m3}"]
+    entrypoint: ["ollama", "pull", "${EMBEDDING_MODEL:-qwen3-embedding:0.6b}"]
     restart: "no"
 
   tailscale-engineering:
@@ -147,7 +147,7 @@ services:
       COLLECTION_NAME: engineering
       COLLECTION_SCHEMA: engineering
       COLLECTION_SEARCH_TOOL_DESCRIPTION: ${ENGINEERING_SEARCH_TOOL_DESCRIPTION:?set in .env}
-      COLLECTION_SEARCH_MINIMUM_SIMILARITY: ${ENGINEERING_SEARCH_MINIMUM_SIMILARITY:-0.56}
+      COLLECTION_SEARCH_MINIMUM_SIMILARITY: ${ENGINEERING_SEARCH_MINIMUM_SIMILARITY:-0.61}
       # One bearer token per client; an empty one locks that client out
       COLLECTION_AUTH_TOKENS_CLAUDE_AI: ${ENGINEERING_TOKEN_CLAUDE_AI:-}
       COLLECTION_AUTH_TOKENS_CLAUDE_CODE: ${ENGINEERING_TOKEN_CLAUDE_CODE:-}
@@ -180,7 +180,7 @@ services:
       COLLECTION_NAME: training
       COLLECTION_SCHEMA: training
       COLLECTION_SEARCH_TOOL_DESCRIPTION: ${TRAINING_SEARCH_TOOL_DESCRIPTION:?set in .env}
-      COLLECTION_SEARCH_MINIMUM_SIMILARITY: ${TRAINING_SEARCH_MINIMUM_SIMILARITY:-0.60}
+      COLLECTION_SEARCH_MINIMUM_SIMILARITY: ${TRAINING_SEARCH_MINIMUM_SIMILARITY:-0.53}
       # One bearer token per client; an empty one locks that client out
       COLLECTION_AUTH_TOKENS_CLAUDE_AI: ${TRAINING_TOKEN_CLAUDE_AI:-}
       COLLECTION_AUTH_TOKENS_CLAUDE_CODE: ${TRAINING_TOKEN_CLAUDE_CODE:-}

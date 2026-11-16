@@ -312,13 +312,13 @@ The instances differ only in this description ("engineering knowledge base …" 
 | AI building blocks | Quarkus LangChain4j (embedding model, embedding store, splitter) | Ready-made building blocks, but our own ingestion instead of Easy RAG |
 | MCP | `quarkus-mcp-server-http` (Streamable HTTP) | Remote access from the workstation and from claude.ai |
 | Database | Postgres + pgvector (one schema per Collection), full text via `tsvector` | Vector and keyword search in one DB, hybrid via Reciprocal Rank Fusion |
-| Embeddings | Default `bge-m3` (1024 dim.); candidate `Qwen3-Embedding-0.6B` | Strongly multilingual (DE/EN), runs on the server's CPU; chosen through configuration, decided by evaluation |
+| Embeddings | Default `qwen3-embedding:0.6b` (1024 dim.), chosen by evaluation over `bge-m3` and two others, see ADR 0006 | Strongly multilingual (DE/EN), runs on the server's CPU; chosen through configuration |
 | Model runtime | Ollama on the server | Model replaceable by name, no code change |
 | PDF conversion | Docling as a Python library in the importer on the workstation | Apple Silicon is many times faster than the server's CPU |
 | Sync | Syncthing (Send Only / Receive Only) | One way, the server cannot change the Vault |
 | Operations | Docker Compose on the server, NVMe SSD | SD cards wear out under Postgres load |
 
-**Resources (Pi 5, 8 GB RAM):** OS about 0.5 GB, Postgres about 0.5–1 GB, two Quarkus instances with a limited heap at about 0.4–0.6 GB each, Ollama with bge-m3 about 1–1.5 GB. Together that is roughly 3.5–4.5 GB, which still leaves enough headroom for a Re-Index and a later re-ranker. Both Collections share Postgres and Ollama.
+**Resources (Pi 5, 8 GB RAM):** OS about 0.5 GB, Postgres about 0.5–1 GB, two Quarkus instances with a limited heap at about 0.4–0.6 GB each, Ollama with qwen3-embedding:0.6b about 1–1.5 GB. Together that is roughly 3.5–4.5 GB, which still leaves enough headroom for a Re-Index and a later re-ranker. Both Collections share Postgres and Ollama.
 
 **Replaceable models:** the `Embedding` knows only "text in, vector out". The model name and vector dimension come from the configuration, and every Chunk stores which model produced it. A model switch therefore forces a full Re-Index, never a mixed index. Embedding stays on the server, because every query also has to be embedded with the same model at the moment it is asked.
 
@@ -369,7 +369,7 @@ Docker is needed on the workstation only for development, where Quarkus Dev Serv
 | `knowledgebase-engineering` | Quarkus app for the Engineering Collection: indexing, search, MCP | Container (own arm64 image), schema `engineering` |
 | `knowledgebase-training` | The same Quarkus app for the Training Collection | Container (same image, different configuration), schema `training` |
 | `postgres` | Chunks, vectors, full text, Links; one schema per Collection | Container (`pgvector/pgvector`) |
-| `ollama` | Embedding model (bge-m3), used by both instances | Container (official image) |
+| `ollama` | Embedding model (qwen3-embedding:0.6b), used by both instances | Container (official image) |
 | Syncthing | Receive both Vaults (Receive Only) | Native (apt); each Vault as a read-only volume, mounted only into its own container |
 | Tailscale | Access from the workstation to the server itself (SSH) | Native (apt) |
 | Tunnel | One HTTPS origin per Collection: public through Funnel on 443 for claude.ai, through the tailnet for Claude Code | Container: a Tailscale sidecar per Collection |

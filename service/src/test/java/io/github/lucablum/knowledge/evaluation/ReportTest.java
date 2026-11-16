@@ -1,5 +1,9 @@
 package io.github.lucablum.knowledge.evaluation;
 
+import static io.github.lucablum.knowledge.evaluation.Category.DEFINITION;
+import static io.github.lucablum.knowledge.evaluation.Category.SCENARIO;
+import static io.github.lucablum.knowledge.evaluation.NegativeKind.NEAR_MISS;
+import static io.github.lucablum.knowledge.evaluation.NegativeKind.OTHER_COLLECTION;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.lucablum.knowledge.domain.note.NoteKind;
@@ -22,16 +26,18 @@ class ReportTest {
     private final Report report = new Report(
             List.of(
                     new QuestionResult(
-                            new Question("What does the Dependency Rule say?", null,
+                            new Question("What does the Dependency Rule say?", DEFINITION, null,
                                     Set.of(new NotePath("Software-Engineering/Clean Architecture.md"))),
                             List.of(hit("Software-Engineering/Other.md", 0.71),
                                     hit("Software-Engineering/Clean Architecture.md", 0.69))),
                     new QuestionResult(
-                            new Question("How do I run a kata?", null, Set.of(new NotePath("Coaching/Kata.md"))),
+                            new Question("How do I run a kata?", SCENARIO, null,
+                                    Set.of(new NotePath("Coaching/Kata.md"))),
                             List.of(hit("Coaching/Dojo.md", 0.52)))),
-            List.of(new NegativeResult(new NegativeQuestion("How should I taper before a marathon?", null),
+            List.of(new NegativeResult(
+                            new NegativeQuestion("How should I taper before a marathon?", OTHER_COLLECTION, null),
                             List.of(hit("Coaching/Habits.md", 0.43))),
-                    new NegativeResult(new NegativeQuestion("Which bike fits me?", null),
+                    new NegativeResult(new NegativeQuestion("Which bike fits me?", NEAR_MISS, null),
                             List.of(hit("Coaching/Gear.md", 0.38)))));
 
     @Test
@@ -57,20 +63,51 @@ class ReportTest {
     }
 
     @Test
+    void whenRenderSummary_givenQuestionsInSeveralCategories_thenShowMetricsPerCategory() {
+        String summary = report.summary(RUN);
+
+        assertThat(summary).contains(
+                "| Category | Questions | Hit@5 | Recall@5 | MRR |",
+                "| definition | 1 | 1.00 | 1.00 | 0.50 |",
+                "| scenario | 1 | 0.00 | 0.00 | 0.00 |");
+        assertThat(summary).doesNotContain("| paraphrase |");
+    }
+
+    @Test
+    void whenRenderSummary_givenNegativeQuestionsOfBothKinds_thenShowPassedAndHighestSimilarityPerKind() {
+        String summary = report.summary(RUN);
+
+        assertThat(summary).contains(
+                "| Kind | Passed | Highest similarity |",
+                "| other-collection | 0 of 1 | 0.430 |",
+                "| near-miss | 1 of 1 | 0.380 |");
+    }
+
+    @Test
+    void whenRenderDetails_givenQuestions_thenNameEachQuestionsCategory() {
+        String details = report.details(RUN);
+
+        assertThat(details)
+                .contains("### What does the Dependency Rule say? (definition)\n\nFirst expected Note at rank 2");
+    }
+
+    @Test
     void whenRenderDetails_givenNegativeQuestions_thenMarkEachPassedOrFailedAgainstMinimumSimilarity() {
         String details = report.details(RUN);
 
         assertThat(details).contains(
-                "### How should I taper before a marathon?\n\nFailed: a hit reaches the Minimum Similarity of 0.400.",
-                "### Which bike fits me?\n\nPassed: no hit reaches the Minimum Similarity of 0.400.");
+                "### How should I taper before a marathon? (other-collection)\n\n"
+                        + "Failed: a hit reaches the Minimum Similarity of 0.400.",
+                "### Which bike fits me? (near-miss)\n\nPassed: no hit reaches the Minimum Similarity of 0.400.");
     }
 
     @Test
     void whenRenderSummary_givenNegativeQuestionWithOnlyFullTextHits_thenPassItAndCountItsFullTextHitsApart() {
         Report withFullText = new Report(List.of(), List.of(
-                new NegativeResult(new NegativeQuestion("How should I taper before a marathon?", null),
+                new NegativeResult(
+                        new NegativeQuestion("How should I taper before a marathon?", OTHER_COLLECTION, null),
                         List.of(fullTextHit("Coaching/Marathon.md", 0.2).withScore(0.016))),
-                new NegativeResult(new NegativeQuestion("Which bike fits me?", null), List.of())));
+                new NegativeResult(new NegativeQuestion("Which bike fits me?", NEAR_MISS, null), List.of())));
 
         String summary = withFullText.summary(RUN);
 
@@ -82,7 +119,8 @@ class ReportTest {
     @Test
     void whenRenderDetails_givenNegativeQuestionWithVectorAndFullTextHits_thenListFullTextHitsSeparately() {
         Report withFullText = new Report(List.of(), List.of(
-                new NegativeResult(new NegativeQuestion("How should I taper before a marathon?", null), List.of(
+                new NegativeResult(
+                        new NegativeQuestion("How should I taper before a marathon?", OTHER_COLLECTION, null), List.of(
                         hit("Coaching/Habits.md", 0.43),
                         fullTextHit("Coaching/Marathon.md", 0.2)))));
 

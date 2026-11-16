@@ -1,5 +1,7 @@
 package io.github.lucablum.knowledge.evaluation;
 
+import static io.github.lucablum.knowledge.evaluation.Category.DEFINITION;
+import static io.github.lucablum.knowledge.evaluation.NegativeKind.OTHER_COLLECTION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.Assertions.within;
@@ -26,7 +28,8 @@ class EvaluationTest {
                 hits("A.md", "B.md", "Expected.md", "C.md", "D.md"))));
 
         Report report = evaluation.run(new EvaluationSet(
-                List.of(new Question("dependency rule", null, Set.of(new NotePath("Expected.md")))), List.of()));
+                List.of(new Question("dependency rule", DEFINITION, null, Set.of(new NotePath("Expected.md")))),
+                List.of()));
 
         assertThat(report.hitAt5()).isEqualTo(1.0);
         assertThat(report.meanReciprocalRank()).isCloseTo(1.0 / 3, within(1e-9));
@@ -38,7 +41,8 @@ class EvaluationTest {
                 hits("A.md", "A.md", "A.md", "A.md", "A.md", "B.md"))));
 
         Report report = evaluation.run(new EvaluationSet(List.of(
-                new Question("broad question", null, Set.of(new NotePath("A.md"), new NotePath("B.md")))), List.of()));
+                new Question("broad question", DEFINITION, null, Set.of(new NotePath("A.md"), new NotePath("B.md")))),
+                List.of()));
 
         assertThat(report.recallAt5()).isEqualTo(0.5);
         assertThat(requests).extracting(request -> request.k().getAsInt()).containsExactly(5);
@@ -48,7 +52,7 @@ class EvaluationTest {
     void whenRun_givenQuestionWithTopic_thenSearchWithinThatTopic() {
         Evaluation evaluation = new Evaluation(returning(Map.of()));
 
-        evaluation.run(new EvaluationSet(List.of(new Question("dependency rule", "Software-Engineering",
+        evaluation.run(new EvaluationSet(List.of(new Question("dependency rule", DEFINITION, "Software-Engineering",
                 Set.of(new NotePath("Software-Engineering/Clean Architecture.md")))), List.of()));
 
         assertThat(requests).singleElement()
@@ -60,9 +64,9 @@ class EvaluationTest {
         Evaluation evaluation = new Evaluation(returning(Map.of()));
 
         evaluation.run(new EvaluationSet(
-                List.of(new Question("How is the index stored?", null, "PostgresIndex",
+                List.of(new Question("How is the index stored?", DEFINITION, null, "PostgresIndex",
                         Set.of(new NotePath("Software-Engineering/Index.md")))),
-                List.of(new NegativeQuestion("How should I taper?", null, "Tapering"))));
+                List.of(new NegativeQuestion("How should I taper?", OTHER_COLLECTION, null, "Tapering"))));
 
         assertThat(requests).extracting(SearchRequest::query, request -> request.keywords().orElseThrow())
                 .containsExactly(tuple("How is the index stored?", "PostgresIndex"),
@@ -76,7 +80,7 @@ class EvaluationTest {
                 SearchHit.bySimilarity("Long runs", "Coaching/Habits.md", 0, List.of(), NoteKind.OWN, 0.38)))));
 
         Report report = evaluation.run(
-                new EvaluationSet(List.of(), List.of(new NegativeQuestion("marathon taper", null))));
+                new EvaluationSet(List.of(), List.of(new NegativeQuestion("marathon taper", OTHER_COLLECTION, null))));
 
         assertThat(report.negativeQuestions()).singleElement().satisfies(result -> {
             assertThat(result.question().text()).isEqualTo("marathon taper");

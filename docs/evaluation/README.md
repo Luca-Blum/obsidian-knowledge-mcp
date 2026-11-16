@@ -15,6 +15,25 @@ themselves stay in the Vault, so only the numbers are here.
 The training Collection has its own Evaluation Set: [`training-minimum-similarity.md`](training-minimum-similarity.md)
 measures it with hybrid search and chooses its Minimum Similarity.
 
+For the comparison of embedding models (#54) both Evaluation Sets were extended to harder questions in several
+categories and `near-miss` Negative Questions, so the runs below are not comparable to the rows above. Each model gets
+its own Minimum Similarity, calibrated against the Negative Questions.
+
+| Run | What changed | Hit@5 | Recall@5 | MRR |
+| --- | --- | --- | --- | --- |
+| [Engineering, `bge-m3`](engineering-bge-m3.md) | Extended set, 41 questions, Minimum Similarity 0.60 | 0.85 | 0.80 | 0.79 |
+| [Training, `bge-m3`](training-bge-m3.md) | Extended set, 45 questions, Minimum Similarity 0.62 | 0.91 | 0.75 | 0.81 |
+| [Engineering, `snowflake-arctic-embed2`](engineering-snowflake.md) | Model, Minimum Similarity 0.48 | 0.90 | 0.86 | 0.87 |
+| [Training, `snowflake-arctic-embed2`](training-snowflake.md) | Model, Minimum Similarity 0.46 | 0.91 | 0.79 | 0.85 |
+| [Engineering, `qwen3-embedding:0.6b`](engineering-qwen3-0.6b.md) | Model, Minimum Similarity 0.61 | 0.90 | 0.84 | 0.83 |
+| [Training, `qwen3-embedding:0.6b`](training-qwen3-0.6b.md) | Model, Minimum Similarity 0.53 | 0.96 | 0.81 | 0.86 |
+| [Engineering, `qwen3-embedding:4b`](engineering-qwen3-4b.md) | Model, Minimum Similarity 0.55 | 0.98 | 0.95 | 0.88 |
+| [Training, `qwen3-embedding:4b`](training-qwen3-4b.md) | Model, Minimum Similarity 0.54 | 0.93 | 0.79 | 0.86 |
+
+[`embedding-models.md`](embedding-models.md) compares the four models per category and across every Minimum
+Similarity, adds their cost on the Pi, and leads to [ADR 0006](../adr/0006-qwen3-embedding-0.6b-on-the-pi.md):
+`qwen3-embedding:0.6b` finds two questions more than `bge-m3` on both Collections at the same cost on the Pi.
+
 What the second and third row show: the full-text search only helps when it gets exact terms. Given the whole
 question, it matches common words in long book chapters and pushes expected Notes out of the top 5. Given the term
 the AI Agent passes as `keywords`, it finds every expected Note. That is why the `search` tool asks for `keywords`
@@ -29,18 +48,36 @@ is never indexed, e.g. `Engineering/_eval/questions.yaml`. Questions never go in
 ```yaml
 questions:
   - question: What does the Dependency Rule say?
+    category: definition                 # the question's shape, see below
     topic: Software-Engineering          # optional, restricts the search like the tool's 'topic'
     keywords: Dependency Rule            # optional, exact terms for the full-text search like the tool's 'keywords'
     expected:                            # Notes that answer it, as paths relative to the Vault root
       - Software-Engineering/Source-Notes/clean-architecture-ch5.md
 negative-questions:                      # questions this Collection must not answer
   - question: How should I taper before a marathon?
+    category: other-collection           # other-collection or near-miss
     keywords: Tapering                   # optional, as above
 ```
 
+Every question has exactly one `category`, so that a run shows where a model wins or loses, not only one average.
+Where shapes overlap, the harder one is chosen, e.g. a German paraphrase of an English Note is `cross-language`.
+
+| Category | Shape |
+| --- | --- |
+| `definition` | Asks what a named concept is. Kept, but a minority. |
+| `paraphrase` | Describes a concept without naming it. |
+| `scenario` | Describes a situation in several sentences and asks what to do. |
+| `comparison` | Asks how two or more concepts differ or relate. |
+| `multi-note` | Needs several Notes, e.g. a Source Note and an Own Note, or two books. |
+| `cross-language` | Asked in German about an English Note, or the reverse. |
+| `own-note` | Answered by an Own Note, not a Source Note. |
+
+A Negative Question is either `other-collection`, a question that belongs to another Collection, or `near-miss`, a
+question from the Collection's own field that its Vault does not cover.
+
 Without `keywords` the full-text search gets the whole question, as it would when the AI Agent leaves them out.
 
-Start Ollama with the model the Pi uses (`EMBEDDING_MODEL` in `deploy/.env`, default `bge-m3`), then run:
+Start Ollama with the model the Pi uses (`EMBEDDING_MODEL` in `deploy/.env`, default `qwen3-embedding:0.6b`), then run:
 
 ```shell
 cd service
@@ -67,6 +104,9 @@ and leaves fewer slots for the others.
 - **Hit@5** (main metric): share of questions with at least one expected Note in the top 5.
 - **Recall@5**: mean share of a question's expected Notes found in the top 5.
 - **MRR**: mean of 1 / rank of the first expected Note, 0 when none is in the top 5.
+
+The summary repeats the three metrics per category, and counts the Negative Questions passed and their highest
+similarity per kind.
 
 A Negative Question passes when none of its vector hits reaches the configured Minimum Similarity
 (`COLLECTION_SEARCH_MINIMUM_SIMILARITY`), and the summary counts how many passed. Its full-text hits never fail it; the

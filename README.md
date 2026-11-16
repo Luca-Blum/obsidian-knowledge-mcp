@@ -55,6 +55,18 @@ with hybrid search, once the questions carry the exact terms the AI Agent passes
 | Plain vector search ([baseline](docs/evaluation/engineering-baseline.md)) | 0.88 | 0.75 | 0.80 |
 | Hybrid search, full-text weight 1.0, with `keywords` ([details](docs/evaluation/engineering-hybrid-search.md)) | 1.00 | 0.91 | 0.92 |
 
+Four embedding models on extended Evaluation Sets with harder questions (41 and 45 questions, 16 Negative Questions
+each), every model at its own calibrated Minimum Similarity. `qwen3-embedding:0.6b` finds two questions more than
+`bge-m3` on both Collections at the same cost on the Pi; `qwen3-embedding:4b` is best on engineering but takes ten
+times as long per query on the Pi ([comparison](docs/evaluation/embedding-models.md)).
+
+| Model | Engineering Hit@5 | Training Hit@5 | Query on the Pi |
+| --- | --- | --- | --- |
+| `bge-m3` | 0.85 | 0.91 | 116 ms |
+| `snowflake-arctic-embed2` | 0.90 | 0.91 | – |
+| `qwen3-embedding:0.6b` | 0.90 | 0.96 | 135 ms |
+| `qwen3-embedding:4b` | 0.98 | 0.93 | 1124 ms |
+
 The same measurement also showed what hybrid search costs without `keywords`: the whole question as full-text query
 pushes long book chapters into the top 5. That is why the `search` tool asks the AI Agent for exact terms separately.
 
@@ -102,7 +114,7 @@ The full design, with its trade-offs, is in [`docs/architecture.md`](docs/archit
 | Service | Java 25, Quarkus, Quarkus LangChain4j, `quarkus-mcp-server-http` (Streamable HTTP) |
 | Architecture | Hexagonal, jMolecules, ArchUnit |
 | Storage and search | Postgres 17, pgvector, `tsvector` full text with German and English stemming |
-| Embeddings | Ollama, `bge-m3` (1024 dimensions, multilingual), replaceable through configuration |
+| Embeddings | Ollama, `qwen3-embedding:0.6b` (1024 dimensions, multilingual), chosen by evaluation, replaceable through configuration |
 | Importer | Python, uv, Docling, Lingua for language detection, launchd |
 | Tests | JUnit, ArchUnit, Quarkus Dev Services with real Postgres and pgvector, pytest |
 | Operations | Docker Compose, GitHub Actions, GHCR, self-hosted runner, Tailscale Funnel, Syncthing |
@@ -112,7 +124,7 @@ The full design, with its trade-offs, is in [`docs/architecture.md`](docs/archit
 You need Java 25, Docker and [Ollama](https://ollama.com). Quarkus Dev Services start Postgres with pgvector.
 
 ```shell
-ollama pull bge-m3
+ollama pull qwen3-embedding:0.6b
 COLLECTION_VAULT_PATH=/path/to/your/vault ./service/mvnw -f service/pom.xml quarkus:dev
 claude mcp add --transport http knowledge http://localhost:8081/mcp --header "Authorization: Bearer dev-token"
 ```
@@ -158,8 +170,8 @@ Details and examples: [`docs/agentic-development.md`](docs/agentic-development.m
 
 ## Roadmap
 
-- Compare `bge-m3` with `Qwen3-Embedding-0.6B` on the Evaluation Sets.
-- Calibrate the Minimum Similarity per Collection with its Negative Questions.
+- Switch the Pi to `qwen3-embedding:0.6b` with its calibrated Minimum Similarities
+  ([ADR 0006](docs/adr/0006-qwen3-embedding-0.6b-on-the-pi.md)).
 - A re-ranker on the top candidates, if the Pi has the headroom.
 
 ## License
