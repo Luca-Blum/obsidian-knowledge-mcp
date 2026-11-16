@@ -312,7 +312,7 @@ The instances differ only in this description ("engineering knowledge base …" 
 | AI building blocks | Quarkus LangChain4j (embedding model, embedding store, splitter) | Ready-made building blocks, but our own ingestion instead of Easy RAG |
 | MCP | `quarkus-mcp-server-http` (Streamable HTTP) | Remote access from the workstation and from claude.ai |
 | Database | Postgres + pgvector (one schema per Collection), full text via `tsvector` | Vector and keyword search in one DB, hybrid via Reciprocal Rank Fusion |
-| Embeddings | Default `bge-m3` (1024 dim.); candidate `Qwen3-Embedding-0.6B` | Strongly multilingual (DE/EN), runs on the server's CPU; chosen through configuration, decided by evaluation |
+| Embeddings | Default `bge-m3` (1024 dim.); `qwen3-embedding:0.6b` (1024 dim.) chosen by evaluation, see ADR 0006 | Strongly multilingual (DE/EN), runs on the server's CPU; chosen through configuration |
 | Model runtime | Ollama on the server | Model replaceable by name, no code change |
 | PDF conversion | Docling as a Python library in the importer on the workstation | Apple Silicon is many times faster than the server's CPU |
 | Sync | Syncthing (Send Only / Receive Only) | One way, the server cannot change the Vault |
