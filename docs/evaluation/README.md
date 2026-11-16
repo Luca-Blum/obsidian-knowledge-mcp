@@ -23,6 +23,16 @@ its own Minimum Similarity, calibrated against the Negative Questions.
 | --- | --- | --- | --- | --- |
 | [Engineering, `bge-m3`](engineering-bge-m3.md) | Extended set, 41 questions, Minimum Similarity 0.60 | 0.85 | 0.80 | 0.79 |
 | [Training, `bge-m3`](training-bge-m3.md) | Extended set, 45 questions, Minimum Similarity 0.62 | 0.91 | 0.75 | 0.81 |
+| [Engineering, `snowflake-arctic-embed2`](engineering-snowflake.md) | Model, Minimum Similarity 0.48 | 0.90 | 0.86 | 0.87 |
+| [Training, `snowflake-arctic-embed2`](training-snowflake.md) | Model, Minimum Similarity 0.46 | 0.91 | 0.79 | 0.85 |
+| [Engineering, `qwen3-embedding:0.6b`](engineering-qwen3-0.6b.md) | Model, Minimum Similarity 0.61 | 0.90 | 0.84 | 0.83 |
+| [Training, `qwen3-embedding:0.6b`](training-qwen3-0.6b.md) | Model, Minimum Similarity 0.53 | 0.96 | 0.81 | 0.86 |
+| [Engineering, `qwen3-embedding:4b`](engineering-qwen3-4b.md) | Model, Minimum Similarity 0.55 | 0.98 | 0.95 | 0.88 |
+| [Training, `qwen3-embedding:4b`](training-qwen3-4b.md) | Model, Minimum Similarity 0.54 | 0.93 | 0.79 | 0.86 |
+
+[`embedding-models.md`](embedding-models.md) compares the four models per category and across every Minimum
+Similarity, adds their cost on the Pi, and leads to [ADR 0006](../adr/0006-qwen3-embedding-0.6b-on-the-pi.md):
+`qwen3-embedding:0.6b` finds two questions more than `bge-m3` on both Collections at the same cost on the Pi.
 
 What the second and third row show: the full-text search only helps when it gets exact terms. Given the whole
 question, it matches common words in long book chapters and pushes expected Notes out of the top 5. Given the term

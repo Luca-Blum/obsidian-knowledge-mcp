@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 680" width="1120" height="680" role="img" aria-label="Hit@5 and Negative Questions passed per Minimum Similarity">
+<style>
+  svg { --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781; --grid:#e1e0d9; --axis:#c3c2b7;
+        --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; }
+  @media (prefers-color-scheme: dark) {
+    svg { --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#898781; --grid:#2c2c2a; --axis:#383835;
+          --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; }
+  }
+  text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--ink2); font-size: 12px; }
+  .title { fill: var(--ink); font-size: 16px; font-weight: 600; }
+  .panel { fill: var(--ink); font-size: 13px; font-weight: 600; }
+  .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .grid { stroke: var(--grid); stroke-width: 1; }
+  .axis { stroke: var(--axis); stroke-width: 1; }
+  .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .dot { stroke: var(--surface); stroke-width: 2; }
+</style>
+<rect width="1120" height="680" style="fill:var(--surface)"/>
+<text class="title" x="20" y="30">What each Minimum Similarity costs, per embedding model</text>
+<text x="20" y="52">Dots mark the calibrated value, the lowest at which every Negative Question passes. Each model has its own similarity scale, so compare the height of the dots, not their position.</text>
+<line class="line" style="stroke:var(--s1)" x1="20" x2="38" y1="70" y2="70"/>
+<text x="44" y="74">bge-m3</text>
+<line class="line" style="stroke:var(--s2)" x1="114" x2="132" y1="70" y2="70"/>
+<text x="138" y="74">snowflake-arctic-embed2</text>
+<line class="line" style="stroke:var(--s3)" x1="327" x2="345" y1="70" y2="70"/>
+<text x="351" y="74">qwen3-embedding:0.6b</text>
+<line class="line" style="stroke:var(--s4)" x1="519" x2="537" y1="70" y2="70"/>
+<text x="543" y="74">qwen3-embedding:4b</text>
+<text class="panel" x="60" y="98">Engineering: Hit@5</text>
+<line class="grid" x1="60" x2="390" y1="312.0" y2="312.0"/>
+<text class="tick" x="52" y="316.0" text-anchor="end">0.7</text>
+<line class="grid" x1="60" x2="390" y1="245.3" y2="245.3"/>
+<text class="tick" x="52" y="249.3" text-anchor="end">0.8</text>
+<line class="grid" x1="60" x2="390" y1="178.7" y2="178.7"/>
+<text class="tick" x="52" y="182.7" text-anchor="end">0.9</text>
+<line class="grid" x1="60" x2="390" y1="112.0" y2="112.0"/>
+<text class="tick" x="52" y="116.0" text-anchor="end">1.0</text>
+<text class="tick" x="60.0" y="330" text-anchor="middle">0.35</text>
+<text class="tick" x="115.0" y="330" text-anchor="middle">0.40</text>
+<text class="tick" x="170.0" y="330" text-anchor="middle">0.45</text>
+<text class="tick" x="225.0" y="330" text-anchor="middle">0.50</text>
+<text class="tick" x="280.0" y="330" text-anchor="middle">0.55</text>
+<text class="tick" x="335.0" y="330" text-anchor="middle">0.60</text>
+<text class="tick" x="390.0" y="330" text-anchor="middle">0.65</text>
+<line class="axis" x1="60" x2="390" y1="312" y2="312"/>
+<text x="225.0" y="348" text-anchor="middle">Minimum Similarity</text>
+<polyline class="line" style="stroke:var(--s1)" points="60.0,178.7 71.0,178.7 82.0,178.7 93.0,178.7 104.0,178.7 115.0,178.7 126.0,178.7 137.0,178.7 148.0,178.7 159.0,178.7 170.0,178.7 181.0,178.7 192.0,178.7 203.0,178.7 214.0,178.7 225.0,178.7 236.0,178.7 247.0,178.7 258.0,178.7 269.0,178.7 280.0,178.7 291.0,178.7 302.0,178.7 313.0,178.7 324.0,212.0 335.0,212.0 346.0,212.0 357.0,225.3 368.0,225.3 379.0,225.3 390.0,225.3"><title>bge-m3</title></polyline>
+<circle class="dot" style="fill:var(--s1)" cx="335.0" cy="212.0" r="5"><title>bge-m3: calibrated at 0.6, Hit@5 0.85</title></circle>
+<polyline class="line" style="stroke:var(--s2)" points="60.0,145.3 71.0,145.3 82.0,145.3 93.0,145.3 104.0,145.3 115.0,145.3 126.0,145.3 137.0,145.3 148.0,145.3 159.0,145.3 170.0,145.3 181.0,145.3 192.0,145.3 203.0,178.7 214.0,178.7 225.0,178.7 236.0,178.7 247.0,178.7 258.0,178.7 269.0,212.0 280.0,225.3 291.0,225.3 302.0,225.3 313.0,258.7 324.0,258.7 335.0,272.0 346.0,272.0 357.0,272.0 368.0,272.0 379.0,292.0 390.0,292.0"><title>snowflake-arctic-embed2</title></polyline>
+<circle class="dot" style="fill:var(--s2)" cx="203.0" cy="178.7" r="5"><title>snowflake-arctic-embed2: calibrated at 0.48, Hit@5 0.90</title></circle>
+<polyline class="line" style="stroke:var(--s3)" points="60.0,125.3 71.0,125.3 82.0,125.3 93.0,125.3 104.0,125.3 115.0,125.3 126.0,125.3 137.0,125.3 148.0,125.3 159.0,125.3 170.0,125.3 181.0,125.3 192.0,125.3 203.0,125.3 214.0,125.3 225.0,125.3 236.0,145.3 247.0,145.3 258.0,145.3 269.0,145.3 280.0,145.3 291.0,145.3 302.0,145.3 313.0,145.3 324.0,158.7 335.0,178.7 346.0,178.7 357.0,192.0 368.0,212.0 379.0,245.3 390.0,245.3"><title>qwen3-embedding:0.6b</title></polyline>
+<circle class="dot" style="fill:var(--s3)" cx="346.0" cy="178.7" r="5"><title>qwen3-embedding:0.6b: calibrated at 0.61, Hit@5 0.90</title></circle>
+<polyline class="line" style="stroke:var(--s4)" points="60.0,112.0 71.0,112.0 82.0,112.0 93.0,112.0 104.0,112.0 115.0,112.0 126.0,112.0 137.0,112.0 148.0,112.0 159.0,112.0 170.0,112.0 181.0,112.0 192.0,112.0 203.0,112.0 214.0,112.0 225.0,112.0 236.0,112.0 247.0,125.3 258.0,125.3 269.0,125.3 280.0,125.3 291.0,125.3 302.0,125.3 313.0,125.3 324.0,125.3 335.0,125.3 346.0,145.3 357.0,145.3 368.0,158.7 379.0,158.7 390.0,178.7"><title>qwen3-embedding:4b</title></polyline>
+<circle class="dot" style="fill:var(--s4)" cx="280.0" cy="125.3" r="5"><title>qwen3-embedding:4b: calibrated at 0.55, Hit@5 0.98</title></circle>
+<text x="398" y="229.3">bge-m3</text>
+<text x="398" y="296.0">snowflake-arctic-embed2</text>
+<text x="398" y="249.3">qwen3-embedding:0.6b</text>
+<text x="398" y="182.7">qwen3-embedding:4b</text>
+<text class="panel" x="620" y="98">Engineering: Negative Questions passed</text>
+<line class="grid" x1="620" x2="950" y1="312.0" y2="312.0"/>
+<text class="tick" x="612" y="316.0" text-anchor="end">0%</text>
+<line class="grid" x1="620" x2="950" y1="262.0" y2="262.0"/>
+<text class="tick" x="612" y="266.0" text-anchor="end">25%</text>
+<line class="grid" x1="620" x2="950" y1="212.0" y2="212.0"/>
+<text class="tick" x="612" y="216.0" text-anchor="end">50%</text>
+<line class="grid" x1="620" x2="950" y1="162.0" y2="162.0"/>
+<text class="tick" x="612" y="166.0" text-anchor="end">75%</text>
+<line class="grid" x1="620" x2="950" y1="112.0" y2="112.0"/>
+<text class="tick" x="612" y="116.0" text-anchor="end">100%</text>
+<text class="tick" x="620.0" y="330" text-anchor="middle">0.35</text>
+<text class="tick" x="675.0" y="330" text-anchor="middle">0.40</text>
+<text class="tick" x="730.0" y="330" text-anchor="middle">0.45</text>
+<text class="tick" x="785.0" y="330" text-anchor="middle">0.50</text>
+<text class="tick" x="840.0" y="330" text-anchor="middle">0.55</text>
+<text class="tick" x="895.0" y="330" text-anchor="middle">0.60</text>
+<text class="tick" x="950.0" y="330" text-anchor="middle">0.65</text>
+<line class="axis" x1="620" x2="950" y1="312" y2="312"/>
+<text x="785.0" y="348" text-anchor="middle">Minimum Similarity</text>
+<polyline class="line" style="stroke:var(--s1)" points="620.0,312.0 631.0,312.0 642.0,312.0 653.0,312.0 664.0,312.0 675.0,312.0 686.0,312.0 697.0,312.0 708.0,312.0 719.0,312.0 730.0,312.0 741.0,299.5 752.0,299.5 763.0,274.5 774.0,262.0 785.0,249.5 796.0,224.5 807.0,187.0 818.0,174.5 829.0,162.0 840.0,162.0 851.0,149.5 862.0,137.0 873.0,124.5 884.0,124.5 895.0,112.0 906.0,112.0 917.0,112.0 928.0,112.0 939.0,112.0 950.0,112.0"><title>bge-m3</title></polyline>
+<polyline class="line" style="stroke:var(--s2)" points="620.0,212.0 631.0,212.0 642.0,187.0 653.0,174.5 664.0,174.5 675.0,174.5 686.0,162.0 697.0,137.0 708.0,124.5 719.0,124.5 730.0,124.5 741.0,124.5 752.0,124.5 763.0,112.0 774.0,112.0 785.0,112.0 796.0,112.0 807.0,112.0 818.0,112.0 829.0,112.0 840.0,112.0 851.0,112.0 862.0,112.0 873.0,112.0 884.0,112.0 895.0,112.0 906.0,112.0 917.0,112.0 928.0,112.0 939.0,112.0 950.0,112.0"><title>snowflake-arctic-embed2</title></polyline>
+<polyline class="line" style="stroke:var(--s3)" points="620.0,274.5 631.0,274.5 642.0,274.5 653.0,274.5 664.0,274.5 675.0,249.5 686.0,237.0 697.0,237.0 708.0,224.5 719.0,212.0 730.0,199.5 741.0,187.0 752.0,187.0 763.0,187.0 774.0,174.5 785.0,149.5 796.0,149.5 807.0,149.5 818.0,149.5 829.0,149.5 840.0,149.5 851.0,137.0 862.0,124.5 873.0,124.5 884.0,124.5 895.0,124.5 906.0,112.0 917.0,112.0 928.0,112.0 939.0,112.0 950.0,112.0"><title>qwen3-embedding:0.6b</title></polyline>
+<polyline class="line" style="stroke:var(--s4)" points="620.0,287.0 631.0,287.0 642.0,262.0 653.0,262.0 664.0,262.0 675.0,249.5 686.0,224.5 697.0,212.0 708.0,212.0 719.0,187.0 730.0,187.0 741.0,162.0 752.0,149.5 763.0,137.0 774.0,137.0 785.0,124.5 796.0,124.5 807.0,124.5 818.0,124.5 829.0,124.5 840.0,112.0 851.0,112.0 862.0,112.0 873.0,112.0 884.0,112.0 895.0,112.0 906.0,112.0 917.0,112.0 928.0,112.0 939.0,112.0 950.0,112.0"><title>qwen3-embedding:4b</title></polyline>
+<text class="panel" x="60" y="382">Training: Hit@5</text>
+<line class="grid" x1="60" x2="390" y1="596.0" y2="596.0"/>
+<text class="tick" x="52" y="600.0" text-anchor="end">0.7</text>
+<line class="grid" x1="60" x2="390" y1="529.3" y2="529.3"/>
+<text class="tick" x="52" y="533.3" text-anchor="end">0.8</text>
+<line class="grid" x1="60" x2="390" y1="462.7" y2="462.7"/>
+<text class="tick" x="52" y="466.7" text-anchor="end">0.9</text>
+<line class="grid" x1="60" x2="390" y1="396.0" y2="396.0"/>
+<text class="tick" x="52" y="400.0" text-anchor="end">1.0</text>
+<text class="tick" x="60.0" y="614" text-anchor="middle">0.35</text>
+<text class="tick" x="115.0" y="614" text-anchor="middle">0.40</text>
+<text class="tick" x="170.0" y="614" text-anchor="middle">0.45</text>
+<text class="tick" x="225.0" y="614" text-anchor="middle">0.50</text>
+<text class="tick" x="280.0" y="614" text-anchor="middle">0.55</text>
+<text class="tick" x="335.0" y="614" text-anchor="middle">0.60</text>
+<text class="tick" x="390.0" y="614" text-anchor="middle">0.65</text>
+<line class="axis" x1="60" x2="390" y1="596" y2="596"/>
+<text x="225.0" y="632" text-anchor="middle">Minimum Similarity</text>
+<polyline class="line" style="stroke:var(--s1)" points="60.0,442.7 71.0,442.7 82.0,442.7 93.0,442.7 104.0,442.7 115.0,442.7 126.0,442.7 137.0,442.7 148.0,442.7 159.0,442.7 170.0,442.7 181.0,442.7 192.0,442.7 203.0,442.7 214.0,442.7 225.0,442.7 236.0,442.7 247.0,442.7 258.0,442.7 269.0,442.7 280.0,442.7 291.0,442.7 302.0,442.7 313.0,442.7 324.0,442.7 335.0,442.7 346.0,456.0 357.0,456.0 368.0,456.0 379.0,456.0 390.0,469.3"><title>bge-m3</title></polyline>
+<circle class="dot" style="fill:var(--s1)" cx="357.0" cy="456.0" r="5"><title>bge-m3: calibrated at 0.62, Hit@5 0.91</title></circle>
+<polyline class="line" style="stroke:var(--s2)" points="60.0,456.0 71.0,456.0 82.0,456.0 93.0,456.0 104.0,456.0 115.0,456.0 126.0,456.0 137.0,456.0 148.0,456.0 159.0,456.0 170.0,456.0 181.0,456.0 192.0,456.0 203.0,456.0 214.0,456.0 225.0,469.3 236.0,469.3 247.0,469.3 258.0,469.3 269.0,482.7 280.0,482.7 291.0,482.7 302.0,482.7 313.0,502.7 324.0,502.7 335.0,502.7 346.0,502.7 357.0,502.7 368.0,516.0 379.0,516.0 390.0,516.0"><title>snowflake-arctic-embed2</title></polyline>
+<circle class="dot" style="fill:var(--s2)" cx="181.0" cy="456.0" r="5"><title>snowflake-arctic-embed2: calibrated at 0.46, Hit@5 0.91</title></circle>
+<polyline class="line" style="stroke:var(--s3)" points="60.0,409.3 71.0,409.3 82.0,409.3 93.0,409.3 104.0,409.3 115.0,409.3 126.0,409.3 137.0,409.3 148.0,409.3 159.0,409.3 170.0,409.3 181.0,409.3 192.0,409.3 203.0,409.3 214.0,409.3 225.0,422.7 236.0,422.7 247.0,422.7 258.0,422.7 269.0,422.7 280.0,442.7 291.0,442.7 302.0,442.7 313.0,442.7 324.0,442.7 335.0,442.7 346.0,442.7 357.0,442.7 368.0,456.0 379.0,469.3 390.0,469.3"><title>qwen3-embedding:0.6b</title></polyline>
+<circle class="dot" style="fill:var(--s3)" cx="258.0" cy="422.7" r="5"><title>qwen3-embedding:0.6b: calibrated at 0.53, Hit@5 0.96</title></circle>
+<polyline class="line" style="stroke:var(--s4)" points="60.0,422.7 71.0,422.7 82.0,422.7 93.0,422.7 104.0,422.7 115.0,422.7 126.0,422.7 137.0,422.7 148.0,422.7 159.0,422.7 170.0,422.7 181.0,422.7 192.0,422.7 203.0,422.7 214.0,422.7 225.0,422.7 236.0,422.7 247.0,422.7 258.0,422.7 269.0,442.7 280.0,442.7 291.0,456.0 302.0,456.0 313.0,456.0 324.0,456.0 335.0,456.0 346.0,456.0 357.0,469.3 368.0,469.3 379.0,502.7 390.0,516.0"><title>qwen3-embedding:4b</title></polyline>
+<circle class="dot" style="fill:var(--s4)" cx="269.0" cy="442.7" r="5"><title>qwen3-embedding:4b: calibrated at 0.54, Hit@5 0.93</title></circle>
+<text x="398" y="473.3">bge-m3</text>
+<text x="398" y="520.0">snowflake-arctic-embed2</text>
+<text x="398" y="487.3">qwen3-embedding:0.6b</text>
+<text x="398" y="534.0">qwen3-embedding:4b</text>
+<text class="panel" x="620" y="382">Training: Negative Questions passed</text>
+<line class="grid" x1="620" x2="950" y1="596.0" y2="596.0"/>
+<text class="tick" x="612" y="600.0" text-anchor="end">0%</text>
+<line class="grid" x1="620" x2="950" y1="546.0" y2="546.0"/>
+<text class="tick" x="612" y="550.0" text-anchor="end">25%</text>
+<line class="grid" x1="620" x2="950" y1="496.0" y2="496.0"/>
+<text class="tick" x="612" y="500.0" text-anchor="end">50%</text>
+<line class="grid" x1="620" x2="950" y1="446.0" y2="446.0"/>
+<text class="tick" x="612" y="450.0" text-anchor="end">75%</text>
+<line class="grid" x1="620" x2="950" y1="396.0" y2="396.0"/>
+<text class="tick" x="612" y="400.0" text-anchor="end">100%</text>
+<text class="tick" x="620.0" y="614" text-anchor="middle">0.35</text>
+<text class="tick" x="675.0" y="614" text-anchor="middle">0.40</text>
+<text class="tick" x="730.0" y="614" text-anchor="middle">0.45</text>
+<text class="tick" x="785.0" y="614" text-anchor="middle">0.50</text>
+<text class="tick" x="840.0" y="614" text-anchor="middle">0.55</text>
+<text class="tick" x="895.0" y="614" text-anchor="middle">0.60</text>
+<text class="tick" x="950.0" y="614" text-anchor="middle">0.65</text>
+<line class="axis" x1="620" x2="950" y1="596" y2="596"/>
+<text x="785.0" y="632" text-anchor="middle">Minimum Similarity</text>
+<polyline class="line" style="stroke:var(--s1)" points="620.0,596.0 631.0,596.0 642.0,596.0 653.0,596.0 664.0,596.0 675.0,596.0 686.0,583.5 697.0,583.5 708.0,571.0 719.0,558.5 730.0,558.5 741.0,558.5 752.0,558.5 763.0,533.5 774.0,521.0 785.0,521.0 796.0,508.5 807.0,496.0 818.0,483.5 829.0,471.0 840.0,433.5 851.0,433.5 862.0,433.5 873.0,408.5 884.0,408.5 895.0,408.5 906.0,408.5 917.0,396.0 928.0,396.0 939.0,396.0 950.0,396.0"><title>bge-m3</title></polyline>
+<polyline class="line" style="stroke:var(--s2)" points="620.0,521.0 631.0,521.0 642.0,508.5 653.0,471.0 664.0,458.5 675.0,458.5 686.0,433.5 697.0,433.5 708.0,421.0 719.0,421.0 730.0,421.0 741.0,396.0 752.0,396.0 763.0,396.0 774.0,396.0 785.0,396.0 796.0,396.0 807.0,396.0 818.0,396.0 829.0,396.0 840.0,396.0 851.0,396.0 862.0,396.0 873.0,396.0 884.0,396.0 895.0,396.0 906.0,396.0 917.0,396.0 928.0,396.0 939.0,396.0 950.0,396.0"><title>snowflake-arctic-embed2</title></polyline>
+<polyline class="line" style="stroke:var(--s3)" points="620.0,583.5 631.0,583.5 642.0,583.5 653.0,583.5 664.0,583.5 675.0,571.0 686.0,571.0 697.0,571.0 708.0,571.0 719.0,533.5 730.0,508.5 741.0,483.5 752.0,483.5 763.0,483.5 774.0,446.0 785.0,433.5 796.0,421.0 807.0,408.5 818.0,396.0 829.0,396.0 840.0,396.0 851.0,396.0 862.0,396.0 873.0,396.0 884.0,396.0 895.0,396.0 906.0,396.0 917.0,396.0 928.0,396.0 939.0,396.0 950.0,396.0"><title>qwen3-embedding:0.6b</title></polyline>
+<polyline class="line" style="stroke:var(--s4)" points="620.0,583.5 631.0,558.5 642.0,558.5 653.0,533.5 664.0,521.0 675.0,521.0 686.0,521.0 697.0,521.0 708.0,521.0 719.0,508.5 730.0,496.0 741.0,483.5 752.0,471.0 763.0,421.0 774.0,408.5 785.0,408.5 796.0,408.5 807.0,408.5 818.0,408.5 829.0,396.0 840.0,396.0 851.0,396.0 862.0,396.0 873.0,396.0 884.0,396.0 895.0,396.0 906.0,396.0 917.0,396.0 928.0,396.0 939.0,396.0 950.0,396.0"><title>qwen3-embedding:4b</title></polyline>
+</svg>
