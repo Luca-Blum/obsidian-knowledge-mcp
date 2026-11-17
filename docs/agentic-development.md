@@ -80,8 +80,8 @@ Deterministic checks that hold no matter who or what wrote the code:
 
 ## Human in the loop
 
-The merge is the gate. Every change reaches `main` through a pull request that I review: 33 merged so far, only the
-initial setup was committed directly. Review covers what guardrails cannot: whether the design fits, whether names
+The merge is the gate. Every change reaches `main` through a pull request that I review: more than 40, only the initial
+setup was committed directly. Review covers what guardrails cannot: whether the design fits, whether names
 carry the domain, and whether the change does what the spec meant rather than what it literally said.
 
 Agents work in parallel in separate git worktrees, one issue each. Implementation scales out; review remains the
