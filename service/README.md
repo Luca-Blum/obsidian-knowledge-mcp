@@ -1,7 +1,7 @@
 # Knowledge service
 
 One instance serves one Collection. It indexes the Collection's Vault into its own Postgres schema and offers
-`search`, `read_note`, `list_topics` and `list_sources` over MCP (Streamable HTTP, `/mcp`). See [`docs/architecture.md`](../docs/architecture.md).
+`search`, `read_note`, `related`, `list_topics` and `list_sources` over MCP (Streamable HTTP, `/mcp`). See [`docs/architecture.md`](../docs/architecture.md).
 
 Requires Java 25+ and Docker (Dev Services start Postgres with pgvector).
 
@@ -44,7 +44,7 @@ A Collection is defined only by configuration:
 
 | Property | Environment variable | Meaning |
 | --- | --- | --- |
-| `collection.embedding.model` | `COLLECTION_EMBEDDING_MODEL` | Ollama embedding model (default `bge-m3`) |
+| `collection.embedding.model` | `COLLECTION_EMBEDDING_MODEL` | Ollama embedding model (default `qwen3-embedding:0.6b`, chosen in [ADR 0006](../docs/adr/0006-qwen3-embedding-0.6b-on-the-pi.md)) |
 | `collection.embedding.dimension` | `COLLECTION_EMBEDDING_DIMENSION` | Vector dimension of that model (default `1024`) |
 
 ### Chunking
@@ -63,7 +63,7 @@ A Collection is defined only by configuration:
 | `collection.search.tool-description` | `COLLECTION_SEARCH_TOOL_DESCRIPTION` | Description the AI Agent reads for `search` |
 | `collection.search.default-k` | `COLLECTION_SEARCH_DEFAULT_K` | Search Hits when `k` is not given (default `5`) |
 | `collection.search.max-k` | `COLLECTION_SEARCH_MAX_K` | Largest `k` a caller may ask for (default `20`) |
-| `collection.search.minimum-similarity` | `COLLECTION_SEARCH_MINIMUM_SIMILARITY` | Cosine similarity a vector candidate must reach before the fusion; full-text candidates are not thresholded (default `0.5`, uncalibrated, belongs to the embedding model) |
+| `collection.search.minimum-similarity` | `COLLECTION_SEARCH_MINIMUM_SIMILARITY` | Cosine similarity a vector candidate must reach before the fusion; full-text candidates are not thresholded (default `0.5`, a starting value below what `qwen3-embedding:0.6b` needs; it belongs to the embedding model, so calibrate it per Collection with Negative Questions) |
 | `collection.search.max-hits-per-note` | `COLLECTION_SEARCH_MAX_HITS_PER_NOTE` | Search Hits one Note may take; each hit's `moreInNote` counts the rest (default `2`) |
 | `collection.search.candidates` | `COLLECTION_SEARCH_CANDIDATES` | Candidates each list contributes to the fusion, the closest Chunks of the vector search and the best ranked of the full-text search, before the cap and `k` (default `50`) |
 | `collection.search.fusion.k` | `COLLECTION_SEARCH_FUSION_K` | The `k` of Reciprocal Rank Fusion, `weight / (k + rank)`; larger flattens the top ranks (default `60`) |
@@ -115,7 +115,7 @@ In development, Ollama is expected at `http://localhost:11434` (`quarkus.langcha
 ## Run locally and connect Claude Code
 
 ```shell
-ollama pull bge-m3      # or: docker run -d -p 11434:11434 --name ollama ollama/ollama && docker exec ollama ollama pull bge-m3
+ollama pull qwen3-embedding:0.6b      # or: docker run -d -p 11434:11434 --name ollama ollama/ollama && docker exec ollama ollama pull qwen3-embedding:0.6b
 COLLECTION_VAULT_PATH=/path/to/Engineering ./service/mvnw -f service/pom.xml quarkus:dev
 ```
 

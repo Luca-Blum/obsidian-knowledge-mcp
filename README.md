@@ -170,9 +170,10 @@ Details and examples: [`docs/agentic-development.md`](docs/agentic-development.m
 
 ## Roadmap
 
-- Switch the Pi to `qwen3-embedding:0.6b` with its calibrated Minimum Similarities
-  ([ADR 0006](docs/adr/0006-qwen3-embedding-0.6b-on-the-pi.md)).
 - A re-ranker on the top candidates, if the Pi has the headroom.
+- `qwen3-embedding:4b` once the Collections run on hardware with a GPU
+  ([ADR 0006](docs/adr/0006-qwen3-embedding-0.6b-on-the-pi.md)).
+- More in [Ideas](docs/ideas.md), each with what would make it worth building.
 
 ## License
 
